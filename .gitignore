@@ -1,0 +1,60 @@
+# Environment variables
+.env
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.history/
+
+# Project Specific Data
+data/
+logs/
+*.db
+*.db-journal
+
+# Python (Backend)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+backend/.venv/
+backend/ai/models/
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Flutter / Dart (Frontend)
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+frontend/build/
+frontend/.dart_tool/
+frontend/.packages
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/lib/generated_plugin_registrant.dart
+
+# Android
+frontend/android/key.properties
+frontend/android/local.properties
+frontend/android/.gradle/
+frontend/android/app/src/main/res/generated/
+frontend/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
+# iOS
+frontend/ios/Flutter/Generated.xcconfig
+frontend/ios/Flutter/flutter_export_environment.sh
+frontend/ios/Flutter/Flutter.podspec
+frontend/ios/.generated/
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/ios/Flutter/App.framework

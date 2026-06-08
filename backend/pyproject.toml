@@ -1,0 +1,29 @@
+[project]
+name = "ainas-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+    "sqlalchemy",
+    "zeroconf",
+    "transformers",
+    "torch",
+    "pillow",
+    "langchain-openai>=1.2.2",
+    "langchain-huggingface>=1.2.2",
+    "langchain>=1.3.4",
+    "langchain-community>=0.4.2",
+    "llama-cpp-python>=0.3.28",
+]
+
+[tool.uv]
+index-strategy = "unsafe-best-match"
+
+[[tool.uv.index]]
+url = "https://download.pytorch.org/whl/rocm7.2"
+default = true
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
