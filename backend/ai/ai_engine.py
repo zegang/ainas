@@ -22,7 +22,7 @@ class AIEngine:
     def __init__(self):
         # LLM Configuration for Chat Assistant
         self.provider = os.getenv("AI_PROVIDER", "local").lower()
-        self.model_name = os.getenv("AI_MODEL", "ai/models/qwen2.5-0.5b-instruct-q8_0.gguf")
+        self.model_name = os.getenv("AI_MODEL", "ai/models/Qwen3-1.7B-Q8_0.gguf")
         if not os.path.isabs(self.model_name):
             self.model_name = os.path.join(BASE_DIR, self.model_name)
             
