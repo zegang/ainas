@@ -235,6 +235,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'AI Assistant'**
   String get aiAssistant;
+
+  /// Label for the rename action in the file browser
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get renameAction;
+
+  /// Label for the move action in the file browser
+  ///
+  /// In en, this message translates to:
+  /// **'Move'**
+  String get moveAction;
+
+  /// Label for the action to attach files to the AI assistant
+  ///
+  /// In en, this message translates to:
+  /// **'Attach to AI'**
+  String get attachToAiAction;
+
+  /// Label for the delete action in the file browser
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get deleteAction;
 }
 
 class _AppLocalizationsDelegate

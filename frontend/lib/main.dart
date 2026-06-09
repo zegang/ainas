@@ -58,7 +58,7 @@ void _setupLogging() {
 
   // Append logs to a local file if running on a native platform (Linux/Android)
   if (!kIsWeb) {
-    final logFile = File('ainas_frontend.log');
+    final logFile = File('../logs/ainas_frontend.log');
     Logger.root.onRecord.listen((record) {
       final sb = StringBuffer();
       sb.writeln('${record.time} [${record.level.name}] ${record.loggerName}: ${record.message}');

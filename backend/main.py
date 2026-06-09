@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
+from prometheus_fastapi_instrumentator import Instrumentator
 
 # Set base directory and environment variable before other internal imports
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -62,7 +63,7 @@ async def lifespan(app: FastAPI):
     startup_logger = logging.getLogger(__name__)
     startup_logger.info("AI-NAS starting... AI Features: %s", "Enabled" if enable_ai else "Disabled")
     await discovery.register()
-    if enable_ai:
+    if enable_ai: # This is where AIEngine is instantiated
         app.state.ai = AIEngine()
     yield
     await discovery.unregister()
@@ -89,6 +90,8 @@ def create_app() -> FastAPI:
         return RedirectResponse(url="/docs")
 
     app.include_router(api_router)
+    # Initialize Prometheus instrumentation
+    Instrumentator().instrument(app).expose(app)
     return app
 
 app = create_app()

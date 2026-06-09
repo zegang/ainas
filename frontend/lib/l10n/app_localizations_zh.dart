@@ -78,4 +78,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aiAssistant => 'AI 助手';
+
+  @override
+  String get renameAction => '重命名';
+
+  @override
+  String get moveAction => '移动';
+
+  @override
+  String get attachToAiAction => '添加到 AI';
+
+  @override
+  String get deleteAction => '删除';
 }

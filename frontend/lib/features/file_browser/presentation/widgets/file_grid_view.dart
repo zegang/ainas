@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../common/themes/app_theme.dart';
 import '../../../../services/api_service.dart';
 
@@ -86,12 +87,15 @@ class FileGridView extends StatelessWidget {
   Widget _buildPopupMenu(FileItem item) {
     return PopupMenuButton<String>(
       onSelected: (value) => onActionSelected(value, item),
-      itemBuilder: (context) => [
-        const PopupMenuItem(value: 'rename', child: Text("Rename")),
-        const PopupMenuItem(value: 'move', child: Text("Move")),
-        const PopupMenuItem(value: 'attach', child: Text("Attach to AI")),
-        const PopupMenuItem(value: 'delete', child: Text("Delete")),
-      ],
+      itemBuilder: (context) {
+        final l10n = AppLocalizations.of(context)!;
+        return [
+          PopupMenuItem(value: 'rename', child: Text(l10n.renameAction)),
+          PopupMenuItem(value: 'move', child: Text(l10n.moveAction)),
+          PopupMenuItem(value: 'attach', child: Text(l10n.attachToAiAction)),
+          PopupMenuItem(value: 'delete', child: Text(l10n.deleteAction)),
+        ];
+      },
     );
   }
 }

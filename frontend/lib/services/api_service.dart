@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../features/ai_assistant/domain/models/chat_message.dart';
 import 'connection_helper.dart';
 
 class FileItem {
@@ -111,6 +112,14 @@ class ApiService with ChangeNotifier {
   double storagePercent = 0.0; // 0.0 to 1.0
   String storageLabel = "Loading...";
 
+  // Persisted chat history for the AI Assistant during the current session
+  final List<ChatMessage> chatHistory = [
+    ChatMessage(
+      text: "Hello! I'm your AI Assistant. How can I help you manage your NAS today?",
+      isUser: false,
+    ),
+  ];
+
   // Staging area for AI Assistant attachments
   final List<String> stagedFilesForAi = [];
 
@@ -120,12 +129,31 @@ class ApiService with ChangeNotifier {
     _log.info('Staged ${paths.length} files for AI Assistant');
   }
 
+  void clearChatHistory() {
+    chatHistory.clear();
+    chatHistory.add(ChatMessage(
+      text: "Hello! I'm your AI Assistant. How can I help you manage your NAS today?",
+      isUser: false,
+    ));
+    notifyListeners();
+  }
+
   Future<void> updateBaseUrl(String url) async {
     _log.info('To update base URL from $baseUrl to $url');
     baseUrl = url;
     persistBaseUrl(baseUrl);
   }
 
+  /// Sends a signal to the backend to stop a specific AI request.
+  Future<void> cancelAiChat(String requestId) async {
+    final url = '$baseUrl/ai/chat/cancel/$requestId';
+    _log.info('--> POST $url');
+    try {
+      await http.post(Uri.parse(url));
+    } catch (e) {
+      _log.warning('Failed to send cancel signal: $e');
+    }
+  }
 
   /// Persists the base URL to local storage.
   Future<void> persistBaseUrl(String url) async {

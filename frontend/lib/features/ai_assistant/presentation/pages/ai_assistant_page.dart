@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'dart:developer' as developer;
+import 'dart:async';
+import 'package:logging/logging.dart';
 import '../../../../services/api_service.dart';
 import '../../domain/chat_repository_impl.dart';
 import '../../domain/models/chat_message.dart';
 import '../widgets/nas_file_picker.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../domain/chat_repository.dart';
 import '../widgets/chat_bubble.dart';
 
@@ -15,34 +17,48 @@ class AIAssistantPage extends StatefulWidget {
 }
 
 class _AIAssistantPageState extends State<AIAssistantPage> {
+  final _log = Logger('AIAssistantPage');
+  final ApiService api = ApiService();
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   List<String> _selectedFiles = []; // State to hold selected files
   bool _isAwaitingResponse = false; // State for loading animation
+  StreamSubscription<String>? _chatSubscription; // To track current stream
+  String? _currentRequestId; // To track current request for backend signal
 
   late final ChatRepository _repository = HttpChatRepository(
-    baseUrl: ApiService().baseUrl,
+    baseUrl: api.baseUrl,
   );
 
-  final List<ChatMessage> _messages = [
-    ChatMessage(
-      text: "Hello! I'm your AI Assistant. How can I help you manage your NAS today?",
-      isUser: false,
-    ),
-  ];
+  List<ChatMessage> get _messages => api.chatHistory;
+
+  void _handleStop() {
+    if (_chatSubscription != null) {
+      _chatSubscription!.cancel();
+      _chatSubscription = null;
+    }
+    if (_currentRequestId != null) {
+      api.cancelAiChat(_currentRequestId!);
+      _currentRequestId = null;
+    }
+    setState(() => _isAwaitingResponse = false);
+    _log.info('AI Request cancelled by user');
+  }
 
   void _handleSend() async {
     final text = _controller.text.trim();
     if (text.isEmpty && _selectedFiles.isEmpty) return; // Don't send empty messages
 
-    developer.log('User sent message: $text', name: 'ai.assistant');
+    _log.info('User sent message: $text');
     final currentFiles = List<String>.from(_selectedFiles); // Capture files for this message
 
+    final requestId = DateTime.now().microsecondsSinceEpoch.toString();
     setState(() {
       _messages.add(ChatMessage(text: text, isUser: true, files: currentFiles)); // Store files with message
       _controller.clear();
       _selectedFiles.clear(); // Clear selected files after sending
       _isAwaitingResponse = true; // Show loading animation
+      _currentRequestId = requestId;
     });
 
     _scrollToBottom();
@@ -51,9 +67,13 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
     String fullResponse = '';
 
     try {
-      await for (final chunk in _repository.streamResponse(text, files: currentFiles)) {
-        if (!mounted) break;
-
+      // Note: Ensure your repository passes this requestId to the API URL
+      _chatSubscription = _repository.streamResponse(text, files: currentFiles).listen((chunk) {
+        if (!mounted) {
+          _log.warning('!mounted is true. existing streamResponse...');
+          return;
+        }
+        
         if (assistantMessage == null) {
           // First chunk received: stop animation and create bubble
           setState(() {
@@ -73,9 +93,15 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
           );
         });
         _scrollToBottom();
-      }
+      }, onDone: () {
+        if (mounted) setState(() => _isAwaitingResponse = false);
+        _chatSubscription = null;
+        _currentRequestId = null;
+      }, onError: (e) {
+        throw e;
+      }, cancelOnError: true);
     } catch (e) {
-      developer.log('Streaming error', name: 'ai.assistant', error: e);
+      _log.severe('Streaming error', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -108,25 +134,64 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   void initState() {
     super.initState();
     // Check for files staged from the File Browser
-    final staged = ApiService().stagedFilesForAi;
+    final staged = api.stagedFilesForAi;
     if (staged.isNotEmpty) {
       _selectedFiles.addAll(staged);
-      ApiService().stagedFilesForAi.clear();
+      api.stagedFilesForAi.clear();
     }
+    _scrollToBottom();
   }
 
   @override
   void dispose() {
+    _chatSubscription?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
+  void _handleClearHistory() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Clear History"),
+        content: const Text("Are you sure you want to clear the entire chat history?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Clear", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      api.clearChatHistory();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: Column(
         children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(l10n.aiAssistant, style: Theme.of(context).textTheme.titleMedium),
+                IconButton(
+                  icon: const Icon(Icons.delete_sweep_outlined),
+                  tooltip: l10n.clear,
+                  onPressed: _handleClearHistory,
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -280,8 +345,10 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
             ),
           ),
           IconButton.filled(
-            onPressed: _handleSend,
-            icon: const Icon(Icons.send),
+            onPressed: _isAwaitingResponse ? _handleStop : _handleSend,
+            icon: _isAwaitingResponse
+                ? const Icon(Icons.stop)
+                : const Icon(Icons.send),
           ),
         ],
       ),
@@ -298,11 +365,16 @@ class _TypingIndicator extends StatefulWidget {
 
 class _TypingIndicatorState extends State<_TypingIndicator> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
   }
 
   @override
@@ -316,8 +388,18 @@ class _TypingIndicatorState extends State<_TypingIndicator> with SingleTickerPro
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        padding: const EdgeInsets.all(12),
-        child: const SizedBox(width: 40, child: LinearProgressIndicator(minHeight: 2)),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: FadeTransition(
+          opacity: _animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.8, end: 1.2).animate(_animation),
+            child: Icon(
+              Icons.auto_awesome_outlined,
+              color: Theme.of(context).colorScheme.primary,
+              size: 24,
+            ),
+          ),
+        ),
       ),
     );
   }

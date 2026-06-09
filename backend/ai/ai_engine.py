@@ -1,17 +1,21 @@
 import os
 import logging
-import io
-from typing import List
-from PIL import Image
-from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
+import asyncio
+import uuid
+from typing import List, Generator, AsyncGenerator, Dict, Any
+
+from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFacePipeline, ChatHuggingFace
-from langchain_core.messages import HumanMessage
 from langchain_community.chat_models import ChatLlamaCpp
+from langchain_community.llms import Ollama # Example LLM
 
 from backend.ai.tools.file_tools import get_file_tools
 from backend.ai.tools.image_tools import get_image_tools
 from backend.ai.agents.nas_agent import create_nas_agent
+from backend.ai.tools.image_tools import get_image_tools
+from backend.ai.tools.file_tools import get_file_tools
+from backend.monitoring.prometheus import AI_REQUEST_DURATION # New import for monitoring
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +23,7 @@ logger = logging.getLogger(__name__)
 BASE_DIR = os.getenv("AI_NAS_BACKEND_BASE_DIR")
 
 class AIEngine:
+    _instance = None # Singleton instance
     def __init__(self):
         # LLM Configuration for Chat Assistant
         self.provider = os.getenv("AI_PROVIDER", "local").lower()
@@ -58,10 +63,50 @@ class AIEngine:
                 streaming=True
             )
 
-        # 3. Setup Tools and Agent
-        self.tools = get_image_tools(self.storage_path, self.api_key)
-        self.tools.extend(get_file_tools(self.storage_path))
+        # Setup Tools and Agent
+        # self.tools = get_nas_tools() # Combined tools
+        self.tools = get_image_tools(self.storage_path, self.api_key) + get_file_tools(self.storage_path)
         self.agent_executor = create_nas_agent(self.llm, self.tools)
+        self._active_requests: Dict[str, asyncio.Event] = {}
+
+    def _get_cancellation_event(self, request_id: str) -> asyncio.Event:
+        """Retrieves or creates a cancellation event for a given request ID."""
+        if request_id not in self._active_requests:
+            self._active_requests[request_id] = asyncio.Event()
+        return self._active_requests[request_id]
+
+    def start_request(self, request_id: str):
+        """Registers a new request and creates a cancellation event for it."""
+        self._active_requests[request_id] = asyncio.Event()
+        logger.info(f"AI request {request_id} started.")
+
+    def cancel_request(self, request_id: str) -> bool:
+        """Sets the cancellation event for a specific request."""
+        event = self._active_requests.get(request_id)
+        if event:
+            event.set()
+            logger.info(f"AI request {request_id} cancellation requested.")
+            return True
+        logger.warning(f"AI request {request_id} not found for cancellation.")
+        return False
+
+    def end_request(self, request_id: str):
+        """Cleans up the cancellation event for a completed or cancelled request."""
+        if request_id in self._active_requests:
+            del self._active_requests[request_id]
+            logger.info(f"AI request {request_id} ended and cleaned up.")
+
+    # Singleton pattern
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(AIEngine, cls).__new__(cls)
+        return cls._instance
+
+    # Placeholder for get_nas_tools if it's not defined elsewhere
+    # This is a temporary fix if get_nas_tools is not yet implemented
+    # In a real scenario, you'd have a backend.ai.tools module with this function
+    # def get_nas_tools(self):
+    #     return get_image_tools(self.storage_path, self.api_key) + get_file_tools(self.storage_path)
 
     def generate_tags(self, file_name: str):
         """Generates tags for a file using the tag_image tool from image_tools."""
@@ -82,46 +127,61 @@ class AIEngine:
             logger.error("AI tag generation failed: %s", e)
             return ["unclassified"]
 
-    def chat(self, text: str, filenames: List[str] = None):
+    async def chat(self, text: str, filenames: List[str], request_id: str) -> str:
         """Generates a complete response for a given user prompt using the NAS Agent."""
-        try:
-            # Formulate a structured prompt to guide the agent in using tools on provisioned files
-            prompt = text
-            if filenames:
-                files_list = ", ".join([f'"{f}"' for f in filenames])
-                prompt = (
-                    f"User Request: {text}\n\n"
-                    f"[NAS CONTEXT: The user is currently focusing on these files: {files_list}. "
-                    "Use your tools to inspect, explain, or search these specific files if relevant to the request.]"
-                )
-            logger.info(f"Inputs: {text=}, {filenames=}")
-            result = self.agent_executor.invoke({"messages": [HumanMessage(content=prompt)]})
-            logger.info("Agent response: %s", result["messages"][-1].content)
-            return result["messages"][-1].content
-        except Exception as e:
-            logger.error("Chat generation failed: %s", e)
-            return "I encountered an error while processing your request."
+        cancellation_event = self._get_cancellation_event(request_id)
+        if cancellation_event.is_set():
+            raise asyncio.CancelledError("AI chat request cancelled before starting.")
 
-    def chat_stream(self, text: str, filenames: List[str] = None):
+        initial_state = {"messages": [HumanMessage(content=text)], "filenames": filenames, "cancellation_event": cancellation_event}
+        
+        with AI_REQUEST_DURATION.labels(type='chat').time():
+            try:
+                result = await self.agent_executor.ainvoke(initial_state) # Use ainvoke for async graph
+                if cancellation_event.is_set():
+                    raise asyncio.CancelledError("AI chat request cancelled during processing.")
+                final_message = result["messages"][-1]
+                return final_message.content if hasattr(final_message, 'content') else str(final_message)
+            except asyncio.CancelledError:
+                logger.info(f"AI chat request {request_id} was cancelled.")
+                raise
+            except Exception as e:
+                logger.error("Chat generation failed: %s", e)
+                return "I encountered an error while processing your request."
+
+    async def chat_stream(self, text: str, filenames: List[str], request_id: str) -> AsyncGenerator[str, None]:
         """Streams the agent response token by token for real-time interaction."""
-        try:
-            prompt = text
-            if filenames:
-                files_list = ", ".join([f'"{f}"' for f in filenames])
-                prompt = (
-                    f"User Request: {text}\n\n"
-                    f"[NAS CONTEXT: The user is currently focusing on these files: {files_list}. "
-                    "Use your tools to inspect, explain, or search these specific files if relevant to the request.]"
-                )
+        cancellation_event = self._get_cancellation_event(request_id)
+        if cancellation_event.is_set():
+            raise asyncio.CancelledError("AI chat stream request cancelled before starting.")
 
-            logger.info(f"Inputs: {text=}, {filenames=}")
-            # Stream chunks from the compiled graph
-            for event in self.agent_executor.stream({"messages": [HumanMessage(content=prompt)]}, stream_mode="messages"):
-                chunk, metadata = event
-                if metadata.get("langgraph_node") == "agent" and hasattr(chunk, 'content'):
-                    if chunk.content:
-                        logger.info(f"yield {chunk.content=}")
-                        yield chunk.content
-        except Exception as e:
-            logger.error("Stream generation failed: %s", e)
-            yield "Error during streaming response."
+        initial_state = {"messages": [HumanMessage(content=text)], "filenames": filenames, "cancellation_event": cancellation_event}
+
+        with AI_REQUEST_DURATION.labels(type='stream').time():
+            try:
+                async for s in self.agent_executor.astream(initial_state): # Use astream for async graph
+                    if cancellation_event.is_set():
+                        logger.info(f"AI request {request_id} cancelled during stream processing.")
+                        raise asyncio.CancelledError("AI chat stream request cancelled.")
+                    
+                    # LangGraph's astream yields events. We need to extract the content delta.
+                    # This is a common pattern for extracting LLM output from LangGraph events.
+                    if "agent" in s:
+                        for message in s["agent"]["messages"]:
+                            if isinstance(message, AIMessageChunk) and message.content:
+                                yield message.content
+                            elif isinstance(message, AIMessage) and message.content:
+                                # For non-streaming parts of the agent's response
+                                yield message.content
+                    elif "__end__" in s:
+                        # If the stream ends without yielding content from 'agent',
+                        # ensure the final content is yielded.
+                        final_message = s["__end__"]["messages"][-1]
+                        if isinstance(final_message, AIMessage) and final_message.content:
+                            yield final_message.content
+            except asyncio.CancelledError:
+                logger.info(f"AI chat stream request {request_id} was cancelled.")
+                raise
+            except Exception as e:
+                logger.error("Stream generation failed: %s", e)
+                yield "Error during streaming response."

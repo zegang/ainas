@@ -49,6 +49,7 @@ show_usage() {
     echo "  --openapi    Export the backend OpenAPI spec to openapi.json"
     echo "  --frontend   Setup and run only the Flutter frontend"
     echo "  --build-web  Compile the Flutter Web GUI for production"
+    echo "  --observability Start Prometheus observability services"
     echo "  --web        Run the Flutter frontend as a web application"
     echo "  --linux      Run the Flutter frontend as a native Linux app"
     echo "  --android    Build the Android APK (Release)"
@@ -171,6 +172,26 @@ build_web() {
     cd "$PROJECT_ROOT"
 }
 
+run_observability() {
+    if [[ ! -d "$PROJECT_ROOT/observability" ]]; then
+        echo "Notice: Observability directory not found. Skipping."
+        return
+    fi
+    echo "Step: Launching Observability Services (Prometheus)..."
+    cd "$PROJECT_ROOT/observability"
+    
+    # Attempt to start via docker compose plugin or standalone docker-compose
+    if docker compose version &> /dev/null; then
+        docker compose up -d
+    elif command -v docker-compose &> /dev/null; then
+        docker-compose up -d
+    else
+        echo "Warning: docker compose not found. Please install Docker to use Prometheus."
+    fi
+    
+    cd "$PROJECT_ROOT"
+}
+
 run_backend() {
     local is_bg="${1:-true}"
     echo "Step: Launching Backend..."
@@ -267,6 +288,9 @@ case "$1" in
         setup_python
         setup_flutter
         ;;
+    --observability)
+        run_observability
+        ;;
     --backend)
         setup_python
         run_backend false
@@ -297,6 +321,7 @@ case "$1" in
         PYTHONPATH="$PROJECT_ROOT" "$PROJECT_ROOT/backend/.venv/bin/python" -m backend.export_openapi
         ;;
     --all|*)
+        run_observability
         setup_python
         setup_flutter
         run_backend true
@@ -317,6 +342,7 @@ case "$1" in
         echo "AI-NAS is running."
         echo "Backend API:  http://$URL_HOST:$NAS_PORT"
         echo "Swagger UI:   http://$URL_HOST:$NAS_PORT/docs"
+        echo "Prometheus:   http://localhost:9090"
         echo "Backend Logs: $PROJECT_ROOT/logs/backend.log"
         
         if [[ "$FRONTEND_PLATFORM" == "linux" ]]; then
@@ -326,7 +352,7 @@ case "$1" in
             echo "Note: It may take up to a minute for the frontend to become reachable."
         fi
         
-        trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit" INT TERM
+        trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; (cd observability && docker compose down 2>/dev/null); exit" INT TERM
         wait
         ;;
 esac

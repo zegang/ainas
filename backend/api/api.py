@@ -1,13 +1,17 @@
 import os
 import shutil
 import logging
+import uuid
+import time
 from typing import List, Optional
 from fastapi import APIRouter, UploadFile, File, Depends, Response, HTTPException
 from fastapi import Request # Import Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+import asyncio
 from backend.ai.ai_engine import AIEngine
+from backend.monitoring.prometheus import AI_STREAM_TTFC
 from backend.db.database import SessionLocal, FileRecord, TagRecord
 
 logger = logging.getLogger(__name__)
@@ -16,6 +20,7 @@ logger = logging.getLogger(__name__)
 def get_ai(request: Request):
     app_ai = getattr(request.app.state, "ai", None)
     if not app_ai:
+        logger.warning("AI Engine not enabled or initialized.")
         return None
     return app_ai
 router = APIRouter()
@@ -57,6 +62,7 @@ class CreateFolderRequest(BaseModel):
 class ChatRequest(BaseModel):
     text: str
     files: Optional[List[str]] = []
+    request_id: Optional[str] = None
 
 class DownloadModelRequest(BaseModel):
     repo_id: str
@@ -230,29 +236,99 @@ async def ai_chat(request: ChatRequest, ai: AIEngine = Depends(get_ai)):
     """Standard chat endpoint for the AI Assistant."""
     if not ai:
         return {"text": "AI Assistant is currently disabled.", "is_user": False}
-    
+
+    request_id = request.request_id or str(uuid.uuid4())
+    ai.start_request(request_id)
     try:
         # Using AIEngine to generate a response
-        response = ai.chat(request.text, filenames=request.files)
+        response = await ai.chat(request.text, filenames=request.files, request_id=request_id)
         return {"text": response, "is_user": False}
+    except asyncio.CancelledError:
+        logger.info(f"AI chat request {request_id} was cancelled by client.")
+        raise HTTPException(status_code=400, detail="AI chat request cancelled.")
     except Exception as e:
         logger.error("AI Chat error: %s", e)
         raise HTTPException(status_code=500, detail="AI Assistant encountered an error.")
+    finally:
+        ai.end_request(request_id)
 
 @router.get("/ai/chat/stream")
-async def ai_chat_stream(text: str, files: Optional[str] = None, ai: AIEngine = Depends(get_ai)):
+async def ai_chat_stream(
+    text: str, 
+    request: Request, # Inject Request to get client disconnect
+    files: Optional[str] = None, 
+    request_id: Optional[str] = None,
+    ai: AIEngine = Depends(get_ai)
+):
     """Streaming chat endpoint for real-time responses."""
     if not ai:
         async def disabled_gen():
             yield "AI Assistant is currently disabled."
         return StreamingResponse(disabled_gen(), media_type="text/plain")
 
+    req_id = request_id or str(uuid.uuid4())
+    ai.start_request(req_id)
+
     try:
         filenames = files.split(",") if files else []
-        return StreamingResponse(ai.chat_stream(text, filenames=filenames), media_type="text/plain")
+        start_time = time.perf_counter()
+
+        async def ttfc_wrapper():
+            # Listen for client disconnect
+            client_disconnected = asyncio.Event()
+            
+            # Create a task to monitor client disconnect
+            async def monitor_disconnect():
+                try:
+                    await request.is_disconnected()
+                    logger.info(f"Client disconnected for request {req_id}.")
+                    ai.cancel_request(req_id)
+                except asyncio.CancelledError:
+                    pass # Task was cancelled, expected during normal shutdown
+                except Exception as e:
+                    logger.error(f"Error monitoring client disconnect for {request_id}: {e}")
+                finally:
+                    client_disconnected.set() # Ensure event is set on disconnect
+
+            # disconnect_task = asyncio.create_task(monitor_disconnect())
+
+            first = True
+            
+            # ai.chat_stream returns an async generator
+            async for chunk in ai.chat_stream(text, filenames=filenames, request_id=req_id):
+                if client_disconnected.is_set():
+                    logger.info(f"Stream for request {req_id} stopped due to client disconnect.")
+                    break # Stop yielding if client disconnected
+                if first:
+                    duration = time.perf_counter() - start_time
+                    AI_STREAM_TTFC.labels(type="chat").observe(duration)
+                    logger.info("Time to first chunk: %.4fs", duration)
+                    first = False
+                yield chunk
+            
+            # disconnect_task.cancel() # Cancel the disconnect monitoring task
+            await asyncio.sleep(0) # Allow task to be cancelled to clean up
+
+        return StreamingResponse(ttfc_wrapper(), media_type="text/plain")
+    except asyncio.CancelledError:
+        logger.info(f"AI chat stream request {req_id} was cancelled.")
+        raise HTTPException(status_code=400, detail="AI chat stream request cancelled.")
     except Exception as e:
         logger.error("AI Stream error: %s", e)
         raise HTTPException(status_code=500, detail="AI Streaming failed.")
+    finally:
+        ai.end_request(req_id)
+
+@router.post("/ai/chat/cancel/{request_id}")
+async def cancel_ai_request(request_id: str, ai: AIEngine = Depends(get_ai)):
+    """Cancels an ongoing AI chat or chat stream request."""
+    if not ai:
+        raise HTTPException(status_code=400, detail="AI Engine not enabled.")
+    
+    if ai.cancel_request(request_id):
+        return {"message": f"Cancellation requested for AI request {request_id}"}
+    else:
+        raise HTTPException(status_code=404, detail=f"AI request {request_id} not found or already completed.")
 
 @router.get("/api/models/local")
 async def list_local_models():

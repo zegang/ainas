@@ -3,19 +3,30 @@ import json
 import re
 import uuid
 
-from langchain_core.messages import SystemMessage
-from langgraph.graph import StateGraph, START, MessagesState
+import asyncio # Import asyncio for cancellation event
+from langchain_core.messages import SystemMessage, AIMessage, AIMessageChunk, BaseMessage
+from langgraph.graph import StateGraph, START
 from langgraph.prebuilt import ToolNode, tools_condition
+from backend.monitoring.prometheus import TrackNodeTime, AI_AGENT_ITERATIONS_PER_REQUEST, AI_TOOL_CALL_TOTAL, AI_TOOL_DURATION
 
 logger = logging.getLogger(__name__)
 
 def create_nas_agent(llm, tools):
     llm_with_tools = llm.bind_tools(tools)
 
-    def call_agent(state: MessagesState):
-        logger.info("--- Entering Node: 'agent' ---")
-        sys_msg = SystemMessage(content=(
-            "You are the AI-NAS Assistant. You manage files and images on the user's storage.\n"
+    async def call_agent(state: dict): # State is a dict
+        with TrackNodeTime("agent"):
+            logger.info("--- Entering Node: 'agent' ---")
+            
+            # Check for cancellation at the start of the node
+            if state.get('cancellation_event') and state['cancellation_event'].is_set():
+                logger.info("Agent node: Cancellation event detected.")
+                raise asyncio.CancelledError("Agent processing cancelled.")
+
+            state.setdefault('iterations', 0)
+            state['iterations'] += 1
+            
+            sys_msg = SystemMessage(content=(
             "STRICT RULES:\n"
             "1. Filenames in [NAS CONTEXT] are wrapped in quotes (e.g., \"file with spaces.png\"). "
             "When calling tools, use the EXACT content inside those quotes. "
@@ -23,7 +34,18 @@ def create_nas_agent(llm, tools):
             "2. If multiple files are provided, ensure you use the one the user is explicitly asking about."
             "\n3. To call a tool, use the following format: <tool_call>{\"name\": \"tool_name\", \"arguments\": {\"arg\": \"val\"}}</tool_call>"
         ))
-        responds = llm_with_tools.invoke([sys_msg] + state['messages'])
+            
+            # Use llm_with_tools.astream instead of invoke for streaming capabilities
+            full_response = AIMessage(content="")
+            async for chunk in llm_with_tools.astream([sys_msg] + state['messages']):
+                # Check for cancellation during streaming
+                if state.get('cancellation_event') and state['cancellation_event'].is_set():
+                    logger.info("Agent node: Cancellation event detected during LLM stream.")
+                    raise asyncio.CancelledError("Agent LLM stream cancelled.")
+                
+                full_response += chunk
+            
+            responds = full_response
         
         # Fallback mechanism: Manually parse tool calls from content if structured tool_calls are missing
         if not (hasattr(responds, "tool_calls") and responds.tool_calls) and responds.content and "<tool_call>" in responds.content:
@@ -53,21 +75,43 @@ def create_nas_agent(llm, tools):
             
             if manual_calls:
                 responds.tool_calls = manual_calls
+                # Remove the parsed tool calls from the content to avoid displaying raw tags to the user
+                responds.content = re.sub(tool_call_regex, "", responds.content, flags=re.DOTALL).strip()
                 logger.info("Successfully recovered %d tool calls from content tags.", len(manual_calls))
 
         if hasattr(responds, "tool_calls") and responds.tool_calls:
             for tool_call in responds.tool_calls:
                 logger.info("Agent requesting tool: %s with args: %s", tool_call['name'], tool_call['args'])
+                AI_TOOL_CALL_TOTAL.labels(tool_name=tool_call['name']).inc()
         else:
             logger.info("Agent final response: %s", responds.content)
+            # Record final iteration count when agent finishes
+            AI_AGENT_ITERATIONS_PER_REQUEST.observe(state.get('iterations', 1))
             
         return {"messages": [responds]}
 
-    def call_tools_node(state: MessagesState):
-        logger.info("--- Entering Node: 'tools' ---")
-        return ToolNode(tools).invoke(state)
+    async def call_tools_node(state: dict): # State is a dict
+        with TrackNodeTime("tools"):
+            logger.info("--- Entering Node: 'tools' ---")
+            
+            # Check for cancellation at the start of the node
+            if state.get('cancellation_event') and state['cancellation_event'].is_set():
+                logger.info("Tools node: Cancellation event detected.")
+                raise asyncio.CancelledError("Tools processing cancelled.")
 
-    workflow = StateGraph(MessagesState)
+            tool_node = ToolNode(tools)
+            # ToolNode.invoke is synchronous. Run in a thread to avoid blocking the event loop.
+            result = await asyncio.to_thread(tool_node.invoke, state)
+            
+            if state.get('cancellation_event') and state['cancellation_event'].is_set():
+                logger.info("Tools node: Cancellation event detected after tool invocation.")
+                raise asyncio.CancelledError("Tools processing cancelled.")
+            
+            return result
+
+    # LangGraph's StateGraph can work with a simple dict for state.
+    # We'll pass the cancellation_event in this dict.
+    workflow = StateGraph(dict) 
     workflow.add_node("agent", call_agent)
     workflow.add_node("tools", call_tools_node)
     workflow.add_edge(START, "agent")

@@ -78,4 +78,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiAssistant => 'AI Assistant';
+
+  @override
+  String get renameAction => 'Rename';
+
+  @override
+  String get moveAction => 'Move';
+
+  @override
+  String get attachToAiAction => 'Attach to AI';
+
+  @override
+  String get deleteAction => 'Delete';
 }

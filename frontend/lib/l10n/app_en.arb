@@ -22,5 +22,22 @@
   "selectFiles": "Select Files",
   "selectButton": "Select ({count})",
   "homePage": "Home Page",
-  "aiAssistant": "AI Assistant"
+  "aiAssistant": "AI Assistant",
+  "renameAction": "Rename",
+  "@renameAction": {
+    "description": "Label for the rename action in the file browser"
+  },
+  "moveAction": "Move",
+  "@moveAction": {
+    "description": "Label for the move action in the file browser"
+  },
+  "attachToAiAction": "Attach to AI",
+  "@attachToAiAction": {
+    "description": "Label for the action to attach files to the AI assistant"
+  },
+  "deleteAction": "Delete",
+  "@deleteAction": {
+    "description": "Label for the delete action in the file browser"
+  }
 }
+

@@ -22,5 +22,9 @@
   "selectFiles": "选择文件",
   "selectButton": "选择 ({count})",
   "homePage": "主页",
-  "aiAssistant": "AI 助手"
+  "aiAssistant": "AI 助手",
+  "renameAction": "重命名",
+  "moveAction": "移动",
+  "attachToAiAction": "添加到 AI",
+  "deleteAction": "删除"
 }
