@@ -8,5 +8,5 @@ abstract class ChatRepository {
   Future<ChatMessage> sendMessage(String text, {List<String>? files});
 
   /// Returns a stream of response chunks for real-time "typing" effects.
-  Stream<String> streamResponse(String text, {List<String>? files});
+  Stream<String> streamResponse(String text, {List<String>? files, String? requestId});
 }

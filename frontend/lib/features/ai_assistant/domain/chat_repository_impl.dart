@@ -32,10 +32,11 @@ class HttpChatRepository implements ChatRepository {
   }
 
   @override
-  Stream<String> streamResponse(String text, {List<String>? files}) async* {
+  Stream<String> streamResponse(String text, {List<String>? files, String? requestId}) async* {
     final queryParams = {
       'text': text,
       if (files != null && files.isNotEmpty) 'files': files.join(','),
+      if (requestId != null) 'request_id': requestId,
     };
     final request = http.Request(
       'GET',

@@ -67,8 +67,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
     String fullResponse = '';
 
     try {
-      // Note: Ensure your repository passes this requestId to the API URL
-      _chatSubscription = _repository.streamResponse(text, files: currentFiles).listen((chunk) {
+      _chatSubscription = _repository.streamResponse(text, files: currentFiles, requestId: requestId).listen((chunk) {
         if (!mounted) {
           _log.warning('!mounted is true. existing streamResponse...');
           return;

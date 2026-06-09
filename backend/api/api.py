@@ -274,40 +274,29 @@ async def ai_chat_stream(
         start_time = time.perf_counter()
 
         async def ttfc_wrapper():
-            # Listen for client disconnect
-            client_disconnected = asyncio.Event()
-            
             # Create a task to monitor client disconnect
             async def monitor_disconnect():
                 try:
-                    await request.is_disconnected()
+                    # Poll for disconnect since is_disconnected is a non-blocking check
+                    while not await request.is_disconnected():
+                        await asyncio.sleep(0.5)
                     logger.info(f"Client disconnected for request {req_id}.")
                     ai.cancel_request(req_id)
-                except asyncio.CancelledError:
-                    pass # Task was cancelled, expected during normal shutdown
                 except Exception as e:
-                    logger.error(f"Error monitoring client disconnect for {request_id}: {e}")
-                finally:
-                    client_disconnected.set() # Ensure event is set on disconnect
+                    logger.error(f"Error monitoring disconnect for {req_id}: {e}")
 
-            # disconnect_task = asyncio.create_task(monitor_disconnect())
+            disconnect_task = asyncio.create_task(monitor_disconnect())
 
-            first = True
-            
-            # ai.chat_stream returns an async generator
-            async for chunk in ai.chat_stream(text, filenames=filenames, request_id=req_id):
-                if client_disconnected.is_set():
-                    logger.info(f"Stream for request {req_id} stopped due to client disconnect.")
-                    break # Stop yielding if client disconnected
-                if first:
-                    duration = time.perf_counter() - start_time
-                    AI_STREAM_TTFC.labels(type="chat").observe(duration)
-                    logger.info("Time to first chunk: %.4fs", duration)
-                    first = False
-                yield chunk
-            
-            # disconnect_task.cancel() # Cancel the disconnect monitoring task
-            await asyncio.sleep(0) # Allow task to be cancelled to clean up
+            try:
+                first = True
+                async for chunk in ai.chat_stream(text, filenames=filenames, request_id=req_id):
+                    if first:
+                        AI_STREAM_TTFC.labels(type="chat").observe(time.perf_counter() - start_time)
+                        first = False
+                    yield chunk
+            finally:
+                disconnect_task.cancel()
+                ai.end_request(req_id)
 
         return StreamingResponse(ttfc_wrapper(), media_type="text/plain")
     except asyncio.CancelledError:
@@ -316,8 +305,6 @@ async def ai_chat_stream(
     except Exception as e:
         logger.error("AI Stream error: %s", e)
         raise HTTPException(status_code=500, detail="AI Streaming failed.")
-    finally:
-        ai.end_request(req_id)
 
 @router.post("/ai/chat/cancel/{request_id}")
 async def cancel_ai_request(request_id: str, ai: AIEngine = Depends(get_ai)):
