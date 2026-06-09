@@ -72,4 +72,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String selectButton(Object count) {
     return 'Select ($count)';
   }
+
+  @override
+  String get homePage => 'Home Page';
+
+  @override
+  String get aiAssistant => 'AI Assistant';
 }

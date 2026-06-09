@@ -33,6 +33,7 @@ class _NASBrowserState extends State<NASBrowser> {
   String _searchQuery = "";
   int _sortColumnIndex = 0; // 0: Name, 1: Size, 2: Type, 3: Date
   bool _sortAscending = true;
+  final Set<FileItem> _selectedItems = {};
 
   @override
   void initState() {
@@ -93,6 +94,7 @@ class _NASBrowserState extends State<NASBrowser> {
 
   void _refresh() {
     setState(() {
+      _selectedItems.clear();
       _fileList = api.listFiles(pathStack.last);
     });
   }
@@ -276,6 +278,85 @@ class _NASBrowserState extends State<NASBrowser> {
     }
   }
 
+  Future<void> _handleBatchDelete() async {
+    final count = _selectedItems.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Confirm Batch Delete"),
+        content: Text("Are you sure you want to delete $count items?"),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Delete", style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      try {
+        final futures = _selectedItems.map((item) {
+          final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
+          return api.deleteItem(fullPath);
+        });
+        await Future.wait(futures);
+        _refresh();
+      } catch (e) {
+        _log.severe("Batch delete failed", e);
+      }
+    }
+  }
+
+  void _handleAttachToAi(FileItem item) {
+    final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
+    api.stageFilesForAi([fullPath]);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("${item.name} attached to AI Assistant")),
+    );
+  }
+
+  void _handleBatchAttachToAi() {
+    if (_selectedItems.isEmpty) return;
+    
+    final paths = _selectedItems.map((item) {
+      return pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
+    }).toList();
+    
+    api.stageFilesForAi(paths);
+    final count = _selectedItems.length;
+    setState(() => _selectedItems.clear());
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("$count items attached to AI Assistant")),
+    );
+  }
+
+  Future<void> _handleBatchMove() async {
+    final controller = TextEditingController();
+    final targetDir = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Move ${_selectedItems.length} items"),
+        content: TextField(controller: controller, decoration: const InputDecoration(helperText: "Enter target directory path")),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Move")),
+        ],
+      ),
+    );
+    if (targetDir != null && targetDir.isNotEmpty) {
+      final futures = _selectedItems.map((item) {
+        final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
+        final newPath = targetDir.endsWith('/') ? "$targetDir${item.name}" : "$targetDir/${item.name}";
+        return api.moveItem(fullPath, newPath);
+      });
+      await Future.wait(futures);
+      _refresh();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -322,6 +403,28 @@ class _NASBrowserState extends State<NASBrowser> {
               }
             }),
           ),
+          if (_selectedItems.length > 1) ...[
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              tooltip: "Delete Selected",
+              onPressed: _handleBatchDelete,
+            ),
+            IconButton(
+              icon: const Icon(Icons.drive_file_move_outlined),
+              tooltip: "Move Selected",
+              onPressed: _handleBatchMove,
+            ),
+            IconButton(
+              icon: const Icon(Icons.auto_awesome_outlined),
+              tooltip: "Attach to AI",
+              onPressed: _handleBatchAttachToAi,
+            ),
+            IconButton(
+              icon: const Icon(Icons.deselect_outlined),
+              tooltip: "Clear Selection",
+              onPressed: () => setState(() => _selectedItems.clear()),
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.create_new_folder_outlined),
             tooltip: l10n.newFolderTitle,
@@ -403,6 +506,16 @@ class _NASBrowserState extends State<NASBrowser> {
                   return FileGridView(
                     items: items,
                     onItemTap: _onItemTap,
+                    selectedItems: _selectedItems,
+                    onItemSelected: (item, val) {
+                      setState(() {
+                        if (val == true) {
+                          _selectedItems.add(item);
+                        } else {
+                          _selectedItems.remove(item);
+                        }
+                      });
+                    },
                     onActionSelected: (action, item) => _handleAction(action, item),
                   );
                 } else {
@@ -414,6 +527,25 @@ class _NASBrowserState extends State<NASBrowser> {
                       setState(() {
                         _sortColumnIndex = index;
                         _sortAscending = ascending;
+                      });
+                    },
+                    selectedItems: _selectedItems,
+                    onSelectAll: (val) {
+                      setState(() {
+                        if (val == true) {
+                          _selectedItems.addAll(items);
+                        } else {
+                          _selectedItems.removeAll(items);
+                        }
+                      });
+                    },
+                    onItemSelected: (item, val) {
+                      setState(() {
+                        if (val == true) {
+                          _selectedItems.add(item);
+                        } else {
+                          _selectedItems.remove(item);
+                        }
                       });
                     },
                     onItemTap: _onItemTap,
@@ -441,6 +573,7 @@ class _NASBrowserState extends State<NASBrowser> {
     if (action == 'rename') _handleRename(item);
     if (action == 'move') _handleMove(item);
     if (action == 'delete') _handleDelete(item);
+    if (action == 'attach') _handleAttachToAi(item);
   }
 
   void _onItemTap(FileItem item) {

@@ -72,4 +72,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String selectButton(Object count) {
     return '选择 ($count)';
   }
+
+  @override
+  String get homePage => '主页';
+
+  @override
+  String get aiAssistant => 'AI 助手';
 }

@@ -33,6 +33,17 @@ class FileItem {
       createdAt: DateTime.fromMillisecondsSinceEpoch(((json['created_at'] ?? 0) * 1000).toInt()),
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FileItem &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          isDir == other.isDir;
+
+  @override
+  int get hashCode => name.hashCode ^ isDir.hashCode;
 }
 
 enum UploadStatus { pending, uploading, completed, failed, canceled }
@@ -99,6 +110,22 @@ class ApiService with ChangeNotifier {
   bool isServerConnected = false;
   double storagePercent = 0.0; // 0.0 to 1.0
   String storageLabel = "Loading...";
+
+  // Staging area for AI Assistant attachments
+  final List<String> stagedFilesForAi = [];
+
+  void stageFilesForAi(List<String> paths) {
+    stagedFilesForAi.addAll(paths);
+    notifyListeners();
+    _log.info('Staged ${paths.length} files for AI Assistant');
+  }
+
+  Future<void> updateBaseUrl(String url) async {
+    _log.info('To update base URL from $baseUrl to $url');
+    baseUrl = url;
+    persistBaseUrl(baseUrl);
+  }
+
 
   /// Persists the base URL to local storage.
   Future<void> persistBaseUrl(String url) async {

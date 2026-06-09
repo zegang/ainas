@@ -1,6 +1,7 @@
 import os
 import logging
 import uvicorn
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -49,15 +50,8 @@ def configure_logging():
     )
     return logging.getLogger(__name__)
 
-def create_app() -> FastAPI:
-    """Factory function to initialize the FastAPI application."""
-    app = FastAPI(
-        title="AI-NAS API",
-        description="Automated AI-tagging Network Attached Storage API with integrated machine learning metadata generation.",
-        version="1.0.0",
-        docs_url="/docs",
-    )
-
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     nas_host = os.getenv("NAS_HOST", "0.0.0.0")
     nas_port = int(os.getenv("NAS_PORT", "9026"))
     advertise_addr = os.getenv("NAS_ADVERTISE_ADDR", nas_host)
@@ -65,24 +59,30 @@ def create_app() -> FastAPI:
     
     discovery = NASDiscovery(host=advertise_addr, port=nas_port)
 
+    startup_logger = logging.getLogger(__name__)
+    startup_logger.info("AI-NAS starting... AI Features: %s", "Enabled" if enable_ai else "Disabled")
+    await discovery.register()
+    if enable_ai:
+        app.state.ai = AIEngine()
+    yield
+    await discovery.unregister()
+
+def create_app() -> FastAPI:
+    """Factory function to initialize the FastAPI application."""
+    app = FastAPI(
+        lifespan=lifespan,
+        title="AI-NAS API",
+        description="Automated AI-tagging Network Attached Storage API with integrated machine learning metadata generation.",
+        version="1.0.0",
+        docs_url="/docs",
+    )
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    @app.on_event("startup")
-    def startup_event():
-        startup_logger = logging.getLogger(__name__)
-        startup_logger.info("AI-NAS starting... AI Features: %s", "Enabled" if enable_ai else "Disabled")
-        discovery.register()
-        if enable_ai:
-            app.state.ai = AIEngine()
-
-    @app.on_event("shutdown")
-    def shutdown_event():
-        discovery.unregister()
 
     @app.get("/doc", include_in_schema=False)
     async def redirect_to_docs():

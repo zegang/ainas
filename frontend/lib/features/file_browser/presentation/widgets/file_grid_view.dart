@@ -6,12 +6,16 @@ class FileGridView extends StatelessWidget {
   final List<FileItem> items;
   final Function(FileItem) onItemTap;
   final Function(String, FileItem) onActionSelected;
+  final Set<FileItem> selectedItems;
+  final Function(FileItem, bool?) onItemSelected;
 
   const FileGridView({
     super.key,
     required this.items,
     required this.onItemTap,
     required this.onActionSelected,
+    required this.selectedItems,
+    required this.onItemSelected,
   });
 
   @override
@@ -60,6 +64,14 @@ class FileGridView extends StatelessWidget {
                 ),
                 Positioned(
                   top: 0,
+                  left: 0,
+                  child: Checkbox(
+                    value: selectedItems.contains(item),
+                    onChanged: (val) => onItemSelected(item, val),
+                  ),
+                ),
+                Positioned(
+                  top: 0,
                   right: 0,
                   child: _buildPopupMenu(item),
                 ),
@@ -77,6 +89,7 @@ class FileGridView extends StatelessWidget {
       itemBuilder: (context) => [
         const PopupMenuItem(value: 'rename', child: Text("Rename")),
         const PopupMenuItem(value: 'move', child: Text("Move")),
+        const PopupMenuItem(value: 'attach', child: Text("Attach to AI")),
         const PopupMenuItem(value: 'delete', child: Text("Delete")),
       ],
     );

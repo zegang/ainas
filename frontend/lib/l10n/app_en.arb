@@ -20,5 +20,7 @@
   "createButton": "Create",
   "cancelButton": "Cancel",
   "selectFiles": "Select Files",
-  "selectButton": "Select ({count})"
+  "selectButton": "Select ({count})",
+  "homePage": "Home Page",
+  "aiAssistant": "AI Assistant"
 }

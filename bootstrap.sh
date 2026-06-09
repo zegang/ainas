@@ -65,7 +65,7 @@ show_usage() {
 setup_python() {
     echo "Step: Setting up Python Backend..."
 
-    conda install -c conda-forge openssl libgomp
+    # conda install -c conda-forge openssl libgomp
 
     if ! command -v uv &> /dev/null; then
         echo "uv not found. Installing..."

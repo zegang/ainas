@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -8,6 +9,7 @@ import 'features/file_browser/presentation/pages/nas_browser_page.dart';
 import 'features/settings/presentation/pages/settings_page.dart';
 import './services/api_service.dart';
 import 'common/themes/app_theme.dart';
+import 'features/home/presentation/pages/home_page.dart';
 import 'features/ai_assistant/presentation/pages/ai_assistant_page.dart';
 
 void main() async {
@@ -81,6 +83,27 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
+  Timer? _statusSyncTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Perform an immediate sync on startup
+    _syncNasStatus();
+    // Schedule periodic sync every 30 seconds to update storage usage and connection state
+    _statusSyncTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _syncNasStatus(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _statusSyncTimer?.cancel();
+    super.dispose();
+  }
+
+  void _syncNasStatus() => ApiService().checkStatus();
 
   @override
   Widget build(BuildContext context) {
@@ -166,6 +189,11 @@ class _MainShellState extends State<MainShell> {
               },
           destinations: [
             NavigationDestination(
+              icon: const Icon(Icons.home_outlined),
+              selectedIcon: const Icon(Icons.home),
+              label: l10n.homePage,
+            ),
+            NavigationDestination(
               icon: const Icon(Icons.folder_outlined),
               selectedIcon: const Icon(Icons.folder),
               label: l10n.navFiles,
@@ -173,7 +201,7 @@ class _MainShellState extends State<MainShell> {
             NavigationDestination(
               icon: const Icon(Icons.psychology_outlined),
               selectedIcon: const Icon(Icons.psychology),
-              label: 'AI Assistant',
+              label: l10n.aiAssistant,
             ),
             NavigationDestination(
               icon: const Icon(Icons.settings_outlined),
@@ -200,6 +228,11 @@ class _MainShellState extends State<MainShell> {
                 },
                 destinations: [
                   NavigationRailDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home),
+                    label: Text(l10n.homePage),
+                  ),
+                  NavigationRailDestination(
                     icon: const Icon(Icons.folder_outlined),
                     selectedIcon: const Icon(Icons.folder),
                     label: Text(l10n.navFiles),
@@ -207,7 +240,7 @@ class _MainShellState extends State<MainShell> {
                   NavigationRailDestination(
                     icon: const Icon(Icons.psychology_outlined),
                     selectedIcon: const Icon(Icons.psychology),
-                    label: const Text('AI Assistant'),
+                    label: Text(l10n.aiAssistant),
                   ),
                   NavigationRailDestination(
                     icon: const Icon(Icons.settings_outlined),
@@ -234,13 +267,15 @@ class _MainShellState extends State<MainShell> {
   Widget _buildBody() {
     switch (_selectedIndex) {
       case 0:
-        return const NASBrowser(key: ValueKey(0));
+        return const HomePage(key: ValueKey(0));
       case 1:
-        return const AIAssistantPage(key: ValueKey(1));
+        return const NASBrowser(key: ValueKey(1));
       case 2:
-        return const SettingsPage(key: ValueKey(2));
+        return const AIAssistantPage(key: ValueKey(2));
+      case 3:
+        return const SettingsPage(key: ValueKey(3));
       default:
-        return const NASBrowser(key: ValueKey(0));
+        return const HomePage(key: ValueKey(0));
     }
   }
 }

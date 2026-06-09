@@ -223,6 +223,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select ({count})'**
   String selectButton(Object count);
+
+  /// No description provided for @homePage.
+  ///
+  /// In en, this message translates to:
+  /// **'Home Page'**
+  String get homePage;
+
+  /// No description provided for @aiAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Assistant'**
+  String get aiAssistant;
 }
 
 class _AppLocalizationsDelegate

@@ -20,13 +20,13 @@ def create_nas_agent(llm, tools):
             "1. Filenames in [NAS CONTEXT] are wrapped in quotes (e.g., \"file with spaces.png\"). "
             "When calling tools, use the EXACT content inside those quotes. "
             "Do not truncate, modify, or summarize the filename or path.\n"
-            "2. When calling tools, provide ONLY the necessary arguments. Do not include schema metadata like 'type' or 'required' in the JSON arguments.\n"
-            "3. If multiple files are provided, ensure you use the one the user is explicitly asking about."
+            "2. If multiple files are provided, ensure you use the one the user is explicitly asking about."
+            "\n3. To call a tool, use the following format: <tool_call>{\"name\": \"tool_name\", \"arguments\": {\"arg\": \"val\"}}</tool_call>"
         ))
         responds = llm_with_tools.invoke([sys_msg] + state['messages'])
         
         # Fallback mechanism: Manually parse tool calls from content if structured tool_calls are missing
-        if not (hasattr(responds, "tool_calls") and responds.tool_calls) and "<tool_call>" in responds.content:
+        if not (hasattr(responds, "tool_calls") and responds.tool_calls) and responds.content and "<tool_call>" in responds.content:
             logger.info("Structured tool_calls missing. Attempting manual parse from content tags.")
             # Regex to capture JSON content inside <tool_call> tags
             tool_call_regex = r"<tool_call>\s*(.*?)\s*</tool_call>"
@@ -35,8 +35,12 @@ def create_nas_agent(llm, tools):
             manual_calls = []
             for m in matches:
                 try:
-                    # Clean potential double braces or escaped characters common in small model outputs
-                    cleaned_json = m.strip().replace('{{', '{').replace('}}', '}')
+                    # Clean common artifacts (extra braces, triple braces, etc.)
+                    cleaned_json = m.strip()
+                    # Iteratively remove unbalanced trailing braces instead of all of them
+                    while cleaned_json.count('{') < cleaned_json.count('}') and cleaned_json.endswith('}'):
+                        cleaned_json = cleaned_json[:-1].strip()
+                    
                     data = json.loads(cleaned_json)
                     manual_calls.append({
                         "name": data.get("name"),
@@ -45,7 +49,7 @@ def create_nas_agent(llm, tools):
                         "type": "tool_call"
                     })
                 except Exception as e:
-                    logger.warning("Manual tool call parsing failed for match: %s", e)
+                    logger.warning("Manual tool call parsing failed for: %s. Error: %s", m, e)
             
             if manual_calls:
                 responds.tool_calls = manual_calls
@@ -53,10 +57,6 @@ def create_nas_agent(llm, tools):
 
         if hasattr(responds, "tool_calls") and responds.tool_calls:
             for tool_call in responds.tool_calls:
-                # Clean hallucinated schema keys from arguments (common in small models)
-                if isinstance(tool_call.get("args"), dict):
-                    for junk in ["type", "required", "properties"]:
-                        tool_call["args"].pop(junk, None)
                 logger.info("Agent requesting tool: %s with args: %s", tool_call['name'], tool_call['args'])
         else:
             logger.info("Agent final response: %s", responds.content)

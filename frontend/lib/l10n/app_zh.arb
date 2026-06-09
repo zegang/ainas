@@ -20,5 +20,7 @@
   "createButton": "创建",
   "cancelButton": "取消",
   "selectFiles": "选择文件",
-  "selectButton": "选择 ({count})"
+  "selectButton": "选择 ({count})",
+  "homePage": "主页",
+  "aiAssistant": "AI 助手"
 }

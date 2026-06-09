@@ -18,6 +18,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   List<String> _selectedFiles = []; // State to hold selected files
+  bool _isAwaitingResponse = false; // State for loading animation
 
   late final ChatRepository _repository = HttpChatRepository(
     baseUrl: ApiService().baseUrl,
@@ -41,28 +42,34 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
       _messages.add(ChatMessage(text: text, isUser: true, files: currentFiles)); // Store files with message
       _controller.clear();
       _selectedFiles.clear(); // Clear selected files after sending
+      _isAwaitingResponse = true; // Show loading animation
     });
 
-    
     _scrollToBottom();
 
-    // Prepare an empty assistant message that will be updated by the stream
-    final assistantMessage = ChatMessage(text: '', isUser: false);
-    setState(() {
-      _messages.add(assistantMessage);
-    }); // Add an empty message for the assistant's response
-
+    ChatMessage? assistantMessage;
     String fullResponse = '';
+
     try {
       await for (final chunk in _repository.streamResponse(text, files: currentFiles)) {
         if (!mounted) break;
+
+        if (assistantMessage == null) {
+          // First chunk received: stop animation and create bubble
+          setState(() {
+            _isAwaitingResponse = false;
+            assistantMessage = ChatMessage(text: '', isUser: false);
+            _messages.add(assistantMessage!);
+          });
+        }
+
         fullResponse += chunk;
         setState(() {
           // Update the last message in the list with the accumulated text
-          _messages[_messages.length - 1] = assistantMessage.copyWith(
+          _messages[_messages.length - 1] = assistantMessage!.copyWith(
             text: fullResponse,
             isUser: false,
-            timestamp: assistantMessage.timestamp,
+            timestamp: assistantMessage!.timestamp,
           );
         });
         _scrollToBottom();
@@ -78,9 +85,10 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
           ),
         );
       }
-      setState(() {
-        _messages.removeLast(); // Remove the incomplete assistant bubble
-      });
+    } finally {
+      if (mounted) {
+        setState(() => _isAwaitingResponse = false);
+      }
     }
   }
 
@@ -94,6 +102,17 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
         );
       }
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Check for files staged from the File Browser
+    final staged = ApiService().stagedFilesForAi;
+    if (staged.isNotEmpty) {
+      _selectedFiles.addAll(staged);
+      ApiService().stagedFilesForAi.clear();
+    }
   }
 
   @override
@@ -112,8 +131,13 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) => ChatBubble(message: _messages[index]),
+              itemCount: _messages.length + (_isAwaitingResponse ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == _messages.length) {
+                  return const _TypingIndicator();
+                }
+                return _buildMessage(context, _messages[index]);
+              },
             ),
           ),
           // Display selected files as chips
@@ -134,6 +158,64 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildMessage(BuildContext context, ChatMessage message) {
+    if (message.isUser) return ChatBubble(message: message);
+
+    // Regex to detect <think>...</think> tags
+    final regExp = RegExp(r'<think>(.*?)</think>', dotAll: true);
+    final match = regExp.firstMatch(message.text);
+
+    if (match != null) {
+      final thought = match.group(1)?.trim() ?? "";
+      final response = message.text.replaceFirst(regExp, '').trim();
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Collapsible Reasoning Block
+          Container(
+            margin: const EdgeInsets.only(bottom: 8, left: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).dividerColor),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                dense: true,
+                title: Text(
+                  "Thinking Process",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.secondary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Text(
+                      thought,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Main Answer Bubble
+          if (response.isNotEmpty) ChatBubble(message: message.copyWith(text: response)),
+        ],
+      );
+    }
+
+    return ChatBubble(message: message);
   }
 
   Widget _buildQuickActions() {
@@ -161,6 +243,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
 
   Widget _buildInputArea() {
     final theme = Theme.of(context);
+    
     return Padding(
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
       child: Row(
@@ -201,6 +284,40 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
             icon: const Icon(Icons.send),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TypingIndicator extends StatefulWidget {
+  const _TypingIndicator();
+
+  @override
+  State<_TypingIndicator> createState() => _TypingIndicatorState();
+}
+
+class _TypingIndicatorState extends State<_TypingIndicator> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        child: const SizedBox(width: 40, child: LinearProgressIndicator(minHeight: 2)),
       ),
     );
   }

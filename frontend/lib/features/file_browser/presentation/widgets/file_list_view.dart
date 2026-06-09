@@ -11,6 +11,9 @@ class FileListView extends StatelessWidget {
   final Function(int, bool) onSort;
   final Function(FileItem) onItemTap;
   final Function(String, FileItem) onActionSelected;
+  final Set<FileItem> selectedItems;
+  final Function(bool?) onSelectAll;
+  final Function(FileItem, bool?) onItemSelected;
 
   const FileListView({
     super.key,
@@ -20,6 +23,9 @@ class FileListView extends StatelessWidget {
     required this.onSort,
     required this.onItemTap,
     required this.onActionSelected,
+    required this.selectedItems,
+    required this.onSelectAll,
+    required this.onItemSelected,
   });
 
   String _formatSize(int bytes) {
@@ -52,6 +58,12 @@ class FileListView extends StatelessWidget {
       color: Theme.of(context).colorScheme.surface,
       child: Row(
         children: [
+          Checkbox(
+            visualDensity: VisualDensity.compact,
+            value: items.isEmpty ? false : (selectedItems.length == items.length ? true : (selectedItems.isEmpty ? false : null)),
+            tristate: true,
+            onChanged: onSelectAll,
+          ),
           _buildHeaderCell(context, "Name", 0, flex: 4),
           _buildHeaderCell(context, "Size", 1, flex: 1),
           _buildHeaderCell(context, "Type", 2, flex: 1),
@@ -91,6 +103,11 @@ class FileListView extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
+            Checkbox(
+              visualDensity: VisualDensity.compact,
+              value: selectedItems.contains(item),
+              onChanged: (val) => onItemSelected(item, val),
+            ),
             Expanded(
               flex: 4,
               child: Row(
@@ -121,6 +138,7 @@ class FileListView extends StatelessWidget {
       itemBuilder: (context) => [
         const PopupMenuItem(value: 'rename', child: Text("Rename")),
         const PopupMenuItem(value: 'move', child: Text("Move")),
+        const PopupMenuItem(value: 'attach', child: Text("Attach to AI")),
         const PopupMenuItem(value: 'delete', child: Text("Delete")),
       ],
     );
