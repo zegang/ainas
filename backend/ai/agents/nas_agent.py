@@ -26,6 +26,9 @@ def create_nas_agent(llm, tools):
             state.setdefault('iterations', 0)
             state['iterations'] += 1
             
+            filenames = state.get('filenames', [])
+            nas_context = f"\n\n[NAS CONTEXT]: {', '.join([f'\"{f}\"' for f in filenames])}" if filenames else ""
+
             sys_msg = SystemMessage(content=(
             "STRICT RULES:\n"
             "1. Filenames in [NAS CONTEXT] are wrapped in quotes (e.g., \"file with spaces.png\"). "
@@ -33,19 +36,25 @@ def create_nas_agent(llm, tools):
             "Do not truncate, modify, or summarize the filename or path.\n"
             "2. If multiple files are provided, ensure you use the one the user is explicitly asking about."
             "\n3. To call a tool, use the following format: <tool_call>{\"name\": \"tool_name\", \"arguments\": {\"arg\": \"val\"}}</tool_call>"
+            f"{nas_context}"
         ))
             
             # Use llm_with_tools.astream instead of invoke for streaming capabilities
-            full_response = AIMessage(content="")
+            full_response = None
             async for chunk in llm_with_tools.astream([sys_msg] + state['messages']):
                 # Check for cancellation during streaming
                 if state.get('cancellation_event') and state['cancellation_event'].is_set():
                     logger.info("Agent node: Cancellation event detected during LLM stream.")
                     raise asyncio.CancelledError("Agent LLM stream cancelled.")
                 
-                full_response += chunk
+                # Defensive check: only merge if chunk is a valid message type
+                if isinstance(chunk, BaseMessage):
+                    if full_response is None:
+                        full_response = chunk
+                    else:
+                        full_response += chunk
             
-            responds = full_response
+            responds = full_response or AIMessage(content="")
         
         # Fallback mechanism: Manually parse tool calls from content if structured tool_calls are missing
         if not (hasattr(responds, "tool_calls") and responds.tool_calls) and responds.content and "<tool_call>" in responds.content:

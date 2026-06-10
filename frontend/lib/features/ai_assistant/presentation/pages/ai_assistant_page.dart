@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'dart:async';
 import 'package:logging/logging.dart';
 import '../../../../services/api_service.dart';
@@ -74,9 +75,8 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
         }
         
         if (assistantMessage == null) {
-          // First chunk received: stop animation and create bubble
+          // First chunk received: create assistant message bubble
           setState(() {
-            _isAwaitingResponse = false;
             assistantMessage = ChatMessage(text: '', isUser: false);
             _messages.add(assistantMessage!);
           });
@@ -93,9 +93,11 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
         });
         _scrollToBottom();
       }, onDone: () {
-        if (mounted) setState(() => _isAwaitingResponse = false);
-        _chatSubscription = null;
-        _currentRequestId = null;
+        if (mounted) {
+          setState(() => _isAwaitingResponse = false);
+          _chatSubscription = null;
+          _currentRequestId = null;
+        }
       }, onError: (e) {
         throw e;
       }, cancelOnError: true);
@@ -109,10 +111,6 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
             action: SnackBarAction(label: 'RETRY', textColor: Colors.white, onPressed: _handleSend),
           ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isAwaitingResponse = false);
       }
     }
   }
@@ -195,7 +193,9 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              itemCount: _messages.length + (_isAwaitingResponse ? 1 : 0),
+              // Show indicator only if waiting for the very first response chunk
+              itemCount: _messages.length + 
+                ((_isAwaitingResponse && (_messages.isEmpty || _messages.last.isUser)) ? 1 : 0),
               itemBuilder: (context, index) {
                 if (index == _messages.length) {
                   return const _TypingIndicator();
@@ -227,59 +227,126 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   Widget _buildMessage(BuildContext context, ChatMessage message) {
     if (message.isUser) return ChatBubble(message: message);
 
-    // Regex to detect <think>...</think> tags
-    final regExp = RegExp(r'<think>(.*?)</think>', dotAll: true);
-    final match = regExp.firstMatch(message.text);
+    final List<Widget> blocks = [];
+    String displayBody = message.text;
 
-    if (match != null) {
-      final thought = match.group(1)?.trim() ?? "";
-      final response = message.text.replaceFirst(regExp, '').trim();
+    // Regex for blocks that might be unclosed during streaming
+    // Matches <tag>content</tag> OR <tag>content (at end of string)
+    final thinkRegExp = RegExp(r'<think>([\s\S]*?)(?:</think>|$)', multiLine: true);
+    final toolRegExp = RegExp(r'<tool_call>([\s\S]*?)(?:</tool_call>|$)', multiLine: true);
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Collapsible Reasoning Block
-          Container(
-            margin: const EdgeInsets.only(bottom: 8, left: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Theme.of(context).dividerColor),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-              child: ExpansionTile(
-                dense: true,
-                title: Text(
-                  "Thinking Process",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.secondary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: Text(
-                      thought,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontStyle: FontStyle.italic,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Main Answer Bubble
-          if (response.isNotEmpty) ChatBubble(message: message.copyWith(text: response)),
-        ],
-      );
+    // Extract thoughts
+    final thinkMatches = thinkRegExp.allMatches(displayBody).toList();
+    for (final m in thinkMatches) {
+      final content = m.group(1)?.trim() ?? "";
+      final isComplete = m.group(0)!.contains('</think>');
+      if (content.isNotEmpty || !isComplete) {
+        blocks.add(_buildThinkingBlock(context, content, isComplete: isComplete));
+      }
     }
 
-    return ChatBubble(message: message);
+    // Extract tools
+    final toolMatches = toolRegExp.allMatches(displayBody).toList();
+    for (final m in toolMatches) {
+      final content = m.group(1)?.trim() ?? "";
+      final isComplete = m.group(0)!.contains('</tool_call>');
+      blocks.add(_buildToolCallBlock(context, content, isComplete: isComplete));
+    }
+
+    // Strip tags from body for the final bubble
+    displayBody = displayBody.replaceAll(thinkRegExp, '').replaceAll(toolRegExp, '').trim();
+
+    if (displayBody.isNotEmpty) {
+      blocks.add(ChatBubble(message: message.copyWith(text: displayBody)));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: blocks,
+    );
+  }
+
+  Widget _buildThinkingBlock(BuildContext context, String thought, {required bool isComplete}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8, left: 12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).dividerColor),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: !isComplete, // Expand automatically while thinking
+          dense: true,
+          title: Text(
+            isComplete ? "Thinking Process" : "Thinking...",
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.secondary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Text(
+                thought,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToolCallBlock(BuildContext context, String jsonContent, {required bool isComplete}) {
+    String toolName = "AI Tool";
+    try {
+      final data = json.decode(isComplete ? jsonContent : "$jsonContent}"); 
+      toolName = data['name'] ?? "AI Tool";
+    } catch (_) {
+      // Partial stream regex fallback to extract tool name before JSON is valid
+      final nameMatch = RegExp(r'"name"\s*:\s*"([^"]*)').firstMatch(jsonContent);
+      if (nameMatch != null) toolName = nameMatch.group(1)!;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8, left: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.terminal, size: 16, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 8),
+          Text(
+            isComplete ? "Executed: $toolName" : "Calling: $toolName...",
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
+          ),
+          if (!isComplete) ...[
+            const SizedBox(width: 8),
+            const SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ]
+        ],
+      ),
+    );
   }
 
   Widget _buildQuickActions() {
@@ -346,7 +413,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
           IconButton.filled(
             onPressed: _isAwaitingResponse ? _handleStop : _handleSend,
             icon: _isAwaitingResponse
-                ? const Icon(Icons.stop)
+                ? const _AnimatedStopIcon()
                 : const Icon(Icons.send),
           ),
         ],
@@ -401,6 +468,41 @@ class _TypingIndicatorState extends State<_TypingIndicator> with SingleTickerPro
         ),
       ),
     );
+  }
+}
+
+class _AnimatedStopIcon extends StatefulWidget {
+  const _AnimatedStopIcon();
+
+  @override
+  State<_AnimatedStopIcon> createState() => _AnimatedStopIconState();
+}
+
+class _AnimatedStopIconState extends State<_AnimatedStopIcon> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800), // Adjust duration for desired pulsation speed
+    )..repeat(reverse: true); // Repeat the animation back and forth
+    _animation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(scale: _animation, child: const Icon(Icons.stop));
   }
 }
 

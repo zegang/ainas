@@ -12,6 +12,7 @@ import '../../../../services/api_service.dart';
 import '../widgets/breadcrumb_bar.dart';
 import '../widgets/file_grid_view.dart';
 import '../widgets/file_list_view.dart';
+import '../../../ai_assistant/presentation/pages/ai_assistant_page.dart';
 import '../widgets/upload_overlay.dart';
 
 class NASBrowser extends StatefulWidget {
@@ -315,6 +316,10 @@ class _NASBrowserState extends State<NASBrowser> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("${item.name} attached to AI Assistant")),
     );
+    // Navigate to AI Assistant page
+    Navigator.push(context, MaterialPageRoute(builder: (context) => const AIAssistantPage()));
+
+
   }
 
   void _handleBatchAttachToAi() {
@@ -327,6 +332,9 @@ class _NASBrowserState extends State<NASBrowser> {
     api.stageFilesForAi(paths);
     final count = _selectedItems.length;
     setState(() => _selectedItems.clear());
+    // Navigate to AI Assistant page
+    Navigator.push(context, MaterialPageRoute(builder: (context) => const AIAssistantPage()));
+
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("$count items attached to AI Assistant")),

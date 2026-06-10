@@ -12,7 +12,7 @@ from langchain_community.chat_models import ChatLlamaCpp
 BASE_DIR = os.getenv("AI_NAS_BACKEND_BASE_DIR")
 logger = logging.getLogger(__name__)
 
-def get_image_tools(storage_path: str, api_key: str, vision_model=None):
+def get_image_tools(storage_path: str, api_key: str, vision_model=None, **kwargs):
     @tool
     def tag_image(file_name: str) -> str:
         """Generates descriptive labels/tags for an image file using computer vision.

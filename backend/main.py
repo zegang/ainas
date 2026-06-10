@@ -16,13 +16,25 @@ load_dotenv()
 
 # Configure logging immediately after setting BASE_DIR and loading environment variables,
 # and before any other modules that might use logging are imported.
-log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+log_format = "%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
 log_dir = os.path.join(BASE_DIR, "../logs")
 os.makedirs(log_dir, exist_ok=True)
 log_file = os.path.join(log_dir, "backend.log")
 
+# Determine logging level from environment variable
+log_level_str = os.getenv("LOG_LEVEL", "DEBUG").upper()
+log_level = logging.INFO # Default
+if log_level_str == "DEBUG":
+    log_level = logging.DEBUG
+elif log_level_str == "WARNING":
+    log_level = logging.WARNING
+elif log_level_str == "ERROR":
+    log_level = logging.ERROR
+elif log_level_str == "CRITICAL":
+    log_level = logging.CRITICAL
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     format=log_format,
     handlers=[
         logging.FileHandler(log_file),
@@ -36,8 +48,8 @@ from backend.api.api import router as api_router
 from backend.ai.ai_engine import AIEngine
 def configure_logging():
     """Configures global logging with file and stream handlers."""
-    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    log_dir = os.path.join(BASE_DIR, "logs")
+    log_format = "%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
+    log_dir = os.path.join(BASE_DIR, "../logs")
     os.makedirs(log_dir, exist_ok=True)
     log_file = os.path.join(log_dir, "backend.log")
 
