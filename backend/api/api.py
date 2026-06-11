@@ -4,15 +4,18 @@ import logging
 import uuid
 import time
 from typing import List, Optional
-from fastapi import APIRouter, UploadFile, File, Depends, Response, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, Response, HTTPException, BackgroundTasks
 from fastapi import Request # Import Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from backend.services.image_service import create_thumbnail
+from backend.services.system_service import get_disk_usage, check_disk_and_alert
 import asyncio
-from backend.ai.ai_engine import AIEngine
-from backend.monitoring.prometheus import AI_STREAM_TTFC
+from backend.services.ai.ai_engine import AIEngine
+from backend.services.monitoring.prometheus import AI_STREAM_TTFC
 from backend.db.database import SessionLocal, FileRecord, TagRecord
+from backend.core import config
 
 logger = logging.getLogger(__name__)
 
@@ -25,15 +28,7 @@ def get_ai(request: Request):
     return app_ai
 router = APIRouter()
 def get_enable_ai():
-    return os.getenv("ENABLE_AI", "false").lower() == "true"
-
-# Dynamically calculate the project root (up two levels from backend/api/api.py)
-BASE_DIR = os.getenv("AI_NAS_BACKEND_BASE_DIR")
-STORAGE_PATH = os.path.join(BASE_DIR, "../data")
-os.makedirs(STORAGE_PATH, exist_ok=True)
-
-MODELS_DIR = os.path.join(BASE_DIR, "ai", "models")
-os.makedirs(MODELS_DIR, exist_ok=True)
+    return config.ENABLE_AI
 
 # Dependency to get DB session
 def get_db():
@@ -68,18 +63,49 @@ class DownloadModelRequest(BaseModel):
     repo_id: str
     filename: str
 
-@router.get("/api/status")
+@router.get("/api/status", response_model=StatusResponse)
 async def status(enabled: bool = Depends(get_enable_ai)):
     return {"message": "AI-NAS API is operational", "ai_enabled": enabled}
+
+@router.get("/api/system/usage")
+async def system_usage():
+    """Returns current disk usage statistics and triggers logs if critical."""
+    return check_disk_and_alert()
 
 @router.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     # Return an empty response to silence 404s in the browser/logs
     return Response(status_code=204)
 
-@router.get("/files")
+@router.get("/api/files/download")
+async def download_file(path: str, thumbnail: bool = False):
+    """
+    Serves a file for download or preview.
+    If thumbnail=True is passed and a thumbnail exists, serves the thumbnail for performance.
+    """
+    clean_path = path.strip().lstrip("/")
+    full_path = os.path.abspath(os.path.join(config.STORAGE_PATH, clean_path))
+
+    # Security: Ensure the path is within the storage root
+    if not full_path.startswith(os.path.abspath(config.STORAGE_PATH)):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not os.path.exists(full_path) or os.path.isdir(full_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Optimization: Use thumbnail if requested and available
+    if thumbnail:
+        thumb_path = os.path.abspath(os.path.join(config.THUMBNAIL_DIR, clean_path))
+        if os.path.exists(thumb_path):
+            return FileResponse(thumb_path)
+
+    return FileResponse(full_path)
+
+@router.get("/api/files")
 async def list_files(path: str = "", db: Session = Depends(get_db)):
-    full_path = os.path.join(STORAGE_PATH, path)
+    clean_path = path.strip().lstrip("/")
+    full_path = os.path.abspath(os.path.join(config.STORAGE_PATH, clean_path))
+    
     if not os.path.exists(full_path):
         logger.warning("Path access attempt failed: %s does not exist", full_path)
         return {"items": [], "error": "Path does not exist"}
@@ -92,14 +118,15 @@ async def list_files(path: str = "", db: Session = Depends(get_db)):
         st = os.stat(item_abs_path)
         is_dir = os.path.isdir(item_abs_path)
         # Relative path for DB lookup
-        rel_path = os.path.join(path, item)
+        item_rel_path = os.path.join(clean_path, item).replace("\\", "/")
         
         # Query DB for tags
-        file_rec = db.query(FileRecord).filter(FileRecord.path == rel_path).first()
+        file_rec = db.query(FileRecord).filter(FileRecord.path == item_rel_path).first()
         tags = [t.name for t in file_rec.tags] if file_rec else []
         
         results.append({
             "name": item,
+            "path": item_rel_path,
             "is_dir": is_dir,
             "size": st.st_size if not is_dir else 0,
             "updated_at": st.st_mtime,
@@ -109,12 +136,12 @@ async def list_files(path: str = "", db: Session = Depends(get_db)):
         
     return {"items": results}
 
-@router.post("/files/folder")
+@router.post("/api/files/folder")
 async def create_folder(request: CreateFolderRequest):
     """Create a new directory at the specified relative path."""
     # Sanitize path to prevent escaping STORAGE_PATH
     rel_path = request.path.lstrip("/")
-    full_path = os.path.join(STORAGE_PATH, rel_path)
+    full_path = os.path.join(config.STORAGE_PATH, rel_path)
     
     if os.path.exists(full_path):
         raise HTTPException(status_code=400, detail="Path already exists")
@@ -126,9 +153,9 @@ async def create_folder(request: CreateFolderRequest):
         logger.error("Folder creation failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/files")
+@router.delete("/api/files")
 async def delete_item(path: str, db: Session = Depends(get_db)):
-    full_path = os.path.join(STORAGE_PATH, path)
+    full_path = os.path.join(config.STORAGE_PATH, path)
     if not os.path.exists(full_path):
         raise HTTPException(status_code=404, detail="Item not found")
     
@@ -143,15 +170,15 @@ async def delete_item(path: str, db: Session = Depends(get_db)):
     db.commit()
     return {"message": f"Successfully deleted {path}"}
 
-@router.patch("/files/rename")
+@router.patch("/api/files/rename")
 async def rename_item(request: RenameRequest, db: Session = Depends(get_db)):
-    old_abs = os.path.join(STORAGE_PATH, request.path)
+    old_abs = os.path.join(config.STORAGE_PATH, request.path)
     if not os.path.exists(old_abs):
         raise HTTPException(status_code=404, detail="Item not found")
         
     parent = os.path.dirname(request.path)
     new_rel = os.path.join(parent, request.new_name).lstrip("/")
-    new_abs = os.path.join(STORAGE_PATH, new_rel)
+    new_abs = os.path.join(config.STORAGE_PATH, new_rel)
     
     is_dir = os.path.isdir(old_abs)
     os.rename(old_abs, new_abs)
@@ -172,10 +199,10 @@ async def rename_item(request: RenameRequest, db: Session = Depends(get_db)):
     db.commit()
     return {"new_path": new_rel}
 
-@router.patch("/files/move")
+@router.patch("/api/files/move")
 async def move_item(request: MoveRequest, db: Session = Depends(get_db)):
-    old_abs = os.path.join(STORAGE_PATH, request.path)
-    new_abs = os.path.join(STORAGE_PATH, request.new_path)
+    old_abs = os.path.join(config.STORAGE_PATH, request.path)
+    new_abs = os.path.join(config.STORAGE_PATH, request.new_path)
     
     if not os.path.exists(old_abs):
         raise HTTPException(status_code=404, detail="Source item not found")
@@ -198,38 +225,72 @@ async def move_item(request: MoveRequest, db: Session = Depends(get_db)):
     db.commit()
     return {"new_path": request.new_path}
 
-@router.post("/upload")
+def thumbnail_task(rel_path: str):
+    """Background task wrapper to resolve paths and trigger thumbnail creation.
+    Maintains the directory structure within the .thumbnails directory."""
+    source = os.path.join(config.STORAGE_PATH, rel_path.lstrip("/"))
+    destination = os.path.join(config.THUMBNAIL_DIR, rel_path.lstrip("/"))
+
+    # Ensure the parent directory structure exists in the thumbnails folder
+    os.makedirs(os.path.dirname(destination), exist_ok=True)
+
+    # Only process files with image extensions
+    if rel_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif')):
+        try:
+            create_thumbnail(source, destination)
+        except Exception:
+            # Errors are logged in the service
+            pass
+
+@router.post("/api/upload")
 async def upload_file(
+    background_tasks: BackgroundTasks,
+    path: str = "", 
     file: UploadFile = File(...), 
     db: Session = Depends(get_db),
     ai: AIEngine = Depends(get_ai)
 ):
-    logger.info("Received upload request for file: %s", file.filename)
-    content = await file.read()
-    file_path = os.path.join(STORAGE_PATH, file.filename)
+    logger.info("Received upload request for file: %s in path: %s", file.filename, path)
     
+    # Resolve target directory and validate security
+    clean_parent = path.strip().lstrip("/")
+    
+    # Sanitize the filename to prevent path traversal attacks
+    safe_filename = os.path.basename(file.filename)
+    
+    file_rel_path = os.path.join(clean_parent, safe_filename).replace("\\", "/")
+    file_path = os.path.abspath(os.path.join(config.STORAGE_PATH, file_rel_path))
+
+    if not file_path.startswith(os.path.abspath(config.STORAGE_PATH)):
+        raise HTTPException(status_code=403, detail="Invalid target path")
+
+    # Ensure parent directory exists
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+    content = await file.read()
     with open(file_path, "wb") as f:
         f.write(content)
     
-    # Pass the filename instead of bytes to leverage the vision tool logic
-    tags = ai.generate_tags(file.filename) if ai else []
+    # Schedule thumbnail generation in the background
+    background_tasks.add_task(thumbnail_task, file_rel_path)
+    
+    # Pass the relative path for AI tagging logic
+    tags = ai.generate_tags(file_rel_path) if ai else []
     if ai:
-        logger.info("AI generated tags for %s: %s", file.filename, tags)
+        logger.info("AI generated tags for %s: %s", file_rel_path, tags)
     
     # Persist to Database
-    file_rec = db.query(FileRecord).filter(FileRecord.path == file.filename).first()
+    file_rec = db.query(FileRecord).filter(FileRecord.path == file_rel_path).first()
     if not file_rec:
-        file_rec = FileRecord(path=file.filename)
+        file_rec = FileRecord(path=file_rel_path)
         db.add(file_rec)
         db.commit()
         db.refresh(file_rec)
     
-    # Add tags (avoid duplicates in a real scenario with a unique constraint or check)
     for tag_name in tags:
         db.add(TagRecord(name=tag_name, file_id=file_rec.id))
     db.commit()
-
-    return {"filename": file.filename, "ai_tags": tags}
+    return {"filename": file.filename, "path": file_rel_path, "ai_tags": tags}
 
 @router.post("/ai/chat")
 async def ai_chat(request: ChatRequest, ai: AIEngine = Depends(get_ai)):
@@ -321,9 +382,9 @@ async def cancel_ai_request(request_id: str, ai: AIEngine = Depends(get_ai)):
 async def list_local_models():
     """Lists all GGUF models currently stored on the NAS."""
     try:
-        if not os.path.exists(MODELS_DIR):
+        if not os.path.exists(config.MODELS_DIR):
             return {"models": []}
-        models = [f for f in os.listdir(MODELS_DIR) if f.endswith(".gguf")]
+        models = [f for f in os.listdir(config.MODELS_DIR) if f.endswith(".gguf")]
         return {"models": models}
     except Exception as e:
         logger.error("Failed to list local models: %s", e)
@@ -348,7 +409,7 @@ async def download_hf_model(request: DownloadModelRequest):
         path = hf_hub_download(
             repo_id=request.repo_id,
             filename=request.filename,
-            local_dir=MODELS_DIR,
+            local_dir=config.MODELS_DIR,
             local_dir_use_symlinks=False
         )
         return {"message": "Model downloaded successfully", "path": path}
@@ -359,7 +420,7 @@ async def download_hf_model(request: DownloadModelRequest):
 @router.delete("/api/models/{filename}")
 async def remove_local_model(filename: str):
     """Deletes a local model file to free up space."""
-    file_path = os.path.join(MODELS_DIR, filename)
+    file_path = os.path.join(config.MODELS_DIR, filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Model file not found")
     

@@ -4,10 +4,10 @@ import re
 import uuid
 
 import asyncio # Import asyncio for cancellation event
-from langchain_core.messages import SystemMessage, AIMessage, AIMessageChunk, BaseMessage
-from langgraph.graph import StateGraph, START
+from langchain_core.messages import SystemMessage, AIMessage, AIMessageChunk, BaseMessage, ToolMessage, HumanMessage
+from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
-from backend.monitoring.prometheus import TrackNodeTime, AI_AGENT_ITERATIONS_PER_REQUEST, AI_TOOL_CALL_TOTAL, AI_TOOL_DURATION
+from backend.services.monitoring.prometheus import TrackNodeTime, AI_AGENT_ITERATIONS_PER_REQUEST, AI_TOOL_CALL_TOTAL, AI_TOOL_DURATION
 
 logger = logging.getLogger(__name__)
 
@@ -24,24 +24,33 @@ def create_nas_agent(llm, tools):
                 raise asyncio.CancelledError("Agent processing cancelled.")
 
             state.setdefault('iterations', 0)
+            # Safety guard: prevent the agent from looping indefinitely
+            if state['iterations'] >= 8:
+                logger.warning("Agent reached maximum iterations (8). Terminating loop.")
+                return {"messages": [AIMessage(content="I've reached my maximum reasoning steps for this request. Please try being more specific.")]}
+            
             state['iterations'] += 1
             
-            filenames = state.get('filenames', [])
-            nas_context = f"\n\n[NAS CONTEXT]: {', '.join([f'\"{f}\"' for f in filenames])}" if filenames else ""
-
             sys_msg = SystemMessage(content=(
-            "STRICT RULES:\n"
-            "1. Filenames in [NAS CONTEXT] are wrapped in quotes (e.g., \"file with spaces.png\"). "
-            "When calling tools, use the EXACT content inside those quotes. "
-            "Do not truncate, modify, or summarize the filename or path.\n"
-            "2. If multiple files are provided, ensure you use the one the user is explicitly asking about."
-            "\n3. To call a tool, use the following format: <tool_call>{\"name\": \"tool_name\", \"arguments\": {\"arg\": \"val\"}}</tool_call>"
-            f"{nas_context}"
-        ))
+                f"You are a NAS AI Assistant. Available tools: {', '.join([t.name for t in tools])}.\n\n"
+                "STRICT RULES:\n"
+                "1. Filenames in [Attached files] are wrapped in quotes. Use the EXACT filename string for tool arguments.\n"
+                "2. To call a tool, you MUST use: <tool_call>{\"name\": \"tool_name\", \"args\": {...}}</tool_call>\n"
+                "3. Once a tool provides the requested info (e.g., image explanation), STOP using tools and give the final answer.\n"
+                "4. DO NOT perform extra unrequested actions or call unrelated tools like dashboards.\n"
+                "5. If you already have the data in chat history, do NOT call tools again. Respond directly and concisely."
+            ))
             
+            # Prepare LLM input. If we just received a tool result, add a Completion Nudge.
+            llm_input = [sys_msg] + state['messages']
+            if state['messages'] and isinstance(state['messages'][-1], ToolMessage):
+                logger.debug(f"Agent received ToolMessage: {state['messages'][-1].content}")
+                # Use a specific instruction prefix that signals the end of action-taking
+                llm_input.append(HumanMessage(content="[INSTRUCTION] You have received the tool data. Do not call any more tools. Summarize the information and provide your final response to the user now."))
+
             # Use llm_with_tools.astream instead of invoke for streaming capabilities
             full_response = None
-            async for chunk in llm_with_tools.astream([sys_msg] + state['messages']):
+            async for chunk in llm_with_tools.astream(llm_input):
                 # Check for cancellation during streaming
                 if state.get('cancellation_event') and state['cancellation_event'].is_set():
                     logger.info("Agent node: Cancellation event detected during LLM stream.")
@@ -73,9 +82,28 @@ def create_nas_agent(llm, tools):
                         cleaned_json = cleaned_json[:-1].strip()
                     
                     data = json.loads(cleaned_json)
+                    t_name = data.get("name")
+                    t_args = data.get("arguments", data.get("args", {}))
+                    
+                    if not t_name:
+                        continue
+
+                    # Logic to "take care" of redundant calls:
+                    # Check if this exact tool has already been called in the history
+                    already_called = False
+                    for msg in state['messages']:
+                        if isinstance(msg, AIMessage) and hasattr(msg, 'tool_calls'):
+                            if any(tc['name'] == t_name and tc['args'] == t_args for tc in msg.tool_calls):
+                                already_called = True
+                                break
+                    
+                    if already_called:
+                        logger.warning("Agent attempted redundant tool call for '%s'. Ignoring to break loop.", t_name)
+                        continue
+
                     manual_calls.append({
-                        "name": data.get("name"),
-                        "args": data.get("arguments", data.get("args", {})),
+                        "name": t_name,
+                        "args": t_args,
                         "id": f"call_{uuid.uuid4().hex[:12]}", # Required for ToolNode execution
                         "type": "tool_call"
                     })

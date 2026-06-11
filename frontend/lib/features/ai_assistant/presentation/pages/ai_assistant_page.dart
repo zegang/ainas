@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:logging/logging.dart';
@@ -205,18 +206,14 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
             ),
           ),
           // Display selected files as chips
-          if (_selectedFiles.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Wrap(
-                spacing: 8.0,
-                runSpacing: 4.0,
-                children: _selectedFiles.map((f) => Chip(
-                  label: Text(f, style: const TextStyle(fontSize: 12)),
-                  onDeleted: () => setState(() => _selectedFiles.remove(f)),
-                )).toList(),
-              ),
-            ),
+          _buildFileThumbnails(
+            _selectedFiles,
+            isRemovable: true,
+            onRemove: (file) {
+              setState(() => _selectedFiles.remove(file));
+            },
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          ),
           _buildQuickActions(),
           _buildInputArea(),
         ],
@@ -224,45 +221,297 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
     );
   }
 
+  bool _isImage(String filePath) {
+    final ext = filePath.toLowerCase().split('.').last;
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(ext);
+  }
+
+  String _getFileUrl(String filePath, {bool thumbnail = false}) {
+    // Assuming a standard download endpoint on your NAS backend
+    return '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(filePath)}${thumbnail ? "&thumbnail=true" : ""}';
+  }
+
+  bool _isMarkdown(String text) {
+    // Heuristic: Check for common Markdown syntax indicators
+    final markdownPatterns = [
+      RegExp(r'^#', multiLine: true),          // Headers
+      RegExp(r'\*\*|__'),                       // Bold
+      RegExp(r'^\s*[-*+]\s+', multiLine: true), // Unordered lists
+      RegExp(r'^\s*\d+\.\s+', multiLine: true), // Ordered lists
+      RegExp(r'```'),                           // Code blocks
+      RegExp(r'\[.*\]\(.*\)'),                  // Links
+    ];
+    return markdownPatterns.any((pattern) => pattern.hasMatch(text));
+  }
+
   Widget _buildMessage(BuildContext context, ChatMessage message) {
-    if (message.isUser) return ChatBubble(message: message);
+    if (message.isUser) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (message.files != null && message.files!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4.0, right: 8.0),
+              child: _buildFileThumbnails(message.files!),
+            ),
+          ChatBubble(message: message),
+          _buildMessageActions(context, message, canEdit: true),
+          const SizedBox(height: 8),
+        ],
+      );
+    }
 
     final List<Widget> blocks = [];
-    String displayBody = message.text;
+    final String fullText = message.text;
 
     // Regex for blocks that might be unclosed during streaming
     // Matches <tag>content</tag> OR <tag>content (at end of string)
-    final thinkRegExp = RegExp(r'<think>([\s\S]*?)(?:</think>|$)', multiLine: true);
-    final toolRegExp = RegExp(r'<tool_call>([\s\S]*?)(?:</tool_call>|$)', multiLine: true);
+    final thinkRegExp = RegExp(r'<think>([\s\S]*?)(?:</think>|$)');
+    final toolRegExp = RegExp(r'<tool_call>([\s\S]*?)(?:</tool_call>|$)');
+    final toolResultRegExp = RegExp(r'<tool_result>([\s\S]*?)(?:</tool_result>|$)');
 
-    // Extract thoughts
-    final thinkMatches = thinkRegExp.allMatches(displayBody).toList();
-    for (final m in thinkMatches) {
-      final content = m.group(1)?.trim() ?? "";
-      final isComplete = m.group(0)!.contains('</think>');
-      if (content.isNotEmpty || !isComplete) {
-        blocks.add(_buildThinkingBlock(context, content, isComplete: isComplete));
+    // Collect all potential matches and their types
+    final List<Map<String, dynamic>> allMatches = [];
+    for (final m in thinkRegExp.allMatches(fullText)) {
+      allMatches.add({'match': m, 'type': 'think'});
+    }
+    for (final m in toolRegExp.allMatches(fullText)) {
+      allMatches.add({'match': m, 'type': 'tool'});
+    }
+    for (final m in toolResultRegExp.allMatches(fullText)) {
+      allMatches.add({'match': m, 'type': 'result'});
+    }
+
+    // Sort matches by their starting position in the text
+    allMatches.sort((a, b) => (a['match'] as Match).start.compareTo((b['match'] as Match).start));
+
+    int lastEnd = 0;
+    for (final item in allMatches) {
+      final Match m = item['match'];
+      if (m.start < lastEnd) continue; // Skip overlapping tags (e.g., tags inside an unclosed thinking block)
+
+      // Add any text before the tag as a regular chat bubble
+      final textBefore = fullText.substring(lastEnd, m.start).trim();
+      if (textBefore.isNotEmpty) {
+        blocks.add(Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: ChatBubble(message: message.copyWith(text: textBefore)),
+        ));
       }
-    }
 
-    // Extract tools
-    final toolMatches = toolRegExp.allMatches(displayBody).toList();
-    for (final m in toolMatches) {
       final content = m.group(1)?.trim() ?? "";
-      final isComplete = m.group(0)!.contains('</tool_call>');
-      blocks.add(_buildToolCallBlock(context, content, isComplete: isComplete));
+      final String tagText = m.group(0) ?? "";
+
+      if (item['type'] == 'think') {
+        final isComplete = tagText.contains('</think>');
+        if (content.isNotEmpty || !isComplete) {
+          blocks.add(_buildThinkingBlock(context, content, isComplete: isComplete));
+        }
+      } else if (item['type'] == 'tool') {
+        final isComplete = tagText.contains('</tool_call>');
+        blocks.add(_buildToolCallBlock(context, content, isComplete: isComplete));
+      } else if (item['type'] == 'result') {
+        final isComplete = tagText.contains('</tool_result>');
+        blocks.add(_buildToolResultBlock(context, content, isComplete: isComplete));
+      }
+      
+      // Update lastEnd to the actual end of the matched tag. 
+      // Because matches are sorted by start, and we skip overlaps, 
+      // this ensures nested tags are "swallowed" into the content of the outer tag.
+      lastEnd = m.end;
     }
 
-    // Strip tags from body for the final bubble
-    displayBody = displayBody.replaceAll(thinkRegExp, '').replaceAll(toolRegExp, '').trim();
-
-    if (displayBody.isNotEmpty) {
-      blocks.add(ChatBubble(message: message.copyWith(text: displayBody)));
+    // Add remaining text after all tags have been processed
+    final remainingText = fullText.substring(lastEnd).trim();
+    if (remainingText.isNotEmpty) {
+      // Identify if this is the final answer block
+      final isFinalAnswer = !allMatches.any((m) => (m['match'] as Match).start > lastEnd);
+      
+      final textPart = message.copyWith(text: remainingText);
+      
+      if (isFinalAnswer) {
+        // Present the final answer in a "good way" (prominent block)
+        blocks.add(Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, bottom: 4.0),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_awesome, size: 14, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 4),
+                  Text("Response", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                  if (_isMarkdown(remainingText)) 
+                    Text(" (Markdown)", style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.outline)),
+                ],
+              ),
+            ),
+            ChatBubble(message: textPart),
+            _buildMessageActions(context, textPart),
+          ],
+        ));
+      } else {
+        blocks.add(ChatBubble(message: textPart));
+      }
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: blocks,
+    );
+  }
+
+  Widget _buildMessageActions(BuildContext context, ChatMessage message, {bool canEdit = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: Row(
+        mainAxisAlignment: message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          if (canEdit && message.isUser)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              onPressed: () {
+                _controller.text = message.text;
+                // Move cursor to the end
+                _controller.selection = TextSelection.fromPosition(TextPosition(offset: _controller.text.length));
+              },
+              tooltip: "Edit and resend",
+            ),
+          IconButton(
+            icon: const Icon(Icons.copy_outlined, size: 16),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: message.text));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Copied to clipboard"), duration: Duration(seconds: 1)),
+              );
+            },
+            tooltip: "Copy text",
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFullScreenGallery(BuildContext context, List<String> allFiles, String initialFile) {
+    final imageFiles = allFiles.where(_isImage).toList();
+    final int initialPage = imageFiles.indexOf(initialFile);
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          body: PageView.builder(
+            controller: PageController(initialPage: initialPage == -1 ? 0 : initialPage),
+            itemCount: imageFiles.length,
+            itemBuilder: (context, index) {
+              return InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Center(
+                  child: Image.network(_getFileUrl(imageFiles[index])),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFileThumbnails(
+    List<String> files, {
+    bool isRemovable = false,
+    Function(String)? onRemove,
+    EdgeInsets padding = EdgeInsets.zero,
+  }) {
+    if (files.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: padding,
+      child: Wrap(
+        spacing: 8.0,
+        runSpacing: 8.0,
+        alignment: WrapAlignment.end,
+        children: files.map((f) {
+          final bool isImg = _isImage(f);
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              GestureDetector(
+                onTap: isImg ? () => _showFullScreenGallery(context, files, f) : null,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      border: Border.all(color: Theme.of(context).dividerColor),
+                    ),
+                    child: isImg
+                        ? Image.network(
+                            _getFileUrl(f, thumbnail: true),
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) => const Center(
+                              child: Icon(Icons.broken_image_outlined, size: 20, color: Colors.grey),
+                            ),
+                          )
+                        : const Center(child: Icon(Icons.insert_drive_file, size: 24, color: Colors.grey)),
+                  ),
+                ),
+              ),
+              if (isRemovable)
+                Positioned(
+                  top: -6,
+                  right: -6,
+                  child: GestureDetector(
+                    onTap: () => onRemove?.call(f),
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.error,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 2,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.close, size: 12, color: Colors.white),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -276,6 +525,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
+          key: ValueKey(isComplete), // Force rebuild to apply initiallyExpanded change
           initiallyExpanded: !isComplete, // Expand automatically while thinking
           dense: true,
           title: Text(
@@ -289,12 +539,15 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Text(
-                thought,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontStyle: FontStyle.italic,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  thought,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
@@ -344,6 +597,43 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
           ]
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolResultBlock(BuildContext context, String content, {required bool isComplete}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8, left: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.secondary.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.assignment_turned_in_outlined, size: 16, color: Theme.of(context).colorScheme.secondary),
+              const SizedBox(width: 8),
+              Text(
+                "Tool Result",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSecondaryContainer,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            content,
+            style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
         ],
       ),
     );

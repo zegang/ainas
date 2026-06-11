@@ -17,6 +17,7 @@ dependencies = [
     "langchain-community>=0.4.2",
     "llama-cpp-python>=0.3.28",
     "prometheus-fastapi-instrumentator>=8.0.0",
+    "psutil>=7.2.2",
 ]
 
 [tool.uv]

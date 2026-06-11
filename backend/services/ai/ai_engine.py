@@ -11,31 +11,31 @@ from langchain_huggingface import HuggingFacePipeline, ChatHuggingFace
 from langchain_community.chat_models import ChatLlamaCpp
 from langchain_community.llms import Ollama # Example LLM
 
-from backend.ai.tools.file_tools import get_file_tools
-from backend.ai.tools.image_tools import get_image_tools
-from backend.ai.agents.nas_agent import create_nas_agent
-from backend.ai.tools.image_tools import get_image_tools
-from backend.ai.tools.file_tools import get_file_tools
-from backend.monitoring.prometheus import AI_REQUEST_DURATION # New import for monitoring
+from backend.services.ai.agents.nas_agent import create_nas_agent
+from backend.services.ai.tools.image_tools import get_image_tools
+from backend.services.ai.tools.file_tools import get_file_tools
+from backend.services.monitoring.prometheus import AI_REQUEST_DURATION # New import for monitoring
+from backend.core import config
+from backend.services.system_service import get_disk_usage
 
 logger = logging.getLogger(__name__)
-
-# Project Root calculation
-BASE_DIR = os.getenv("AI_NAS_BACKEND_BASE_DIR")
 
 class AIEngine:
     _instance = None # Singleton instance
     def __init__(self):
         # LLM Configuration for Chat Assistant
-        self.provider = os.getenv("AI_PROVIDER", "local").lower()
-        self.model_name = os.getenv("AI_MODEL", "ai/models/Qwen3-1.7B-Q8_0.gguf")
+        self.provider = config.AI_PROVIDER
+        self.model_name = config.AI_MODEL
         if not os.path.isabs(self.model_name):
-            self.model_name = os.path.join(BASE_DIR, self.model_name)
+            self.model_name = os.path.join(config.BASE_DIR, self.model_name)
             
-        self.api_url = os.getenv("AI_API_URL", "https://api.openai.com/v1")
-        self.api_key = os.getenv("AI_API_KEY", "")
-        self.storage_path = os.path.join(BASE_DIR, "../data")
-        self.gpu_layers = int(os.getenv("AI_GPU_LAYERS", "32")) # Default to 32 layers for GPU offloading
+        self.api_url = config.AI_API_URL
+        self.api_key = config.AI_API_KEY
+        self.vision_projector = config.AI_VISION_PROJECTOR
+        if not os.path.isabs(self.vision_projector):
+            self.vision_projector = os.path.join(config.BASE_DIR, self.vision_projector)
+        self.storage_path = config.STORAGE_PATH
+        self.gpu_layers = config.AI_GPU_LAYERS
 
         self.vision_model = None
 
@@ -44,12 +44,12 @@ class AIEngine:
                 logger.info(f"Loading local GGUF model ({self.model_name}) with {self.gpu_layers} GPU layers...")
                 self.llm = ChatLlamaCpp(
                     model_path=self.model_name,
-                    max_tokens=512,
-                    n_ctx=4096,
+                    max_tokens=1024,
+                    n_ctx=8192, # Increased for larger directory listings
                     n_gpu_layers=self.gpu_layers,
                     f16_kv=True,
                     verbose=True, # Enables internal llama-cpp hardware logging
-                    streaming=True,
+                    streaming=True
                 )
                 self.vision_model = self.llm
             else:
@@ -70,7 +70,11 @@ class AIEngine:
 
         # Setup Tools and Agent
         # self.tools = get_nas_tools() # Combined tools
-        self.tools = get_image_tools(self.storage_path, self.api_key) + get_file_tools(self.storage_path)
+        self.tools = get_image_tools(
+            self.storage_path, 
+            self.api_key, 
+            projector_path=self.vision_projector
+        ) + get_file_tools(self.storage_path)
         self.agent_executor = create_nas_agent(self.llm, self.tools)
         self._active_requests: Dict[str, asyncio.Event] = {}
 
@@ -85,6 +89,12 @@ class AIEngine:
             stats.append(f"RAM: {mem_pct}%")
         except ImportError:
             stats.append("CPU/RAM: psutil not installed")
+
+        # Add Disk usage monitoring
+        usage = get_disk_usage()
+        if usage:
+            stats.append(f"Disk: {usage['percent_used']}%")
+            if usage['is_critical']: stats.append("(!) DISK CRITICAL")
 
         # Attempt to get GPU stats via nvidia-smi
         try: # NVIDIA GPU
@@ -205,7 +215,12 @@ class AIEngine:
         if cancellation_event.is_set():
             raise asyncio.CancelledError("AI chat request cancelled before starting.")
 
-        initial_state = {"messages": [HumanMessage(content=text)], "filenames": filenames, "cancellation_event": cancellation_event}
+        # Explicitly mention attached files in the prompt so the LLM knows it can use tools on them
+        prompt_text = text
+        if filenames:
+            prompt_text += f"\n\n[Attached files: {', '.join([f'\"{f}\"' for f in filenames])}]"
+
+        initial_state = {"messages": [HumanMessage(content=prompt_text)], "filenames": filenames, "cancellation_event": cancellation_event}
         
         with AI_REQUEST_DURATION.labels(type='chat').time():
             self._log_resource_usage(request_id, "START")
@@ -229,7 +244,12 @@ class AIEngine:
         if cancellation_event.is_set():
             raise asyncio.CancelledError("AI chat stream request cancelled before starting.")
 
-        initial_state = {"messages": [HumanMessage(content=text)], "filenames": filenames, "cancellation_event": cancellation_event}
+        # Explicitly mention attached files in the prompt for streaming as well
+        prompt_text = text
+        if filenames:
+            prompt_text += f"\n\n[Attached files: {', '.join([f'\"{f}\"' for f in filenames])}]"
+
+        initial_state = {"messages": [HumanMessage(content=prompt_text)], "filenames": filenames, "cancellation_event": cancellation_event}
 
         with AI_REQUEST_DURATION.labels(type='stream').time():
             self._log_resource_usage(request_id, "STREAM_START")
@@ -244,6 +264,17 @@ class AIEngine:
                         chunk = event["data"]["chunk"]
                         if isinstance(chunk, BaseMessage) and chunk.content:
                             yield chunk.content
+
+                    elif event["event"] == "on_tool_end":
+                        # Stream the result of the tool call so the UI can display it
+                        tool_name = event["name"]
+                        tool_output = event["data"].get("output")
+                        if tool_output:
+                            # Extract content from ToolMessage or convert result to string
+                            content = tool_output.content if hasattr(tool_output, 'content') else str(tool_output)
+                            # Yield wrapped in a custom tag for the frontend to parse
+                            yield f"\n<tool_result>\nTool '{tool_name}' result: {content}\n</tool_result>\n"
+
                 self._log_resource_usage(request_id, "STREAM_END")
             except asyncio.CancelledError:
                 logger.info(f"AI chat stream request {request_id} was cancelled.")

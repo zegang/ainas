@@ -9,6 +9,7 @@ import 'connection_helper.dart';
 
 class FileItem {
   final String name;
+  final String path;
   final bool isDir;
   final List<String> tags;
   final int size;
@@ -17,6 +18,7 @@ class FileItem {
 
   FileItem({
     required this.name,
+    required this.path,
     required this.isDir,
     this.tags = const [],
     this.size = 0,
@@ -27,6 +29,7 @@ class FileItem {
   factory FileItem.fromJson(Map<String, dynamic> json) {
     return FileItem(
       name: json['name'],
+      path: json['path'] ?? json['name'],
       isDir: json['is_dir'],
       tags: List<String>.from(json['tags'] ?? []),
       size: json['size'] ?? 0,
@@ -40,11 +43,11 @@ class FileItem {
       identical(this, other) ||
       other is FileItem &&
           runtimeType == other.runtimeType &&
-          name == other.name &&
+          path == other.path &&
           isDir == other.isDir;
 
   @override
-  int get hashCode => name.hashCode ^ isDir.hashCode;
+  int get hashCode => path.hashCode ^ isDir.hashCode;
 }
 
 enum UploadStatus { pending, uploading, completed, failed, canceled }
@@ -52,6 +55,7 @@ enum UploadStatus { pending, uploading, completed, failed, canceled }
 class UploadTask {
   final String id;
   final String fileName;
+  final String parentPath;
   final Uint8List bytes;
   double progress; // 0.0 to 1.0
   UploadStatus status;
@@ -61,6 +65,7 @@ class UploadTask {
   UploadTask({
     required this.id,
     required this.fileName,
+    required this.parentPath,
     required this.bytes,
     this.progress = 0.0,
     this.status = UploadStatus.pending,
@@ -106,6 +111,7 @@ class ApiService with ChangeNotifier {
   static const String _themeModeKey = 'nas_theme_mode';
   String locale = 'en';
   ThemeMode themeMode = ThemeMode.system;
+  String currentPath = ''; // Tracks the directory currently being navigated by the user
   final List<UploadTask> uploads = [];
   
   bool isServerConnected = false;
@@ -214,8 +220,12 @@ class ApiService with ChangeNotifier {
   }
 
   Future<List<FileItem>> listFiles(String path) async {
-    final url = '$baseUrl/files?path=$path';
+    final url = '$baseUrl/api/files?path=$path';
     _log.info('--> GET $url');
+
+    // Update the navigation context so subsequent uploads go to the right folder
+    currentPath = path;
+
     final response = await http.get(Uri.parse(url));
     _log.info('<-- ${response.statusCode} $url');
     _log.fine('Response Headers: ${response.headers}');
@@ -230,7 +240,7 @@ class ApiService with ChangeNotifier {
   }
 
   Future<void> createFolder(String path) async {
-    final url = '$baseUrl/files/folder';
+    final url = '$baseUrl/api/files/folder';
     _log.info('--> POST $url');
     final response = await http.post(
       Uri.parse(url),
@@ -241,7 +251,7 @@ class ApiService with ChangeNotifier {
   }
 
   Future<void> deleteItem(String path) async {
-    final url = '$baseUrl/files?path=$path';
+    final url = '$baseUrl/api/files?path=$path';
     _log.info('--> DELETE $url');
     final response = await http.delete(Uri.parse(url));
     if (response.statusCode != 200) {
@@ -250,7 +260,7 @@ class ApiService with ChangeNotifier {
   }
 
   Future<void> renameItem(String path, String newName) async {
-    final url = '$baseUrl/files/rename';
+    final url = '$baseUrl/api/files/rename';
     _log.info('--> PATCH $url');
     final response = await http.patch(
       Uri.parse(url),
@@ -261,7 +271,7 @@ class ApiService with ChangeNotifier {
   }
 
   Future<void> moveItem(String path, String newPath) async {
-    final url = '$baseUrl/files/move';
+    final url = '$baseUrl/api/files/move';
     _log.info('--> PATCH $url');
     final response = await http.patch(
       Uri.parse(url),
@@ -298,11 +308,14 @@ class ApiService with ChangeNotifier {
     await _performUpload(task);
   }
 
-  Future<void> uploadFile(String fileName, Uint8List bytes) async {
+  Future<void> uploadFile(String fileName, Uint8List bytes, {String? parentPath}) async {
     final taskId = DateTime.now().millisecondsSinceEpoch.toString() + fileName;
+    // Default to the current navigated path if no specific path is provided
+    final targetPath = parentPath ?? currentPath;
     final task = UploadTask(
       id: taskId,
       fileName: fileName,
+      parentPath: targetPath,
       bytes: bytes,
       status: UploadStatus.uploading,
     );
@@ -316,11 +329,13 @@ class ApiService with ChangeNotifier {
     task._client = client;
 
     try {
-      _log.info('Uploading file "${task.fileName}" (${task.bytes.length} bytes) to $baseUrl/upload');
+      final encodedPath = Uri.encodeComponent(task.parentPath);
+      final uploadUrl = '$baseUrl/api/upload?path=$encodedPath';
+      _log.info('Uploading file "${task.fileName}" to $uploadUrl');
 
       final request = ProgressMultipartRequest(
         'POST',
-        Uri.parse('$baseUrl/upload'),
+        Uri.parse(uploadUrl),
         onProgress: (bytes, total) {
           task.progress = total > 0 ? bytes / total : 0.0;
           notifyListeners();

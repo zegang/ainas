@@ -9,8 +9,9 @@ class FileGridView extends StatelessWidget {
   final Function(String, FileItem) onActionSelected;
   final Set<FileItem> selectedItems;
   final Function(FileItem, bool?) onItemSelected;
+  final ApiService api = ApiService(); // Move to a field to avoid re-instantiation in build
 
-  const FileGridView({
+  FileGridView({
     super.key,
     required this.items,
     required this.onItemTap,
@@ -18,6 +19,15 @@ class FileGridView extends StatelessWidget {
     required this.selectedItems,
     required this.onItemSelected,
   });
+
+  bool _isImage(String fileName) {
+    final ext = fileName.toLowerCase().split('.').last;
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(ext);
+  }
+
+  String _getFileThumbnailUrl(String path) {
+    return '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(path)}&thumbnail=true';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,11 +54,44 @@ class FileGridView extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        item.isDir ? Icons.folder : Icons.insert_drive_file,
-                        size: 48,
-                        color: item.isDir ? themeExt.folderIconColor : themeExt.getFileColor(extension),
-                      ),
+                      if (!item.isDir && _isImage(item.name))
+                        SizedBox(
+                          width: 64,
+                          height: 64,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: Image.network(
+                              '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}&thumbnail=true',
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      value: loadingProgress.expectedTotalBytes != null
+                                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                          : null,
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) => Icon(
+                                Icons.insert_drive_file,
+                                size: 48,
+                                color: themeExt.getFileColor(extension),
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Icon(
+                          item.isDir ? Icons.folder : Icons.insert_drive_file,
+                          size: 48,
+                          color: item.isDir ? themeExt.folderIconColor : themeExt.getFileColor(extension),
+                        ),
                       const SizedBox(height: 8),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4.0),

@@ -24,7 +24,7 @@ __pycache__/
 *$py.class
 .venv/
 backend/.venv/
-backend/ai/models/
+backend/services/ai/models/
 .python-version
 .pytest_cache/
 .mypy_cache/

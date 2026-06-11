@@ -5,24 +5,19 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
-from dotenv import load_dotenv
 from prometheus_fastapi_instrumentator import Instrumentator
 
-# Set base directory and environment variable before other internal imports
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-os.environ["AI_NAS_BACKEND_BASE_DIR"] = BASE_DIR
-
-load_dotenv()
+from backend.core import config
 
 # Configure logging immediately after setting BASE_DIR and loading environment variables,
 # and before any other modules that might use logging are imported.
 log_format = "%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
-log_dir = os.path.join(BASE_DIR, "../logs")
+log_dir = os.path.join(config.BASE_DIR, "../logs")
 os.makedirs(log_dir, exist_ok=True)
 log_file = os.path.join(log_dir, "backend.log")
 
 # Determine logging level from environment variable
-log_level_str = os.getenv("LOG_LEVEL", "DEBUG").upper()
+log_level_str = config.LOG_LEVEL
 log_level = logging.INFO # Default
 if log_level_str == "DEBUG":
     log_level = logging.DEBUG
@@ -45,37 +40,16 @@ logger = logging.getLogger(__name__) # Get logger for main module after basicCon
 
 from backend.net.discovery import NASDiscovery
 from backend.api.api import router as api_router
-from backend.ai.ai_engine import AIEngine
-def configure_logging():
-    """Configures global logging with file and stream handlers."""
-    log_format = "%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
-    log_dir = os.path.join(BASE_DIR, "../logs")
-    os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, "backend.log")
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format=log_format,
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
-    )
-    return logging.getLogger(__name__)
+from backend.services.ai.ai_engine import AIEngine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    nas_host = os.getenv("NAS_HOST", "0.0.0.0")
-    nas_port = int(os.getenv("NAS_PORT", "9026"))
-    advertise_addr = os.getenv("NAS_ADVERTISE_ADDR", nas_host)
-    enable_ai = os.getenv("ENABLE_AI", "false").lower() == "true"
-    
-    discovery = NASDiscovery(host=advertise_addr, port=nas_port)
+    discovery = NASDiscovery(host=config.NAS_ADVERTISE_ADDR, port=config.NAS_PORT)
 
     startup_logger = logging.getLogger(__name__)
-    startup_logger.info("AI-NAS starting... AI Features: %s", "Enabled" if enable_ai else "Disabled")
+    startup_logger.info("AI-NAS starting... AI Features: %s", "Enabled" if config.ENABLE_AI else "Disabled")
     await discovery.register()
-    if enable_ai: # This is where AIEngine is instantiated
+    if config.ENABLE_AI: # This is where AIEngine is instantiated
         app.state.ai = AIEngine()
     yield
     await discovery.unregister()
@@ -109,8 +83,5 @@ def create_app() -> FastAPI:
 app = create_app()
 
 if __name__ == "__main__":
-    logger.info(f'AI NAS Backend Base Dir: {os.environ["AI_NAS_BACKEND_BASE_DIR"]}')
-    
-    host = os.getenv("NAS_HOST", "0.0.0.0")
-    port = int(os.getenv("NAS_PORT", "9026"))
-    uvicorn.run(app, host=host, port=port)
+    logger.info(f'AI NAS Backend Base Dir: {config.BASE_DIR}')
+    uvicorn.run(app, host=config.NAS_HOST, port=config.NAS_PORT)

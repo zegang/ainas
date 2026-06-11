@@ -12,7 +12,7 @@ from langchain_community.chat_models import ChatLlamaCpp
 BASE_DIR = os.getenv("AI_NAS_BACKEND_BASE_DIR")
 logger = logging.getLogger(__name__)
 
-def get_image_tools(storage_path: str, api_key: str, vision_model=None, **kwargs):
+def get_image_tools(storage_path: str, api_key: str, vision_model=None, projector_path=None, **kwargs):
     @tool
     def tag_image(file_name: str) -> str:
         """Generates descriptive labels/tags for an image file using computer vision.
@@ -27,10 +27,11 @@ def get_image_tools(storage_path: str, api_key: str, vision_model=None, **kwargs
             llm = vision_model
             if not llm:
                 llm = ChatLlamaCpp(
-                    model_path=os.path.join(BASE_DIR, "ai/models/anima-base-v1.0-Q3_K_M.gguf"),
+                    model_path=os.path.join(BASE_DIR, "services/ai/models/Qwen3.5-0.8B-IQ4_XS.gguf"),
                     max_tokens=512,
                     n_ctx=4096,
                     streaming=True,
+                    multimodal_projector=projector_path,
                 )
 
             with open(full_path, "rb") as f:
@@ -63,10 +64,12 @@ def get_image_tools(storage_path: str, api_key: str, vision_model=None, **kwargs
             llm = vision_model
             if not llm:
                 llm = ChatLlamaCpp(
-                    model_path=os.path.join(BASE_DIR, "ai/models/PaddleOCR-VL-1.6.Q4_K_S.gguf"),
+                    # Suggest using a general VLM like LLaVA if PaddleOCR fails to describe
+                    model_path=os.path.join(BASE_DIR, "services/ai/models/Qwen3.5-0.8B-IQ4_XS.gguf"),
                     max_tokens=512,
                     n_ctx=4096,
                     streaming=True,
+                    multimodal_projector=projector_path,
                 )
 
             msg = llm.invoke([

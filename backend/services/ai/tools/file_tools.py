@@ -1,5 +1,7 @@
 import os
+from pathlib import Path
 from langchain_core.tools import tool
+from backend.services.system_service import get_disk_usage
 
 def get_file_tools(storage_path: str):
     """
@@ -16,10 +18,11 @@ def get_file_tools(storage_path: str):
         """
         try:
             rel_path = path.strip().strip("'\"").strip().lstrip("/")
-            full_path = os.path.normpath(os.path.join(abs_storage, rel_path))
+            # Use Path for safer resolution
+            full_path = Path(abs_storage).joinpath(rel_path).resolve()
             
             # Security check: ensure we stay within storage root
-            if not full_path.startswith(abs_storage):
+            if not str(full_path).startswith(abs_storage):
                 return "Error: Access denied. Cannot access paths outside of the storage root."
 
             if not os.path.exists(full_path):
@@ -79,4 +82,19 @@ def get_file_tools(storage_path: str):
         except Exception as e:
             return f"Error searching files: {str(e)}"
 
-    return [list_files, search_files]
+    @tool
+    def get_storage_status() -> str:
+        """
+        Returns the current disk usage and availability of the NAS storage.
+        Use this to check if there is enough space or to monitor system health.
+        """
+        usage = get_disk_usage()
+        if not usage:
+            return "Error retrieving storage status."
+        
+        status = "CRITICAL" if usage["is_critical"] else "Normal"
+        return (f"Storage Status: {status}\n"
+                f"Used: {usage['used_gb']} GB / {usage['total_gb']} GB ({usage['percent_used']}%)\n"
+                f"Free: {usage['free_gb']} GB")
+
+    return [list_files, search_files, get_storage_status]

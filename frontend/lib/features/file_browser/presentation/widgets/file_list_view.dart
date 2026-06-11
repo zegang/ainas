@@ -15,8 +15,9 @@ class FileListView extends StatelessWidget {
   final Set<FileItem> selectedItems;
   final Function(bool?) onSelectAll;
   final Function(FileItem, bool?) onItemSelected;
+  final ApiService api = ApiService(); // Move to a field
 
-  const FileListView({
+  FileListView({
     super.key,
     required this.items,
     required this.sortColumnIndex,
@@ -36,6 +37,15 @@ class FileListView extends StatelessWidget {
     return ((bytes / math.pow(1024, i)).toStringAsFixed(1)) + ' ' + suffixes[i];
   }
 
+  bool _isImage(String fileName) {
+    final ext = fileName.toLowerCase().split('.').last;
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(ext);
+  }
+
+  String _getFileThumbnailUrl(String path) {
+    return '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(path)}&thumbnail=true';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -46,7 +56,7 @@ class FileListView extends StatelessWidget {
           child: ListView.separated(
             itemCount: items.length,
             separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) => _buildListRow(context, items[index]),
+            itemBuilder: (context, index) => _buildListRow(context, items[index], api),
           ),
         ),
       ],
@@ -92,7 +102,7 @@ class FileListView extends StatelessWidget {
     );
   }
 
-  Widget _buildListRow(BuildContext context, FileItem item) {
+  Widget _buildListRow(BuildContext context, FileItem item, ApiService api) {
     final themeExt = Theme.of(context).extension<AppThemeExtension>()!;
     final dateStr = DateFormat.yMMMd().add_jm().format(item.updatedAt);
     final typeStr = item.isDir ? 'Folder' : (item.name.contains('.') ? item.name.split('.').last.toUpperCase() : 'File');
@@ -113,11 +123,44 @@ class FileListView extends StatelessWidget {
               flex: 4,
               child: Row(
                 children: [
-                  Icon(
-                    item.isDir ? Icons.folder : Icons.insert_drive_file,
-                    size: 20,
-                    color: item.isDir ? themeExt.folderIconColor : themeExt.getFileColor(extension),
-                  ),
+                  if (!item.isDir && _isImage(item.name))
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: Image.network(
+                          '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}&thumbnail=true',
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.insert_drive_file,
+                            size: 20,
+                            color: themeExt.getFileColor(extension),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Icon(
+                      item.isDir ? Icons.folder : Icons.insert_drive_file,
+                      size: 20,
+                      color: item.isDir ? themeExt.folderIconColor : themeExt.getFileColor(extension),
+                    ),
                   const SizedBox(width: 12),
                   Expanded(child: Text(item.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500))),
                 ],

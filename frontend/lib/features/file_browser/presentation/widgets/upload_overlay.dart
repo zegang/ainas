@@ -45,8 +45,17 @@ class UploadOverlay extends StatelessWidget {
                         leading: _getUploadIcon(task.status),
                         title: Text(task.fileName, overflow: TextOverflow.ellipsis),
                         subtitle: task.status == UploadStatus.uploading
-                            ? LinearProgressIndicator(value: task.progress > 0 ? task.progress : null)
-                            : Text(task.status.name, style: TextStyle(fontSize: 10, color: _getStatusColor(task.status))),
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (task.parentPath.isNotEmpty)
+                                    Text("To: /${task.parentPath}", style: const TextStyle(fontSize: 10)),
+                                  const SizedBox(height: 2),
+                                  LinearProgressIndicator(value: task.progress > 0 ? task.progress : null),
+                                ],
+                              )
+                            : Text("${task.status.name}${task.parentPath.isNotEmpty ? ' to /${task.parentPath}' : ''}", 
+                                   style: TextStyle(fontSize: 10, color: _getStatusColor(task.status))),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
