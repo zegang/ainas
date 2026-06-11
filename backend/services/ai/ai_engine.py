@@ -7,7 +7,7 @@ from typing import List, Generator, AsyncGenerator, Dict, Any
 
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
-from langchain_huggingface import HuggingFacePipeline, ChatHuggingFace
+from langchain_huggingface import HuggingFacePipeline, ChatHuggingFace, HuggingFaceEmbeddings
 from langchain_community.chat_models import ChatLlamaCpp
 from langchain_community.llms import Ollama # Example LLM
 
@@ -17,6 +17,7 @@ from backend.services.ai.tools.file_tools import get_file_tools
 from backend.services.monitoring.prometheus import AI_REQUEST_DURATION # New import for monitoring
 from backend.core import config
 from backend.services.system_service import get_disk_usage
+from backend.services.elasticsearch_service import ElasticsearchService
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,12 @@ class AIEngine:
             self.vision_projector = os.path.join(config.BASE_DIR, self.vision_projector)
         self.storage_path = config.STORAGE_PATH
         self.gpu_layers = config.AI_GPU_LAYERS
+
+        # Initialize RAG Components
+        self.es_service = ElasticsearchService()
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-mpnet-base-v2"
+        )
 
         self.vision_model = None
 
@@ -74,7 +81,11 @@ class AIEngine:
             self.storage_path, 
             self.api_key, 
             projector_path=self.vision_projector
-        ) + get_file_tools(self.storage_path)
+        ) + get_file_tools(
+            self.storage_path, 
+            es_service=self.es_service, 
+            embeddings=self.embeddings
+        )
         self.agent_executor = create_nas_agent(self.llm, self.tools)
         self._active_requests: Dict[str, asyncio.Event] = {}
 

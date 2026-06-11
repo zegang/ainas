@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__) # Get logger for main module after basicCon
 from backend.net.discovery import NASDiscovery
 from backend.api.api import router as api_router
 from backend.services.ai.ai_engine import AIEngine
+from backend.services.elasticsearch_service import ElasticsearchService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,7 +52,15 @@ async def lifespan(app: FastAPI):
     await discovery.register()
     if config.ENABLE_AI: # This is where AIEngine is instantiated
         app.state.ai = AIEngine()
+    
+    # Initialize and verify Elasticsearch
+    es_service = ElasticsearchService()
+    await es_service.create_index()
+    app.state.es = es_service
+
     yield
+    if hasattr(app.state, "es"):
+        await app.state.es.close()
     await discovery.unregister()
 
 def create_app() -> FastAPI:

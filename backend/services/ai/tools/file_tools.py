@@ -3,7 +3,7 @@ from pathlib import Path
 from langchain_core.tools import tool
 from backend.services.system_service import get_disk_usage
 
-def get_file_tools(storage_path: str):
+def get_file_tools(storage_path: str, es_service=None, embeddings=None):
     """
     Returns a list of tools for file system operations on the NAS.
     """

@@ -137,8 +137,8 @@ def create_nas_agent(llm, tools):
                 raise asyncio.CancelledError("Tools processing cancelled.")
 
             tool_node = ToolNode(tools)
-            # ToolNode.invoke is synchronous. Run in a thread to avoid blocking the event loop.
-            result = await asyncio.to_thread(tool_node.invoke, state)
+            # Use ainvoke to support both sync and async tools efficiently
+            result = await tool_node.ainvoke(state)
             
             if state.get('cancellation_event') and state['cancellation_event'].is_set():
                 logger.info("Tools node: Cancellation event detected after tool invocation.")

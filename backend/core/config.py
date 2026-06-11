@@ -34,6 +34,11 @@ AI_VISION_PROJECTOR = os.getenv("AI_VISION_PROJECTOR", "services/ai/models/mmpro
 AI_GPU_LAYERS = int(os.getenv("AI_GPU_LAYERS", "32"))
 DISK_USAGE_THRESHOLD_PCT = float(os.getenv("DISK_USAGE_THRESHOLD_PCT", "90.0"))
 
+# Elasticsearch Settings
+ES_URL = os.getenv("ES_URL", "http://localhost:9200")
+ES_INDEX = os.getenv("ES_INDEX", "nas_files")
+ES_EMBEDDING_DIMS = int(os.getenv("ES_EMBEDDING_DIMS", "768"))
+
 # Logging
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 

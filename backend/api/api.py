@@ -245,6 +245,7 @@ def thumbnail_task(rel_path: str):
 @router.post("/api/upload")
 async def upload_file(
     background_tasks: BackgroundTasks,
+    request: Request,
     path: str = "", 
     file: UploadFile = File(...), 
     db: Session = Depends(get_db),
@@ -290,6 +291,28 @@ async def upload_file(
     for tag_name in tags:
         db.add(TagRecord(name=tag_name, file_id=file_rec.id))
     db.commit()
+
+    # Elasticsearch RAG Indexing
+    es = getattr(request.app.state, "es", None)
+    if es:
+        # Note: 'embedding' and 'content' would be generated here 
+        file_content = ""
+        file_embedding = None
+
+        # Basic text extraction for demonstration.
+        # For production, integrate a dedicated text extraction service for PDFs, DOCX, etc.
+        if file_rel_path.lower().endswith(('.txt', '.md', '.log')):
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    file_content = f.read()
+            except Exception as e:
+                logger.warning(f"Could not read content of text file {file_rel_path}: {e}")
+
+        if ai and file_content: # Only generate embedding if AI is enabled and content is extracted
+            file_embedding = await ai.embeddings.aembed_query(file_content)
+        
+        await es.index_file(filename=safe_filename, path=file_rel_path, tags=tags, content=file_content, embedding=file_embedding)
+
     return {"filename": file.filename, "path": file_rel_path, "ai_tags": tags}
 
 @router.post("/ai/chat")
