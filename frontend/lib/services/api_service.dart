@@ -1,96 +1,15 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../features/ai_assistant/domain/models/chat_message.dart';
+import '../shared/models/chat_message.dart'; // Already moved
+import '../shared/models/file_item.dart'; // Already moved
+import '../shared/models/upload_models.dart'; // New import
 import 'connection_helper.dart';
-
-class FileItem {
-  final String name;
-  final String path;
-  final bool isDir;
-  final List<String> tags;
-  final int size;
-  final DateTime updatedAt;
-  final DateTime createdAt;
-
-  FileItem({
-    required this.name,
-    required this.path,
-    required this.isDir,
-    this.tags = const [],
-    this.size = 0,
-    required this.updatedAt,
-    required this.createdAt,
-  });
-
-  factory FileItem.fromJson(Map<String, dynamic> json) {
-    return FileItem(
-      name: json['name'],
-      path: json['path'] ?? json['name'],
-      isDir: json['is_dir'],
-      tags: List<String>.from(json['tags'] ?? []),
-      size: json['size'] ?? 0,
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(((json['updated_at'] ?? 0) * 1000).toInt()),
-      createdAt: DateTime.fromMillisecondsSinceEpoch(((json['created_at'] ?? 0) * 1000).toInt()),
-    );
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is FileItem &&
-          runtimeType == other.runtimeType &&
-          path == other.path &&
-          isDir == other.isDir;
-
-  @override
-  int get hashCode => path.hashCode ^ isDir.hashCode;
-}
-
-enum UploadStatus { pending, uploading, completed, failed, canceled }
-
-class UploadTask {
-  final String id;
-  final String fileName;
-  final String parentPath;
-  final Uint8List bytes;
-  double progress; // 0.0 to 1.0
-  UploadStatus status;
-  String? errorMessage;
-  http.Client? _client;
-
-  UploadTask({
-    required this.id,
-    required this.fileName,
-    required this.parentPath,
-    required this.bytes,
-    this.progress = 0.0,
-    this.status = UploadStatus.pending,
-  });
-}
-
-/// A [http.MultipartRequest] that tracks upload progress by wrapping the stream.
-class ProgressMultipartRequest extends http.MultipartRequest {
-  ProgressMultipartRequest(super.method, super.url, {required this.onProgress});
-
-  final void Function(int bytes, int total) onProgress;
-
-  @override
-  http.ByteStream finalize() {
-    final byteStream = super.finalize();
-    final total = contentLength;
-    int bytesWritten = 0;
-
-    return http.ByteStream(byteStream.map((List<int> data) {
-      bytesWritten += data.length;
-      onProgress(bytesWritten, total);
-      return data;
-    }));
-  }
-}
+import 'progress_multipart_request.dart'; // New import
 
 class ApiService with ChangeNotifier {
   // 1. Private internal constructor
@@ -117,6 +36,13 @@ class ApiService with ChangeNotifier {
   bool isServerConnected = false;
   double storagePercent = 0.0; // 0.0 to 1.0
   String storageLabel = "Loading...";
+
+  // Navigation state to control the app shell tabs
+  int currentTabIndex = 0; // 0: Files, 1: AI, 2: Home/Discovery, etc.
+  void setTabIndex(int index) {
+    currentTabIndex = index;
+    notifyListeners();
+  }
 
   // Persisted chat history for the AI Assistant during the current session
   final List<ChatMessage> chatHistory = [
@@ -284,7 +210,7 @@ class ApiService with ChangeNotifier {
   void cancelUpload(String taskId) {
     final index = uploads.indexWhere((t) => t.id == taskId);
     if (index != -1) {
-      uploads[index]._client?.close();
+      uploads[index].client?.close();
       uploads[index].status = UploadStatus.canceled;
       notifyListeners();
     }
@@ -326,7 +252,7 @@ class ApiService with ChangeNotifier {
 
   Future<void> _performUpload(UploadTask task) async {
     final client = http.Client();
-    task._client = client;
+    task.client = client;
 
     try {
       final encodedPath = Uri.encodeComponent(task.parentPath);
@@ -365,6 +291,69 @@ class ApiService with ChangeNotifier {
     } finally {
       client.close();
       notifyListeners();
+    }
+  }
+
+  /// Sends a prompt to the AI Assistant and processes the streaming response.
+  /// It parses tool results to extract document references for citations.
+  Future<void> sendStreamingChat(String text) async {
+    final userMsg = ChatMessage(text: text, isUser: true);
+    chatHistory.add(userMsg);
+    
+    final aiMsg = ChatMessage(text: '...', isUser: false);
+    chatHistory.add(aiMsg);
+    
+    final files = stagedFilesForAi.join(',');
+    stagedFilesForAi.clear();
+    notifyListeners();
+
+    final requestId = DateTime.now().millisecondsSinceEpoch.toString();
+    final url = '$baseUrl/ai/chat/stream?text=${Uri.encodeComponent(text)}&files=${Uri.encodeComponent(files)}&request_id=$requestId';
+    
+    final client = http.Client();
+    final request = http.Request('GET', Uri.parse(url));
+    
+    try {
+      final response = await client.send(request);
+      final Map<String, String> references = {};
+      String fullContent = '';
+
+      await for (final chunk in response.stream.transform(utf8.decoder)) {
+        fullContent += chunk;
+        
+        // Extract citations from tool results (e.g., "- filename.pdf (path/to/file):")
+        final citationRegex = RegExp(r"- ([^(\n]+) \(([^)]+)\):");
+        final matches = citationRegex.allMatches(fullContent);
+        for (final m in matches) {
+          final filename = m.group(1)?.trim();
+          final path = m.group(2)?.trim();
+          if (filename != null && path != null) {
+            references[filename] = path;
+          }
+        }
+
+        // Clean up the text for display by removing the raw tool result blocks
+        // and appending the unique references as a "Sources" footer.
+        String displayContent = fullContent
+            .replaceAll(RegExp(r"<tool_result>[\s\S]*?</tool_result>"), "")
+            .trim();
+            
+        if (references.isNotEmpty) {
+          final links = references.entries.map((e) {
+            final downloadUrl = '$baseUrl/api/files/download?path=${Uri.encodeComponent(e.value)}';
+            return "[${e.key}]($downloadUrl)";
+          }).join(', ');
+          displayContent += "\n\n**Sources:** $links";
+        }
+        
+        aiMsg.text = displayContent;
+        notifyListeners();
+      }
+    } catch (e) {
+      aiMsg.text = "Connection lost: $e";
+      notifyListeners();
+    } finally {
+      client.close();
     }
   }
 }

@@ -19,21 +19,49 @@ else
     export NAS_ADVERTISE_ADDR="$NAS_HOST"
 fi
 
-# Auto-detect GUI environment (X11 or Wayland) to default to native Linux app
+export ENABLE_AI=${ENABLE_AI:-false}
+export CONTAINER_TOOL=${CONTAINER_TOOL:-podman}
+COMMAND=""
+
+# Parse Arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --platform)
+            if [[ "$2" != "web" && "$2" != "linux" ]]; then
+                echo "Error: Invalid platform '$2'. Supported: web, linux"
+                exit 1
+            fi
+            export FRONTEND_PLATFORM="$2"; shift 2 ;;
+        --container-tool)
+            if [[ "$2" != "podman" && "$2" != "docker" ]]; then
+                echo "Error: Invalid container tool '$2'. Supported: podman, docker"
+                exit 1
+            fi
+            export CONTAINER_TOOL="$2"; shift 2 ;;
+        --help|-h)
+            show_usage; exit 0 ;;
+        --*)
+            if [[ -z "$COMMAND" ]]; then
+                COMMAND="$1"; shift
+            else
+                echo "Error: Only one command can be executed at a time. Found $COMMAND and $1"
+                exit 1
+            fi ;;
+        *)
+            echo "Error: Invalid option '$1'"
+            show_usage; exit 1 ;;
+    esac
+done
+
+COMMAND=${COMMAND:-"--all"}
+
+# Auto-detect GUI environment if not specified
 if [ -z "$FRONTEND_PLATFORM" ]; then
     if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -n "$DISPLAY" || -n "$WAYLAND_DISPLAY" ]]; then
         export FRONTEND_PLATFORM="linux"
     else
         export FRONTEND_PLATFORM="web"
     fi
-fi
-
-export ENABLE_AI=${ENABLE_AI:-false}
-
-# Handle global platform override parameter
-if [[ "$1" == "--platform" ]]; then
-    export FRONTEND_PLATFORM="$2"
-    shift 2
 fi
 
 show_usage() {
@@ -47,9 +75,16 @@ show_usage() {
     echo "  --backend    Setup and run only the FastAPI backend"
     echo "  --platform   Frontend target (web, linux; default: web)"
     echo "  --openapi    Export the backend OpenAPI spec to openapi.json"
+    echo "  --container-tool Tool for services (podman, docker; default: podman)"
     echo "  --frontend   Setup and run only the Flutter frontend"
     echo "  --build-web  Compile the Flutter Web GUI for production"
+    echo "  --rag        Start RAG services (Elasticsearch/Kibana)"
+    echo "  --check-rag-health Check RAG services health (Elasticsearch)"
+    echo "  --logs-rag   View RAG service logs"
+    echo "  --stop-rag   Stop RAG services"
     echo "  --observability Start Prometheus observability services"
+    echo "  --logs-observability View observability logs"
+    echo "  --stop-observability Stop observability services"
     echo "  --web        Run the Flutter frontend as a web application"
     echo "  --linux      Run the Flutter frontend as a native Linux app"
     echo "  --android    Build the Android APK (Release)"
@@ -172,6 +207,27 @@ build_web() {
     cd "$PROJECT_ROOT"
 }
 
+run_compose() {
+    local action="$1"
+    local cmd=""
+    
+    if [[ "$CONTAINER_TOOL" == "podman" ]]; then
+        if podman compose version &> /dev/null; then
+            cmd="podman compose"
+        elif command -v podman-compose &> /dev/null; then
+            cmd="podman-compose"
+        fi
+    else
+        if docker compose version &> /dev/null; then
+            cmd="docker compose"
+        elif command -v docker-compose &> /dev/null; then
+            cmd="docker-compose"
+        fi
+    fi
+
+    if [[ -n "$cmd" ]]; then $cmd $action; else echo "Warning: $CONTAINER_TOOL compose tool not found."; fi
+}
+
 run_observability() {
     if [[ ! -d "$PROJECT_ROOT/observability" ]]; then
         echo "Notice: Observability directory not found. Skipping."
@@ -179,16 +235,63 @@ run_observability() {
     fi
     echo "Step: Launching Observability Services (Prometheus)..."
     cd "$PROJECT_ROOT/observability"
-    
-    # Attempt to start via docker compose plugin or standalone docker-compose
-    if docker compose version &> /dev/null; then
-        docker compose up -d
-    elif command -v docker-compose &> /dev/null; then
-        docker-compose up -d
-    else
-        echo "Warning: docker compose not found. Please install Docker to use Prometheus."
+    run_compose "up -d"
+    cd "$PROJECT_ROOT"
+}
+
+stop_observability() {
+    if [[ ! -d "$PROJECT_ROOT/observability" ]]; then
+        return
     fi
-    
+    echo "Step: Stopping Observability Services (Prometheus)..."
+    cd "$PROJECT_ROOT/observability"
+    run_compose "down"
+    cd "$PROJECT_ROOT"
+}
+
+run_rag() {
+    if [[ ! -d "$PROJECT_ROOT/thirdservices/rag" ]]; then
+        echo "Notice: RAG directory not found. Skipping."
+        return
+    fi
+    echo "Step: Launching RAG Services (Elasticsearch/Kibana)..."
+    cd "$PROJECT_ROOT/thirdservices/rag"
+    run_compose "up -d"
+    cd "$PROJECT_ROOT"
+}
+
+check_rag_health() {
+    if [[ ! -d "$PROJECT_ROOT/thirdservices/rag" ]]; then
+        echo "Notice: RAG directory not found. Skipping health check."
+        return
+    fi
+    echo "Step: Checking RAG Services Health (Elasticsearch)..."
+    # Use curl to check Elasticsearch health endpoint
+    # The ES_URL is usually http://localhost:9200, but we need to ensure it's accessible from the host.
+    # Assuming the docker-compose exposes 9200 to localhost.
+    curl -s -X GET "http://localhost:9200/_cluster/health?pretty"
+    echo "" # Add a newline for cleaner output
+    echo "For more detailed health, check Kibana at http://localhost:5601 (if running) or logs with --logs-rag."
+    cd "$PROJECT_ROOT"
+}
+
+
+
+show_rag_logs() {
+    if [[ ! -d "$PROJECT_ROOT/thirdservices/rag" ]]; then
+        return
+    fi
+    cd "$PROJECT_ROOT/thirdservices/rag"
+    run_compose "logs -f"
+}
+
+stop_rag() {
+    if [[ ! -d "$PROJECT_ROOT/thirdservices/rag" ]]; then
+        return
+    fi
+    echo "Step: Stopping RAG Services (Elasticsearch/Kibana)..."
+    cd "$PROJECT_ROOT/thirdservices/rag"
+    run_compose "down"
     cd "$PROJECT_ROOT"
 }
 
@@ -273,11 +376,7 @@ build_android() {
     cd "$PROJECT_ROOT"
 }
 
-case "$1" in
-    --help|-h)
-        show_usage
-        exit 0
-        ;;
+case "$COMMAND" in
     --upgrade)
         upgrade_deps
         ;;
@@ -290,6 +389,21 @@ case "$1" in
         ;;
     --observability)
         run_observability
+        ;;
+    --stop-observability)
+        stop_observability
+        ;;
+    --rag)
+        run_rag
+        ;;
+    --check-rag-health)
+        check_rag_health
+        ;;
+    --logs-rag)
+        show_rag_logs
+        ;;
+    --stop-rag)
+        stop_rag
         ;;
     --backend)
         setup_python
@@ -320,7 +434,8 @@ case "$1" in
         echo "Step: Exporting OpenAPI Schema..."
         PYTHONPATH="$PROJECT_ROOT" "$PROJECT_ROOT/backend/.venv/bin/python" -m backend.export_openapi
         ;;
-    --all|*)
+    --all)
+        run_rag
         run_observability
         setup_python
         setup_flutter
@@ -352,7 +467,12 @@ case "$1" in
             echo "Note: It may take up to a minute for the frontend to become reachable."
         fi
         
-        trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; (cd observability && docker compose down 2>/dev/null); exit" INT TERM
+        trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; stop_observability; stop_rag; exit" INT TERM
         wait
+        ;;
+    *)
+        echo "Error: Unknown command '$COMMAND'"
+        show_usage
+        exit 1
         ;;
 esac

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../services/api_service.dart';
 import '../../../file_browser/presentation/widgets/breadcrumb_bar.dart';
+import '../../../../shared/models/file_item.dart';
 
 class NasFilePicker extends StatefulWidget {
   final List<String> initialSelectedFiles;

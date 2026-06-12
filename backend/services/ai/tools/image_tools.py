@@ -24,15 +24,16 @@ def get_image_tools(storage_path: str, api_key: str, vision_model=None, projecto
             if not os.path.exists(full_path):
                 return f"File '{file_name}' not found."
             
+            if not vision_model:
+                # Use a small Hugging Face model for image description/tagging fallback
+                from transformers import BlipProcessor, BlipForConditionalGeneration
+                processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+                model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+                inputs = processor(Image.open(full_path).convert("RGB"), return_tensors="pt")
+                out = model.generate(**inputs, max_new_tokens=50)
+                return processor.decode(out[0], skip_special_tokens=True)
+
             llm = vision_model
-            if not llm:
-                llm = ChatLlamaCpp(
-                    model_path=os.path.join(BASE_DIR, "services/ai/models/Qwen3.5-0.8B-IQ4_XS.gguf"),
-                    max_tokens=512,
-                    n_ctx=4096,
-                    streaming=True,
-                    multimodal_projector=projector_path,
-                )
 
             with open(full_path, "rb") as f:
                 encoded = base64.b64encode(f.read()).decode("utf-8")
@@ -58,19 +59,19 @@ def get_image_tools(storage_path: str, api_key: str, vision_model=None, projecto
             full_path = os.path.join(storage_path, file_name)
             logger.info("Explaining image: %s", full_path)
             
+            if not vision_model:
+                # Use a small Hugging Face model for image description
+                from transformers import BlipProcessor, BlipForConditionalGeneration
+                processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+                model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+                inputs = processor(Image.open(full_path).convert("RGB"), return_tensors="pt")
+                out = model.generate(**inputs, max_new_tokens=50)
+                return processor.decode(out[0], skip_special_tokens=True)
+
             with open(full_path, "rb") as f:
                 encoded = base64.b64encode(f.read()).decode("utf-8")
             
             llm = vision_model
-            if not llm:
-                llm = ChatLlamaCpp(
-                    # Suggest using a general VLM like LLaVA if PaddleOCR fails to describe
-                    model_path=os.path.join(BASE_DIR, "services/ai/models/Qwen3.5-0.8B-IQ4_XS.gguf"),
-                    max_tokens=512,
-                    n_ctx=4096,
-                    streaming=True,
-                    multimodal_projector=projector_path,
-                )
 
             msg = llm.invoke([
                 HumanMessage(content=[

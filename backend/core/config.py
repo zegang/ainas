@@ -20,12 +20,16 @@ NAS_PORT = int(os.getenv("NAS_PORT", "9026"))
 NAS_ADVERTISE_ADDR = os.getenv("NAS_ADVERTISE_ADDR", NAS_HOST)
 
 # Storage Settings
-STORAGE_PATH = os.path.abspath(os.path.join(BASE_DIR, "../data"))
-THUMBNAIL_DIR = os.path.join(STORAGE_PATH, ".thumbnails")
-MODELS_DIR = os.path.join(BASE_DIR, "ai", "models")
+NAS_DATA_PATH = os.path.abspath(os.path.join(BASE_DIR, "../nasdata"))
+NAS_METADATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "../nasmetadata"))
+THUMBNAIL_DIR = os.path.join(NAS_METADATA_DIR, "thumbnail")
 
 # AI Settings
 ENABLE_AI = os.getenv("ENABLE_AI", "false").lower() == "true"
+AI_SVC_DIR = os.path.join(BASE_DIR, "services", "ai")
+AI_MODELS_DIR = os.path.join(AI_SVC_DIR, "models")
+HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN", "")
+HUGGINFACEHUB_CACHE_DIR = os.getenv("HUGGINGFACEHUB_CACHE_DIR", os.path.join(AI_MODELS_DIR, "hfcache"))
 AI_PROVIDER = os.getenv("AI_PROVIDER", "local").lower()
 AI_MODEL = os.getenv("AI_MODEL", "services/ai/models/Qwen3-0.6B-Q8_0.gguf")
 AI_API_URL = os.getenv("AI_API_URL", "https://api.openai.com/v1")
@@ -43,6 +47,5 @@ ES_EMBEDDING_DIMS = int(os.getenv("ES_EMBEDDING_DIMS", "768"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # Create directories
-os.makedirs(STORAGE_PATH, exist_ok=True)
+os.makedirs(NAS_DATA_PATH, exist_ok=True)
 os.makedirs(THUMBNAIL_DIR, exist_ok=True)
-os.makedirs(MODELS_DIR, exist_ok=True)

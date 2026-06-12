@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../../../services/api_service.dart';
-import '../../../../services/mdns_service.dart';
-import '../../domain/models/nas_server.dart';
+import 'package:ainas_frontend/services/api_service.dart';
+import 'package:ainas_frontend/services/mdns_service.dart';
+import 'package:ainas_frontend/shared/models/nas_server.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

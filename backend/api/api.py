@@ -12,7 +12,9 @@ from sqlalchemy.orm import Session
 from backend.services.image_service import create_thumbnail
 from backend.services.system_service import get_disk_usage, check_disk_and_alert
 import asyncio
+from backend.services.document_service import extract_text
 from backend.services.ai.ai_engine import AIEngine
+from backend.services.elasticsearch_service import ElasticsearchService
 from backend.services.monitoring.prometheus import AI_STREAM_TTFC
 from backend.db.database import SessionLocal, FileRecord, TagRecord
 from backend.core import config
@@ -84,10 +86,10 @@ async def download_file(path: str, thumbnail: bool = False):
     If thumbnail=True is passed and a thumbnail exists, serves the thumbnail for performance.
     """
     clean_path = path.strip().lstrip("/")
-    full_path = os.path.abspath(os.path.join(config.STORAGE_PATH, clean_path))
+    full_path = os.path.abspath(os.path.join(config.NAS_DATA_PATH, clean_path))
 
     # Security: Ensure the path is within the storage root
-    if not full_path.startswith(os.path.abspath(config.STORAGE_PATH)):
+    if not full_path.startswith(os.path.abspath(config.NAS_DATA_PATH)):
         raise HTTPException(status_code=403, detail="Access denied")
 
     if not os.path.exists(full_path) or os.path.isdir(full_path):
@@ -101,10 +103,21 @@ async def download_file(path: str, thumbnail: bool = False):
 
     return FileResponse(full_path)
 
+@router.get("/api/files/index-status")
+async def get_file_index_status(path: str, request: Request):
+    """Checks if a specific file path is indexed in Elasticsearch."""
+    es = getattr(request.app.state, "es", None)
+    if not es:
+        raise HTTPException(status_code=400, detail="Elasticsearch service not enabled.")
+    
+    # We query by path since it's a keyword field and unique per file in the NAS
+    indexed = await es.check_file_exists(path)
+    return {"path": path, "indexed": indexed}
+
 @router.get("/api/files")
 async def list_files(path: str = "", db: Session = Depends(get_db)):
     clean_path = path.strip().lstrip("/")
-    full_path = os.path.abspath(os.path.join(config.STORAGE_PATH, clean_path))
+    full_path = os.path.abspath(os.path.join(config.NAS_DATA_PATH, clean_path))
     
     if not os.path.exists(full_path):
         logger.warning("Path access attempt failed: %s does not exist", full_path)
@@ -141,7 +154,7 @@ async def create_folder(request: CreateFolderRequest):
     """Create a new directory at the specified relative path."""
     # Sanitize path to prevent escaping STORAGE_PATH
     rel_path = request.path.lstrip("/")
-    full_path = os.path.join(config.STORAGE_PATH, rel_path)
+    full_path = os.path.join(config.NAS_DATA_PATH, rel_path)
     
     if os.path.exists(full_path):
         raise HTTPException(status_code=400, detail="Path already exists")
@@ -155,7 +168,7 @@ async def create_folder(request: CreateFolderRequest):
 
 @router.delete("/api/files")
 async def delete_item(path: str, db: Session = Depends(get_db)):
-    full_path = os.path.join(config.STORAGE_PATH, path)
+    full_path = os.path.join(config.NAS_DATA_PATH, path)
     if not os.path.exists(full_path):
         raise HTTPException(status_code=404, detail="Item not found")
     
@@ -172,13 +185,13 @@ async def delete_item(path: str, db: Session = Depends(get_db)):
 
 @router.patch("/api/files/rename")
 async def rename_item(request: RenameRequest, db: Session = Depends(get_db)):
-    old_abs = os.path.join(config.STORAGE_PATH, request.path)
+    old_abs = os.path.join(config.NAS_DATA_PATH, request.path)
     if not os.path.exists(old_abs):
         raise HTTPException(status_code=404, detail="Item not found")
         
     parent = os.path.dirname(request.path)
     new_rel = os.path.join(parent, request.new_name).lstrip("/")
-    new_abs = os.path.join(config.STORAGE_PATH, new_rel)
+    new_abs = os.path.join(config.NAS_DATA_PATH, new_rel)
     
     is_dir = os.path.isdir(old_abs)
     os.rename(old_abs, new_abs)
@@ -201,8 +214,8 @@ async def rename_item(request: RenameRequest, db: Session = Depends(get_db)):
 
 @router.patch("/api/files/move")
 async def move_item(request: MoveRequest, db: Session = Depends(get_db)):
-    old_abs = os.path.join(config.STORAGE_PATH, request.path)
-    new_abs = os.path.join(config.STORAGE_PATH, request.new_path)
+    old_abs = os.path.join(config.NAS_DATA_PATH, request.path)
+    new_abs = os.path.join(config.NAS_DATA_PATH, request.new_path)
     
     if not os.path.exists(old_abs):
         raise HTTPException(status_code=404, detail="Source item not found")
@@ -228,7 +241,7 @@ async def move_item(request: MoveRequest, db: Session = Depends(get_db)):
 def thumbnail_task(rel_path: str):
     """Background task wrapper to resolve paths and trigger thumbnail creation.
     Maintains the directory structure within the .thumbnails directory."""
-    source = os.path.join(config.STORAGE_PATH, rel_path.lstrip("/"))
+    source = os.path.join(config.NAS_DATA_PATH, rel_path.lstrip("/"))
     destination = os.path.join(config.THUMBNAIL_DIR, rel_path.lstrip("/"))
 
     # Ensure the parent directory structure exists in the thumbnails folder
@@ -241,6 +254,62 @@ def thumbnail_task(rel_path: str):
         except Exception:
             # Errors are logged in the service
             pass
+
+async def run_reindex(ai: Optional[AIEngine], es: ElasticsearchService):
+    """Background task to walk the filesystem and re-index supported documents."""
+    logger.info("Starting background re-indexing of NAS storage.")
+    storage_path = config.NAS_DATA_PATH
+    
+    # Create a fresh DB session for the background task
+    db = SessionLocal()
+    try:
+        for root, _, files in os.walk(storage_path):
+            for name in files:
+                # Supported document types for RAG indexing
+                if name.lower().endswith(('.pdf', '.docx', '.txt', '.md', '.log')):
+                    file_path = os.path.join(root, name)
+                    rel_path = os.path.relpath(file_path, storage_path).replace("\\", "/")
+                    
+                    try:
+                        content = extract_text(file_path)
+                        if not content:
+                            continue
+                            
+                        # Try to find existing tags in the database
+                        file_rec = db.query(FileRecord).filter(FileRecord.path == rel_path).first()
+                        tags = [t.name for t in file_rec.tags] if file_rec else []
+                        
+                        file_embedding = None
+                        if ai and config.ENABLE_AI:
+                            # Generate vector embedding for semantic search
+                            file_embedding = await ai.embeddings.aembed_query(content)
+                        
+                        await es.index_file(
+                            filename=name,
+                            path=rel_path,
+                            tags=tags,
+                            content=content,
+                            embedding=file_embedding
+                        )
+                    except Exception as e:
+                        logger.error(f"Error re-indexing {rel_path}: {e}")
+    finally:
+        db.close()
+        logger.info("Background re-indexing finished.")
+
+@router.post("/api/system/reindex")
+async def trigger_reindex(
+    background_tasks: BackgroundTasks,
+    request: Request,
+    ai: AIEngine = Depends(get_ai)
+):
+    """Triggers a full re-scan of the NAS to index documents into Elasticsearch."""
+    es = getattr(request.app.state, "es", None)
+    if not es:
+        raise HTTPException(status_code=400, detail="Elasticsearch service not enabled.")
+    
+    background_tasks.add_task(run_reindex, ai, es)
+    return {"message": "Re-indexing started in background."}
 
 @router.post("/api/upload")
 async def upload_file(
@@ -260,9 +329,9 @@ async def upload_file(
     safe_filename = os.path.basename(file.filename)
     
     file_rel_path = os.path.join(clean_parent, safe_filename).replace("\\", "/")
-    file_path = os.path.abspath(os.path.join(config.STORAGE_PATH, file_rel_path))
+    file_path = os.path.abspath(os.path.join(config.NAS_DATA_PATH, file_rel_path))
 
-    if not file_path.startswith(os.path.abspath(config.STORAGE_PATH)):
+    if not file_path.startswith(os.path.abspath(config.NAS_DATA_PATH)):
         raise HTTPException(status_code=403, detail="Invalid target path")
 
     # Ensure parent directory exists
@@ -295,18 +364,9 @@ async def upload_file(
     # Elasticsearch RAG Indexing
     es = getattr(request.app.state, "es", None)
     if es:
-        # Note: 'embedding' and 'content' would be generated here 
-        file_content = ""
         file_embedding = None
-
-        # Basic text extraction for demonstration.
-        # For production, integrate a dedicated text extraction service for PDFs, DOCX, etc.
-        if file_rel_path.lower().endswith(('.txt', '.md', '.log')):
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    file_content = f.read()
-            except Exception as e:
-                logger.warning(f"Could not read content of text file {file_rel_path}: {e}")
+        # Extract text from the uploaded file (supports .txt, .md, .log, .pdf, .docx)
+        file_content = extract_text(file_path)
 
         if ai and file_content: # Only generate embedding if AI is enabled and content is extracted
             file_embedding = await ai.embeddings.aembed_query(file_content)
@@ -405,9 +465,9 @@ async def cancel_ai_request(request_id: str, ai: AIEngine = Depends(get_ai)):
 async def list_local_models():
     """Lists all GGUF models currently stored on the NAS."""
     try:
-        if not os.path.exists(config.MODELS_DIR):
+        if not os.path.exists(config.AI_MODELS_DIR):
             return {"models": []}
-        models = [f for f in os.listdir(config.MODELS_DIR) if f.endswith(".gguf")]
+        models = [f for f in os.listdir(config.AI_MODELS_DIR) if f.endswith(".gguf")]
         return {"models": models}
     except Exception as e:
         logger.error("Failed to list local models: %s", e)
@@ -432,7 +492,7 @@ async def download_hf_model(request: DownloadModelRequest):
         path = hf_hub_download(
             repo_id=request.repo_id,
             filename=request.filename,
-            local_dir=config.MODELS_DIR,
+            local_dir=config.AI_MODELS_DIR,
             local_dir_use_symlinks=False
         )
         return {"message": "Model downloaded successfully", "path": path}
@@ -443,7 +503,7 @@ async def download_hf_model(request: DownloadModelRequest):
 @router.delete("/api/models/{filename}")
 async def remove_local_model(filename: str):
     """Deletes a local model file to free up space."""
-    file_path = os.path.join(config.MODELS_DIR, filename)
+    file_path = os.path.join(config.AI_MODELS_DIR, filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Model file not found")
     

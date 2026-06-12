@@ -5,7 +5,7 @@ import 'dart:async';
 import 'package:logging/logging.dart';
 import '../../../../services/api_service.dart';
 import '../../domain/chat_repository_impl.dart';
-import '../../domain/models/chat_message.dart';
+import '../../../../shared/models/chat_message.dart';
 import '../widgets/nas_file_picker.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/chat_repository.dart';

@@ -13,7 +13,8 @@ Thumbs.db
 .history/
 
 # Project Specific Data
-data/
+nasdata/
+nasmetadata/
 logs/
 *.db
 *.db-journal

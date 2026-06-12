@@ -97,4 +97,39 @@ def get_file_tools(storage_path: str, es_service=None, embeddings=None):
                 f"Used: {usage['used_gb']} GB / {usage['total_gb']} GB ({usage['percent_used']}%)\n"
                 f"Free: {usage['free_gb']} GB")
 
-    return [list_files, search_files, get_storage_status]
+    @tool
+    async def query_documents(query: str) -> str:
+        """
+        Searches the content of indexed documents (PDF, DOCX, TXT, MD, LOG) using semantic and keyword search.
+        Use this to answer questions about document content or to find specific information within files.
+        """
+        if not es_service:
+            return "Error: Document search is not enabled (Elasticsearch missing)."
+
+        try:
+            # Generate embedding for vector search if the embedding model is provided
+            query_vector = None
+            if embeddings:
+                # Use aembed_query for async execution
+                query_vector = await embeddings.aembed_query(query)
+
+            # Perform hybrid search (BM25 + kNN) via the Elasticsearch service
+            hits = await es_service.hybrid_search(query_text=query, query_vector=query_vector, top_k=5)
+
+            if not hits:
+                return "No matching documents or relevant content found in the index."
+
+            response_parts = ["Found relevant content in the following documents:"]
+            for hit in hits:
+                filename = hit.get("filename", "unknown")
+                path = hit.get("path", "unknown")
+                content = hit.get("content", "")
+                # Truncate content for the LLM context window to save tokens
+                snippet = content[:800].replace("\n", " ") + "..." if len(content) > 800 else content
+                response_parts.append(f"- {filename} ({path}): \"{snippet}\"")
+
+            return "\n\n".join(response_parts)
+        except Exception as e:
+            return f"Failed to query documents: {str(e)}"
+
+    return [list_files, search_files, get_storage_status, query_documents]

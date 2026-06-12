@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:logging/logging.dart';
 import 'package:multicast_dns/multicast_dns.dart';
-import '../features/home/domain/models/nas_server.dart';
+import '../shared/models/nas_server.dart';
 
 class MdnsService {
   static final _log = Logger('MdnsService');

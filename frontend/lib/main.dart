@@ -5,12 +5,12 @@ import 'package:logging/logging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:developer' as developer;
 import 'l10n/app_localizations.dart';
-import 'features/file_browser/presentation/pages/nas_browser_page.dart';
-import 'features/settings/presentation/pages/settings_page.dart';
+import 'features/file_browser/presentation/widgets/nas_browser_page.dart';
+import 'features/settings/presentation/widgets/settings_page.dart';
 import './services/api_service.dart';
-import 'common/themes/app_theme.dart';
-import 'features/home/presentation/pages/home_page.dart';
-import 'features/ai_assistant/presentation/pages/ai_assistant_page.dart';
+import 'shared/themes/app_theme.dart';
+import 'features/home/presentation/widgets/home_page.dart';
+import 'features/ai_assistant/presentation/widgets/ai_assistant_page.dart';
 
 void main() async {
   _setupLogging();

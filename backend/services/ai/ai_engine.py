@@ -35,13 +35,14 @@ class AIEngine:
         self.vision_projector = config.AI_VISION_PROJECTOR
         if not os.path.isabs(self.vision_projector):
             self.vision_projector = os.path.join(config.BASE_DIR, self.vision_projector)
-        self.storage_path = config.STORAGE_PATH
+        self.nas_data_path = config.NAS_DATA_PATH
         self.gpu_layers = config.AI_GPU_LAYERS
 
         # Initialize RAG Components
         self.es_service = ElasticsearchService()
         self.embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-mpnet-base-v2"
+            model_name="sentence-transformers/all-mpnet-base-v2",
+            cache_folder=config.HUGGINFACEHUB_CACHE_DIR
         )
 
         self.vision_model = None
@@ -65,7 +66,8 @@ class AIEngine:
                 self.llm = ChatHuggingFace(llm=HuggingFacePipeline.from_model_id(
                     model_id=self.model_name,
                     task="text-generation",
-                    pipeline_kwargs={"max_new_tokens": 512}
+                    pipeline_kwargs={"max_new_tokens": 512},
+                    cache_folder=config.HUGGINFACEHUB_CACHE_DIR
                 ))
         else:
             self.llm = ChatOpenAI(
@@ -78,11 +80,11 @@ class AIEngine:
         # Setup Tools and Agent
         # self.tools = get_nas_tools() # Combined tools
         self.tools = get_image_tools(
-            self.storage_path, 
+            self.nas_data_path, 
             self.api_key, 
             projector_path=self.vision_projector
         ) + get_file_tools(
-            self.storage_path, 
+            self.nas_data_path, 
             es_service=self.es_service, 
             embeddings=self.embeddings
         )
@@ -194,12 +196,6 @@ class AIEngine:
         if cls._instance is None:
             cls._instance = super(AIEngine, cls).__new__(cls)
         return cls._instance
-
-    # Placeholder for get_nas_tools if it's not defined elsewhere
-    # This is a temporary fix if get_nas_tools is not yet implemented
-    # In a real scenario, you'd have a backend.ai.tools module with this function
-    # def get_nas_tools(self):
-    #     return get_image_tools(self.storage_path, self.api_key) + get_file_tools(self.storage_path)
 
     def generate_tags(self, file_name: str):
         """Generates tags for a file using the tag_image tool from image_tools."""

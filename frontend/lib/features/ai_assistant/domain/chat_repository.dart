@@ -1,6 +1,6 @@
 
 
-import 'models/chat_message.dart';
+import '../../../../shared/models/chat_message.dart';
 
 /// Repository interface for interacting with AI Assistant services.
 abstract class ChatRepository {

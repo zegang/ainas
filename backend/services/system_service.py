@@ -10,7 +10,7 @@ def get_disk_usage():
     Returns a dictionary with usage statistics and a criticality flag.
     """
     try:
-        total, used, free = shutil.disk_usage(config.STORAGE_PATH)
+        total, used, free = shutil.disk_usage(config.NAS_DATA_PATH)
         percent_used = (used / total) * 100
         return {
             "total_gb": round(total / (1024**3), 2),
@@ -27,5 +27,5 @@ def check_disk_and_alert():
     """Checks disk usage and logs an alert if it exceeds the critical threshold."""
     usage = get_disk_usage()
     if usage and usage["is_critical"]:
-        logger.warning(f"CRITICAL DISK ALERT: {usage['percent_used']}% used on {config.STORAGE_PATH}")
+        logger.warning(f"CRITICAL DISK ALERT: {usage['percent_used']}% used on {config.NAS_DATA_PATH}")
     return usage

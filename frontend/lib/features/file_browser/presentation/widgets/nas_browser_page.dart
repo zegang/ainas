@@ -7,12 +7,17 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:logging/logging.dart';
 import 'package:intl/intl.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../../../common/themes/app_theme.dart';
+import '../../../../shared/themes/app_theme.dart';
 import '../../../../services/api_service.dart';
+import '../controllers/file_browser_controller.dart';
+import '../../../../shared/models/file_item.dart';
 import '../widgets/breadcrumb_bar.dart';
 import '../widgets/file_grid_view.dart';
 import '../widgets/file_list_view.dart';
-import '../../../ai_assistant/presentation/pages/ai_assistant_page.dart';
+import '../../../ai_assistant/presentation/widgets/ai_assistant_page.dart';
+import '../../../../shared/widgets/viewers/pdf_viewer_page.dart';
+import '../../../../shared/widgets/viewers/docx_viewer_page.dart';
+import '../../../../shared/widgets/viewers/image_viewer_page.dart';
 import '../widgets/upload_overlay.dart';
 
 class NASBrowser extends StatefulWidget {
@@ -25,6 +30,7 @@ class NASBrowser extends StatefulWidget {
 class _NASBrowserState extends State<NASBrowser> {
   final _log = Logger('NASBrowser');
   final ApiService api = ApiService();
+  final FileBrowserController _controller = FileBrowserController();
   List<String> pathStack = [""];
   late Future<List<FileItem>> _fileList;
   bool _isDiscovering = true;
@@ -313,13 +319,8 @@ class _NASBrowserState extends State<NASBrowser> {
   void _handleAttachToAi(FileItem item) {
     final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
     api.stageFilesForAi([fullPath]);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("${item.name} attached to AI Assistant")),
-    );
-    // Navigate to AI Assistant page
-    Navigator.push(context, MaterialPageRoute(builder: (context) => const AIAssistantPage()));
-
-
+    // Switch to the AI Assistant tab (Index 1) instead of pushing a route
+    api.setTabIndex(1);
   }
 
   void _handleBatchAttachToAi() {
@@ -332,13 +333,8 @@ class _NASBrowserState extends State<NASBrowser> {
     api.stageFilesForAi(paths);
     final count = _selectedItems.length;
     setState(() => _selectedItems.clear());
-    // Navigate to AI Assistant page
-    Navigator.push(context, MaterialPageRoute(builder: (context) => const AIAssistantPage()));
-
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("$count items attached to AI Assistant")),
-    );
+    // Switch to the AI Assistant tab (Index 1)
+    api.setTabIndex(1);
   }
 
   Future<void> _handleBatchMove() async {
@@ -584,10 +580,51 @@ class _NASBrowserState extends State<NASBrowser> {
     if (action == 'attach') _handleAttachToAi(item);
   }
 
-  void _onItemTap(FileItem item) {
+  void _onItemTap(FileItem item) async {
     if (item.isDir) {
       setState(() => pathStack.add(pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}"));
       _refresh();
+    } else {
+      final ext = item.name.toLowerCase();
+      final downloadUrl = '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}';
+
+      if (ext.endsWith('.pdf') || ext.endsWith('.docx')) {
+        // Show a loading indicator immediately
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator()),
+        );
+
+        // A small delay to ensure the dialog is rendered before navigation
+        // and to give a visual cue of "loading" while the viewer prepares.
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (!mounted) return;
+        Navigator.pop(context); // Dismiss loading dialog
+
+        if (ext.endsWith('.pdf')) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PdfViewerPage(url: downloadUrl, title: item.name),
+            ),
+          );
+        } else if (ext.endsWith('.docx')) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DocxViewerPage(url: downloadUrl, title: item.name),
+            ),
+          );
+        }
+      } else if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'].any((suffix) => ext.endsWith(suffix))) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ImageViewerPage(url: downloadUrl, title: item.name),
+          ),
+        );
+      }
     }
   }
 }

@@ -57,6 +57,22 @@ class ElasticsearchService:
         except Exception as e:
             logger.error(f"Failed to index file in Elasticsearch: {e}")
 
+    async def check_file_exists(self, path: str) -> bool:
+        """Checks if a file with the given relative path is already indexed."""
+        search_query = {
+            "query": {
+                "term": {
+                    "path": path
+                }
+            }
+        }
+        try:
+            response = await self.client.search(index=self.index_name, body=search_query, size=0)
+            return response["hits"]["total"]["value"] > 0
+        except Exception as e:
+            logger.error(f"Failed to check file existence in Elasticsearch: {e}")
+            return False
+
     async def hybrid_search(self, query_text: str, query_vector: Optional[List[float]] = None, top_k: int = 5) -> List[Dict[str, Any]]:
         """
         Performs a hybrid search combining BM25 keyword matching and kNN vector similarity.

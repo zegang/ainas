@@ -31,14 +31,18 @@ def create_nas_agent(llm, tools):
             
             state['iterations'] += 1
             
+            # Generate a detailed list of tool capabilities for the LLM
+            tool_desc = "\n".join([f"- {t.name}: {t.description}" for t in tools])
+            
             sys_msg = SystemMessage(content=(
-                f"You are a NAS AI Assistant. Available tools: {', '.join([t.name for t in tools])}.\n\n"
+                f"You are a NAS AI Assistant. You have access to the following tools:\n{tool_desc}\n\n"
                 "STRICT RULES:\n"
                 "1. Filenames in [Attached files] are wrapped in quotes. Use the EXACT filename string for tool arguments.\n"
                 "2. To call a tool, you MUST use: <tool_call>{\"name\": \"tool_name\", \"args\": {...}}</tool_call>\n"
-                "3. Once a tool provides the requested info (e.g., image explanation), STOP using tools and give the final answer.\n"
-                "4. DO NOT perform extra unrequested actions or call unrelated tools like dashboards.\n"
-                "5. If you already have the data in chat history, do NOT call tools again. Respond directly and concisely."
+                "3. For questions about the content of PDF, DOCX, or text files, use the 'query_documents' tool.\n"
+                "4. Once a tool provides the requested info, STOP and provide the final answer.\n"
+                "5. DO NOT perform extra unrequested actions or call unrelated tools.\n"
+                "6. If you already have the data in chat history, do NOT call tools again."
             ))
             
             # Prepare LLM input. If we just received a tool result, add a Completion Nudge.

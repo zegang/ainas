@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../../../common/themes/app_theme.dart';
-import '../../../../services/api_service.dart';
+import '../../../../shared/themes/app_theme.dart';
+import '../../../../shared/models/file_item.dart';
 
 class FileGridView extends StatelessWidget {
   final List<FileItem> items;
@@ -9,7 +9,7 @@ class FileGridView extends StatelessWidget {
   final Function(String, FileItem) onActionSelected;
   final Set<FileItem> selectedItems;
   final Function(FileItem, bool?) onItemSelected;
-  final ApiService api = ApiService(); // Move to a field to avoid re-instantiation in build
+  // ApiService api = ApiService(); // No longer needed here as FileItem is passed directly
 
   FileGridView({
     super.key,
@@ -23,10 +23,6 @@ class FileGridView extends StatelessWidget {
   bool _isImage(String fileName) {
     final ext = fileName.toLowerCase().split('.').last;
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(ext);
-  }
-
-  String _getFileThumbnailUrl(String path) {
-    return '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(path)}&thumbnail=true';
   }
 
   @override
@@ -61,7 +57,7 @@ class FileGridView extends StatelessWidget {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: Image.network(
-                              '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}&thumbnail=true',
+                              item.thumbnailUrl, // Use the new thumbnailUrl from FileItem
                               fit: BoxFit.cover,
                               loadingBuilder: (context, child, loadingProgress) {
                                 if (loadingProgress == null) return child;
