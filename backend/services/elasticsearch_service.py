@@ -3,41 +3,47 @@ from typing import List, Optional, Dict, Any
 from elasticsearch import AsyncElasticsearch
 from backend.core import config
 
-logger = logging.getLogger(__name__)
-
 class ElasticsearchService:
     def __init__(self):
-        self.client = AsyncElasticsearch(config.ES_URL)
-        self.index_name = config.ES_INDEX
+        self.logger = logging.getLogger(__name__)
+        # Ensure URL is clean and uses IPv4 to avoid resolution issues.
+        es_url = config.AINAS_ES_URL.strip().rstrip("/").replace("localhost", "127.0.0.1")
+        self.client = AsyncElasticsearch(
+            es_url,
+            meta_header=False,
+            request_timeout=30
+        )
+        self.index_name = config.AINAS_ES_INDEX
 
     async def create_index(self):
         """Creates the nas_files index with appropriate mappings for RAG and Vector search."""
         try:
+            self.logger.info(f"Verifying existence of index '{self.index_name}'...")
             exists = await self.client.indices.exists(index=self.index_name)
+
             if not exists:
-                mapping = {
-                    "mappings": {
-                        "properties": {
-                            "filename": {"type": "keyword"},
-                            "path": {"type": "keyword"},
-                            "content": {"type": "text"},
-                            "tags": {"type": "keyword"},
-                            "vector_embedding": {
-                                "type": "dense_vector",
-                                "dims": config.ES_EMBEDDING_DIMS,
-                                "index": True,
-                                "similarity": "cosine"
-                            },
-                            "created_at": {"type": "date"}
-                        }
+                self.logger.info(f"Creating Elasticsearch index '{self.index_name}'...")
+                mappings = {
+                    "properties": {
+                        "filename": {"type": "keyword"},
+                        "path": {"type": "keyword"},
+                        "content": {"type": "text"},
+                        "tags": {"type": "keyword"},
+                        "vector_embedding": {
+                            "type": "dense_vector",
+                            "dims": config.AINAS_ES_EMBEDDING_DIMS,
+                            "index": True,
+                            "similarity": "cosine"
+                        },
+                        "created_at": {"type": "date"}
                     }
                 }
-                await self.client.indices.create(index=self.index_name, body=mapping)
-                logger.info(f"Elasticsearch index '{self.index_name}' created successfully.")
+                await self.client.indices.create(index=self.index_name, mappings=mappings)
+                self.logger.info(f"Elasticsearch index '{self.index_name}' created successfully.")
             else:
-                logger.info(f"Elasticsearch index '{self.index_name}' verified.")
+                self.logger.info(f"Elasticsearch index '{self.index_name}' verified.")
         except Exception as e:
-            logger.error(f"Failed to create Elasticsearch index: {e}")
+            self.logger.error(f"Failed to create Elasticsearch index: {e}")
 
     async def index_file(self, filename: str, path: str, tags: List[str], content: str = "", embedding: Optional[List[float]] = None):
         """Indexes file metadata and optional vector embeddings."""
@@ -53,9 +59,9 @@ class ElasticsearchService:
         
         try:
             await self.client.index(index=self.index_name, document=doc)
-            logger.info(f"File '{filename}' indexed in Elasticsearch.")
+            self.logger.info(f"File '{filename}' indexed in Elasticsearch.")
         except Exception as e:
-            logger.error(f"Failed to index file in Elasticsearch: {e}")
+            self.logger.error(f"Failed to index file in Elasticsearch: {e}")
 
     async def check_file_exists(self, path: str) -> bool:
         """Checks if a file with the given relative path is already indexed."""
@@ -70,7 +76,7 @@ class ElasticsearchService:
             response = await self.client.search(index=self.index_name, body=search_query, size=0)
             return response["hits"]["total"]["value"] > 0
         except Exception as e:
-            logger.error(f"Failed to check file existence in Elasticsearch: {e}")
+            self.logger.error(f"Failed to check file existence in Elasticsearch: {e}")
             return False
 
     async def hybrid_search(self, query_text: str, query_vector: Optional[List[float]] = None, top_k: int = 5) -> List[Dict[str, Any]]:
@@ -98,7 +104,7 @@ class ElasticsearchService:
             response = await self.client.search(index=self.index_name, body=search_query, size=top_k)
             return [hit["_source"] for hit in response["hits"]["hits"]]
         except Exception as e:
-            logger.error(f"Elasticsearch hybrid search failed: {e}")
+            self.logger.error(f"Elasticsearch hybrid search failed: {e}")
             return []
 
     async def close(self):

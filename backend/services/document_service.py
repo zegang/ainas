@@ -2,11 +2,10 @@ import logging
 from pypdf import PdfReader
 from docx import Document as DocxDocument
 
-logger = logging.getLogger(__name__)
-
 def extract_text_from_pdf(file_path: str) -> str:
     """Extracts text content from a PDF file."""
     try:
+        logger = logging.getLogger(__name__)
         reader = PdfReader(file_path)
         text = ""
         for page in reader.pages:
@@ -15,17 +14,18 @@ def extract_text_from_pdf(file_path: str) -> str:
                 text += content + "\n"
         return text.strip()
     except Exception as e:
-        logger.error(f"Error parsing PDF {file_path}: {e}")
+        logging.getLogger(__name__).error(f"Error parsing PDF {file_path}: {e}")
         return ""
 
 def extract_text_from_docx(file_path: str) -> str:
     """Extracts text content from a DOCX file."""
     try:
+        logger = logging.getLogger(__name__)
         doc = DocxDocument(file_path)
         text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
         return text.strip()
     except Exception as e:
-        logger.error(f"Error parsing DOCX {file_path}: {e}")
+        logging.getLogger(__name__).error(f"Error parsing DOCX {file_path}: {e}")
         return ""
 
 def extract_text(file_path: str) -> str:
@@ -40,5 +40,5 @@ def extract_text(file_path: str) -> str:
             with open(file_path, "r", encoding="utf-8") as f:
                 return f.read()
         except Exception as e:
-            logger.warning(f"Could not read text file {file_path}: {e}")
+            logging.getLogger(__name__).warning(f"Could not read text file {file_path}: {e}")
     return ""

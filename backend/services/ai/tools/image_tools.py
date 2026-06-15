@@ -6,13 +6,13 @@ from typing import List
 from PIL import Image
 from openai import OpenAI
 from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage
-from langchain_community.chat_models import ChatLlamaCpp
+from langchain_core.messages import HumanMessage # type: ignore
+from backend.core import config
 
-BASE_DIR = os.getenv("AI_NAS_BACKEND_BASE_DIR")
-logger = logging.getLogger(__name__)
 
 def get_image_tools(storage_path: str, api_key: str, vision_model=None, projector_path=None, **kwargs):
+    logger = logging.getLogger(__name__)
+
     @tool
     def tag_image(file_name: str) -> str:
         """Generates descriptive labels/tags for an image file using computer vision.
@@ -24,15 +24,13 @@ def get_image_tools(storage_path: str, api_key: str, vision_model=None, projecto
             if not os.path.exists(full_path):
                 return f"File '{file_name}' not found."
             
-            if not vision_model:
-                # Use a small Hugging Face model for image description/tagging fallback
-                from transformers import BlipProcessor, BlipForConditionalGeneration
-                processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-                model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
-                inputs = processor(Image.open(full_path).convert("RGB"), return_tensors="pt")
-                out = model.generate(**inputs, max_new_tokens=50)
-                return processor.decode(out[0], skip_special_tokens=True)
-
+            # Use pre-loaded BLIP model if vision_model (LangChain LLM) is not available
+            if not vision_model and kwargs.get('blip_processor') and kwargs.get('blip_model'):
+                processor = kwargs['blip_processor']
+                model = kwargs['blip_model']
+                inputs = processor(Image.open(full_path).convert("RGB"), return_tensors="pt") # type: ignore
+                out = model.generate(**inputs, max_new_tokens=50) # type: ignore
+                return processor.decode(out[0], skip_special_tokens=True) # type: ignore
             llm = vision_model
 
             with open(full_path, "rb") as f:
@@ -59,14 +57,12 @@ def get_image_tools(storage_path: str, api_key: str, vision_model=None, projecto
             full_path = os.path.join(storage_path, file_name)
             logger.info("Explaining image: %s", full_path)
             
-            if not vision_model:
-                # Use a small Hugging Face model for image description
-                from transformers import BlipProcessor, BlipForConditionalGeneration
-                processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-                model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
-                inputs = processor(Image.open(full_path).convert("RGB"), return_tensors="pt")
-                out = model.generate(**inputs, max_new_tokens=50)
-                return processor.decode(out[0], skip_special_tokens=True)
+            if not vision_model and kwargs.get('blip_processor') and kwargs.get('blip_model'):
+                processor = kwargs['blip_processor']
+                model = kwargs['blip_model']
+                inputs = processor(Image.open(full_path).convert("RGB"), return_tensors="pt") # type: ignore
+                out = model.generate(**inputs, max_new_tokens=50) # type: ignore
+                return processor.decode(out[0], skip_special_tokens=True) # type: ignore
 
             with open(full_path, "rb") as f:
                 encoded = base64.b64encode(f.read()).decode("utf-8")

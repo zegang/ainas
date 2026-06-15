@@ -2,12 +2,11 @@ import os
 import logging
 from PIL import Image
 
-logger = logging.getLogger(__name__)
-
 def create_thumbnail(source_path: str, dest_path: str, size=(200, 200)):
     """
     Generates a thumbnail for the image at source_path and saves it to dest_path.
     """
+    logger = logging.getLogger(__name__)
     try:
         with Image.open(source_path) as img:
             img.thumbnail(size)

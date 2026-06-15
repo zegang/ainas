@@ -6,163 +6,51 @@ import subprocess
 from typing import List, Generator, AsyncGenerator, Dict, Any
 
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage
-from langchain_openai import ChatOpenAI
-from langchain_huggingface import HuggingFacePipeline, ChatHuggingFace, HuggingFaceEmbeddings
-from langchain_community.chat_models import ChatLlamaCpp
-from langchain_community.llms import Ollama # Example LLM
 
 from backend.services.ai.agents.nas_agent import create_nas_agent
+from backend.services.ai.modlesvc.model_loader import ModelLoader
 from backend.services.ai.tools.image_tools import get_image_tools
 from backend.services.ai.tools.file_tools import get_file_tools
+from backend.services.ai.tools.system_tools import get_system_tools, get_system_stats_summary
 from backend.services.monitoring.prometheus import AI_REQUEST_DURATION # New import for monitoring
 from backend.core import config
 from backend.services.system_service import get_disk_usage
 from backend.services.elasticsearch_service import ElasticsearchService
-
-logger = logging.getLogger(__name__)
-
 class AIEngine:
     _instance = None # Singleton instance
+    
     def __init__(self):
-        # LLM Configuration for Chat Assistant
-        self.provider = config.AI_PROVIDER
-        self.model_name = config.AI_MODEL
-        if not os.path.isabs(self.model_name):
-            self.model_name = os.path.join(config.BASE_DIR, self.model_name)
-            
-        self.api_url = config.AI_API_URL
-        self.api_key = config.AI_API_KEY
-        self.vision_projector = config.AI_VISION_PROJECTOR
-        if not os.path.isabs(self.vision_projector):
-            self.vision_projector = os.path.join(config.BASE_DIR, self.vision_projector)
-        self.nas_data_path = config.NAS_DATA_PATH
-        self.gpu_layers = config.AI_GPU_LAYERS
+        self.logger = logging.getLogger(__name__)
+        # Load Models via specialized service
+        model_loader = ModelLoader()
+        self.llm = model_loader.llm
+        self.vision_model = model_loader.vision_model
+        self.vision_projector = model_loader.vision_projector
+        self.nas_data_path = model_loader.nas_data_path
+        self.api_key = model_loader.api_key
+        self.embeddings = model_loader.embeddings
+        self.blip_processor = model_loader.blip_processor
+        self.blip_model = model_loader.blip_model
 
         # Initialize RAG Components
         self.es_service = ElasticsearchService()
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-mpnet-base-v2",
-            cache_folder=config.HUGGINFACEHUB_CACHE_DIR
-        )
-
-        self.vision_model = None
-
-        if self.provider == "local":
-            if self.model_name.lower().endswith(".gguf"):
-                logger.info(f"Loading local GGUF model ({self.model_name}) with {self.gpu_layers} GPU layers...")
-                self.llm = ChatLlamaCpp(
-                    model_path=self.model_name,
-                    max_tokens=1024,
-                    n_ctx=8192, # Increased for larger directory listings
-                    n_gpu_layers=self.gpu_layers,
-                    f16_kv=True,
-                    verbose=True, # Enables internal llama-cpp hardware logging
-                    streaming=True
-                )
-                self.vision_model = self.llm
-            else:
-                logger.info(f"Loading local LLM model ({self.model_name})...")
-                # Note: Local vision support requires specific VLM models (e.g. Llava)
-                self.llm = ChatHuggingFace(llm=HuggingFacePipeline.from_model_id(
-                    model_id=self.model_name,
-                    task="text-generation",
-                    pipeline_kwargs={"max_new_tokens": 512},
-                    cache_folder=config.HUGGINFACEHUB_CACHE_DIR
-                ))
-        else:
-            self.llm = ChatOpenAI(
-                model=self.model_name,
-                openai_api_key=self.api_key,
-                base_url=self.api_url,
-                streaming=True
-            )
-
-        # Setup Tools and Agent
-        # self.tools = get_nas_tools() # Combined tools
         self.tools = get_image_tools(
             self.nas_data_path, 
-            self.api_key, 
-            projector_path=self.vision_projector
+            self.api_key,
+            blip_processor=self.blip_processor,
+            blip_model=self.blip_model
         ) + get_file_tools(
             self.nas_data_path, 
             es_service=self.es_service, 
             embeddings=self.embeddings
-        )
+        ) + get_system_tools()
         self.agent_executor = create_nas_agent(self.llm, self.tools)
         self._active_requests: Dict[str, asyncio.Event] = {}
 
     def _log_resource_usage(self, request_id: str, phase: str):
         """Logs current CPU and GPU utilization percentages."""
-        stats = []
-        try:
-            import psutil
-            cpu_pct = psutil.cpu_percent(interval=None)
-            mem_pct = psutil.virtual_memory().percent
-            stats.append(f"CPU: {cpu_pct}%")
-            stats.append(f"RAM: {mem_pct}%")
-        except ImportError:
-            stats.append("CPU/RAM: psutil not installed")
-
-        # Add Disk usage monitoring
-        usage = get_disk_usage()
-        if usage:
-            stats.append(f"Disk: {usage['percent_used']}%")
-            if usage['is_critical']: stats.append("(!) DISK CRITICAL")
-
-        # Attempt to get GPU stats via nvidia-smi
-        try: # NVIDIA GPU
-            nvidia_res = subprocess.check_output(
-                ["nvidia-smi", "--query-gpu=utilization.gpu,memory.used", "--format=csv,noheader,nounits"],
-                encoding='utf-8'
-            )
-            nvidia_info = nvidia_res.strip().replace("\n", " | ")
-            stats.append(f"NVIDIA GPU (Util, Mem): {nvidia_info}")
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            # nvidia-smi not found or no NVIDIA GPUs
-            pass
-
-        # Attempt to get AMD GPU stats via rocm-smi
-        try: # AMD GPU
-            # Get GPU utilization
-            roc_gpu_util_res = subprocess.check_output(
-                ["rocm-smi", "--showuse", "--csv"],
-                encoding='utf-8'
-            )
-            gpu_util_pct = "N/A"
-            gpu_util_lines = roc_gpu_util_res.strip().split('\n')
-            if len(gpu_util_lines) > 1:
-                # Skip header, get first GPU's data, GPU% is the last column (index 9)
-                gpu_data = gpu_util_lines[1].split(',')
-                if len(gpu_data) > 9:
-                    gpu_util_pct = gpu_data[9].strip()
-
-            # Get VRAM utilization
-            roc_vram_util_res = subprocess.check_output(
-                ["rocm-smi", "--showmeminfo", "VRAM", "--csv"],
-                encoding='utf-8'
-            )
-            vram_util_pct = "N/A"
-            vram_util_lines = roc_vram_util_res.strip().split('\n')
-            if len(vram_util_lines) > 1:
-                # Skip header, get first GPU's data, VRAM% is the second column (index 1)
-                vram_data = vram_util_lines[1].split(',')
-                if len(vram_data) > 1:
-                    vram_util_pct = vram_data[1].strip()
-
-            if gpu_util_pct != "N/A" or vram_util_pct != "N/A":
-                stats.append(f"AMD GPU (Util: {gpu_util_pct}, VRAM: {vram_util_pct})")
-            else:
-                stats.append("AMD GPU: N/A or no AMD driver")
-
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            # rocm-smi not found or no AMD GPUs
-            pass
-        except Exception as e:
-            logger.warning(f"Error parsing rocm-smi output: {e}")
-            stats.append("AMD GPU: Error parsing output")
-
-        usage_str = " | ".join(stats)
-        logger.info(f"[Request {request_id}] {phase} Usage -> {usage_str}")
+        usage_str = get_system_stats_summary()
+        self.logger.info(f"[Request {request_id}] {phase} Usage -> {usage_str}")
 
     def _get_cancellation_event(self, request_id: str) -> asyncio.Event:
         """Retrieves or creates a cancellation event for a given request ID."""
@@ -173,23 +61,23 @@ class AIEngine:
     def start_request(self, request_id: str):
         """Registers a new request and creates a cancellation event for it."""
         self._active_requests[request_id] = asyncio.Event()
-        logger.info(f"AI request {request_id} started.")
+        self.logger.info(f"AI request {request_id} started.")
 
     def cancel_request(self, request_id: str) -> bool:
         """Sets the cancellation event for a specific request."""
         event = self._active_requests.get(request_id)
         if event:
             event.set()
-            logger.info(f"AI request {request_id} cancellation requested.")
+            self.logger.info(f"AI request {request_id} cancellation requested.")
             return True
-        logger.warning(f"AI request {request_id} not found for cancellation.")
+        self.logger.warning(f"AI request {request_id} not found for cancellation.")
         return False
 
     def end_request(self, request_id: str):
         """Cleans up the cancellation event for a completed or cancelled request."""
         if request_id in self._active_requests:
             del self._active_requests[request_id]
-            logger.info(f"AI request {request_id} ended and cleaned up.")
+            self.logger.info(f"AI request {request_id} ended and cleaned up.")
 
     # Singleton pattern
     def __new__(cls):
@@ -213,7 +101,7 @@ class AIEngine:
             # Parse the comma-separated string returned by the VLM into a list
             return [t.strip() for t in result.split(",") if t.strip()]
         except Exception as e:
-            logger.error("AI tag generation failed: %s", e)
+            self.logger.error("AI tag generation failed: %s", e)
             return ["unclassified"]
 
     async def chat(self, text: str, filenames: List[str], request_id: str) -> str:
@@ -239,10 +127,10 @@ class AIEngine:
                 final_message = result["messages"][-1]
                 return final_message.content if hasattr(final_message, 'content') else str(final_message)
             except asyncio.CancelledError:
-                logger.info(f"AI chat request {request_id} was cancelled.")
+                self.logger.info(f"AI chat request {request_id} was cancelled.")
                 raise
             except Exception as e:
-                logger.error("Chat generation failed: %s", e)
+                self.logger.error("Chat generation failed: %s", e)
                 return "I encountered an error while processing your request."
 
     async def chat_stream(self, text: str, filenames: List[str], request_id: str) -> AsyncGenerator[str, None]:
@@ -264,7 +152,7 @@ class AIEngine:
                 # Use astream_events (v2) to capture internal LLM tokens in real-time
                 async for event in self.agent_executor.astream_events(initial_state, version="v2"):
                     if cancellation_event.is_set():
-                        logger.info(f"AI request {request_id} cancelled during stream processing.")
+                        self.logger.info(f"AI request {request_id} cancelled during stream processing.")
                         raise asyncio.CancelledError("AI chat stream request cancelled.")
 
                     if event["event"] == "on_chat_model_stream":
@@ -284,8 +172,8 @@ class AIEngine:
 
                 self._log_resource_usage(request_id, "STREAM_END")
             except asyncio.CancelledError:
-                logger.info(f"AI chat stream request {request_id} was cancelled.")
+                self.logger.info(f"AI chat stream request {request_id} was cancelled.")
                 raise
             except Exception as e:
-                logger.error("Stream generation failed: %s", e)
+                self.logger.error("Stream generation failed: %s", e)
                 yield "Error during streaming response."

@@ -1,0 +1,21 @@
+# AI-NAS Configuration File
+# Values defined here take precedence over Environment Variables.
+
+# Server Settings
+# AINAS_ADDR: "0.0.0.0"
+# AINAS_PORT: 9026
+
+# AI Settings
+# AINAS_ENABLE_AI: true
+# AINAS_AI_CHAT_MODEL: "services/ai/models/Qwen3-0.6B-Q8_0.gguf"
+# AINAS_AI_VISION_MODEL: "Salesforce/blip-image-captioning-base"
+# AINAS_AI_IMAGE_GEN_MODEL: "dall-e-3"
+# AINAS_EMBEDDING_MODEL: "sentence-transformers/all-mpnet-base-v2"
+# AI_GPU_LAYERS: 32
+
+# Storage Settings
+# AINAS_STORAGE_PATH: "/path/to/your/storage"
+
+# Logging
+# AINAS_LOG_FILE: "../logs/backend.log"
+# AINAS_LOG_LEVEL: "INFO"

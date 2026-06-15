@@ -1,6 +1,6 @@
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
     container_name: ainas-elasticsearch
     environment:
       - node.name=elasticsearch
@@ -29,7 +29,7 @@ services:
     restart: always
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    image: docker.elastic.co/kibana/kibana:9.4.2
     container_name: ainas-kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200

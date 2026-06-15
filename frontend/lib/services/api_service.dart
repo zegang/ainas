@@ -24,7 +24,7 @@ class ApiService with ChangeNotifier {
   final _log = Logger('ApiService');
 
   // Shared state: Default values synchronized with bootstrap.sh via dart-define
-  String baseUrl = 'http://${const String.fromEnvironment('NAS_HOST', defaultValue: 'localhost')}:${const String.fromEnvironment('NAS_PORT', defaultValue: '9026')}';
+  String baseUrl = 'http://${const String.fromEnvironment('AINAS_ADDR', defaultValue: 'localhost')}:${const String.fromEnvironment('AINAS_PORT', defaultValue: '9026')}';
   static const String _baseUrlKey = 'nas_base_url';
   static const String _localeKey = 'nas_locale';
   static const String _themeModeKey = 'nas_theme_mode';
@@ -34,6 +34,7 @@ class ApiService with ChangeNotifier {
   final List<UploadTask> uploads = [];
   
   bool isServerConnected = false;
+  String aiStatus = 'disabled'; // 'disabled', 'initializing', 'ready'
   double storagePercent = 0.0; // 0.0 to 1.0
   String storageLabel = "Loading...";
 
@@ -132,14 +133,24 @@ class ApiService with ChangeNotifier {
 
   /// Verifies connectivity to the backend by calling the status endpoint.
   Future<bool> checkStatus([String? overrideUrl]) async {
-    final connected = await ConnectionHelper.checkStatus(overrideUrl ?? baseUrl);
+    final targetUrl = overrideUrl ?? baseUrl;
+    bool connected = false;
+    
+    try {
+      final response = await http.get(Uri.parse('$targetUrl/api/status')).timeout(const Duration(seconds: 3));
+      if (response.statusCode == 200) {
+        connected = true;
+        final data = json.decode(response.body);
+        aiStatus = data['ai_status'] ?? (data['ai_enabled'] == true ? 'ready' : 'disabled');
+      }
+    } catch (e) {
+      _log.warning('Status check failed: $e');
+      connected = false;
+      aiStatus = 'disabled';
+    }
+
     if (overrideUrl == null || overrideUrl == baseUrl) {
       isServerConnected = connected;
-      // Placeholder for storage info - in production, this would come from a backend API
-      if (connected) {
-        storagePercent = 0.65; 
-        storageLabel = "650 GB / 1 TB";
-      }
       notifyListeners();
     }
     return connected;

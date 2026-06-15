@@ -8,13 +8,11 @@ from langchain_core.messages import SystemMessage, AIMessage, AIMessageChunk, Ba
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
 from backend.services.monitoring.prometheus import TrackNodeTime, AI_AGENT_ITERATIONS_PER_REQUEST, AI_TOOL_CALL_TOTAL, AI_TOOL_DURATION
-
-logger = logging.getLogger(__name__)
-
 def create_nas_agent(llm, tools):
     llm_with_tools = llm.bind_tools(tools)
 
     async def call_agent(state: dict): # State is a dict
+        logger = logging.getLogger(__name__)
         with TrackNodeTime("agent"):
             logger.info("--- Entering Node: 'agent' ---")
             
@@ -72,8 +70,8 @@ def create_nas_agent(llm, tools):
         # Fallback mechanism: Manually parse tool calls from content if structured tool_calls are missing
         if not (hasattr(responds, "tool_calls") and responds.tool_calls) and responds.content and "<tool_call>" in responds.content:
             logger.info("Structured tool_calls missing. Attempting manual parse from content tags.")
-            # Regex to capture JSON content inside <tool_call> tags
-            tool_call_regex = r"<tool_call>\s*(.*?)\s*</tool_call>"
+            # Regex to capture JSON content inside <tool_call> tags, allowing for unclosed tags at the end of the string
+            tool_call_regex = r"<tool_call>\s*(.*?)(?:\s*</tool_call>|$)"
             matches = re.findall(tool_call_regex, responds.content, re.DOTALL)
             
             manual_calls = []
@@ -116,8 +114,8 @@ def create_nas_agent(llm, tools):
             
             if manual_calls:
                 responds.tool_calls = manual_calls
-                # Remove the parsed tool calls from the content to avoid displaying raw tags to the user
-                responds.content = re.sub(tool_call_regex, "", responds.content, flags=re.DOTALL).strip()
+                # Remove the tool call tags and content from the message content to prevent showing raw tags
+                responds.content = re.sub(r"<tool_call>.*?(?:</tool_call>|$)", "", responds.content, flags=re.DOTALL).strip()
                 logger.info("Successfully recovered %d tool calls from content tags.", len(manual_calls))
 
         if hasattr(responds, "tool_calls") and responds.tool_calls:
@@ -132,6 +130,7 @@ def create_nas_agent(llm, tools):
         return {"messages": [responds]}
 
     async def call_tools_node(state: dict): # State is a dict
+        logger = logging.getLogger(__name__)
         with TrackNodeTime("tools"):
             logger.info("--- Entering Node: 'tools' ---")
             

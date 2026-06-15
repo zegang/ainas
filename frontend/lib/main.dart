@@ -105,6 +105,32 @@ class _MainShellState extends State<MainShell> {
 
   void _syncNasStatus() => ApiService().checkStatus();
 
+  String _getAiStatusLabel(String status) {
+    switch (status) {
+      case 'ready':
+        return "AI Ready";
+      case 'initializing':
+        return "AI Not Ready - Initializing";
+      case 'disabled':
+        return "AI Disabled";
+      default:
+        return "AI Enabled";
+    }
+  }
+
+  String _getAiStatusTooltip(String status) {
+    switch (status) {
+      case 'ready':
+        return "The AI system is fully operational and ready to process your files.";
+      case 'initializing':
+        return "The AI engine is currently loading neural models. This usually takes 30-60 seconds depending on server hardware.";
+      case 'disabled':
+        return "AI features are currently turned off in the backend configuration or the necessary models are missing.";
+      default:
+        return "The AI system is active but its full capabilities are still being verified.";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -125,6 +151,29 @@ class _MainShellState extends State<MainShell> {
             ],
           ),
           actions: [
+            // AI Status Widget
+            if (api.isServerConnected && !isMobile) ...[
+              Tooltip(
+                message: _getAiStatusTooltip(api.aiStatus),
+                child: Row(
+                  children: [
+                    Icon(
+                      api.aiStatus == 'ready' ? Icons.auto_awesome : Icons.psychology,
+                      size: 16,
+                      color: api.aiStatus == 'ready' 
+                          ? themeExt.successColor 
+                          : (api.aiStatus == 'initializing' ? Colors.orange : Colors.grey),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _getAiStatusLabel(api.aiStatus),
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+            ],
             // Storage Usage Widget
             if (!isMobile) ...[
               Column(

@@ -1,6 +1,8 @@
 import os
 import logging
+import asyncio
 import uvicorn
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,36 +10,6 @@ from fastapi.responses import RedirectResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from backend.core import config
-
-# Configure logging immediately after setting BASE_DIR and loading environment variables,
-# and before any other modules that might use logging are imported.
-log_format = "%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
-log_dir = os.path.join(config.BASE_DIR, "../logs")
-os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, "backend.log")
-
-# Determine logging level from environment variable
-log_level_str = config.LOG_LEVEL
-log_level = logging.INFO # Default
-if log_level_str == "DEBUG":
-    log_level = logging.DEBUG
-elif log_level_str == "WARNING":
-    log_level = logging.WARNING
-elif log_level_str == "ERROR":
-    log_level = logging.ERROR
-elif log_level_str == "CRITICAL":
-    log_level = logging.CRITICAL
-
-logging.basicConfig(
-    level=log_level,
-    format=log_format,
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__) # Get logger for main module after basicConfig
-
 from backend.net.discovery import NASDiscovery
 from backend.api.api import router as api_router
 from backend.services.ai.ai_engine import AIEngine
@@ -45,13 +17,24 @@ from backend.services.elasticsearch_service import ElasticsearchService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    discovery = NASDiscovery(host=config.NAS_ADVERTISE_ADDR, port=config.NAS_PORT)
+    discovery = NASDiscovery(host=config.AINAS_ADVERTISE_ADDR, port=config.AINAS_PORT)
 
     startup_logger = logging.getLogger(__name__)
-    startup_logger.info("AI-NAS starting... AI Features: %s", "Enabled" if config.ENABLE_AI else "Disabled")
+    startup_logger.info("AI-NAS starting... AI Features: %s", "Enabled" if config.AINAS_ENABLE_AI else "Disabled")
     await discovery.register()
-    if config.ENABLE_AI: # This is where AIEngine is instantiated
-        app.state.ai = AIEngine()
+
+    if config.AINAS_ENABLE_AI:
+        async def _load_ai_engine():
+            try:
+                # Move heavy model loading/downloading to a separate thread 
+                # to keep the application responsive during startup.
+                app.state.ai = await asyncio.to_thread(AIEngine)
+                startup_logger.info("AI Engine background initialization (pre-warming) complete.")
+            except Exception as e:
+                startup_logger.error(f"AI Engine background initialization failed: {e}")
+
+        # Start loading AI models without blocking the server startup
+        asyncio.create_task(_load_ai_engine())
     
     # Initialize and verify Elasticsearch
     es_service = ElasticsearchService()
@@ -89,8 +72,10 @@ def create_app() -> FastAPI:
     Instrumentator().instrument(app).expose(app)
     return app
 
+# Initialize configuration explicitly with the backend directory
+config.initialize(Path(__file__).resolve().parent)
+logger = logging.getLogger(__name__)
 app = create_app()
 
 if __name__ == "__main__":
-    logger.info(f'AI NAS Backend Base Dir: {config.BASE_DIR}')
-    uvicorn.run(app, host=config.NAS_HOST, port=config.NAS_PORT)
+    uvicorn.run(app, host=config.AINAS_ADDR, port=config.AINAS_PORT)
