@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
                 startup_logger.error(f"AI Engine background initialization failed: {e}")
 
         # Start loading AI models without blocking the server startup
+        startup_logger.info("AI Engine background initialization starting...")
         asyncio.create_task(_load_ai_engine())
     
     # Initialize and verify Elasticsearch

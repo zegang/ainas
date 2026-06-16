@@ -5,6 +5,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/themes/app_theme.dart';
 import '../../../../services/api_service.dart';
 import '../../../../shared/models/file_item.dart';
+import 'file_action_menu.dart';
 
 class FileListView extends StatelessWidget {
   final List<FileItem> items;
@@ -166,25 +167,11 @@ class FileListView extends StatelessWidget {
             Expanded(flex: 1, child: Text(item.isDir ? "---" : _formatSize(item.size), style: const TextStyle(fontSize: 13))),
             Expanded(flex: 1, child: Text(typeStr, style: const TextStyle(fontSize: 13, color: Colors.grey))),
             Expanded(flex: 2, child: Text(dateStr, style: const TextStyle(fontSize: 13, color: Colors.grey))),
-            _buildPopupMenu(item),
+            FileActionMenu(item: item, onActionSelected: onActionSelected),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPopupMenu(FileItem item) {
-    return PopupMenuButton<String>(
-      onSelected: (value) => onActionSelected(value, item),
-      itemBuilder: (context) {
-        final l10n = AppLocalizations.of(context)!;
-        return [
-          PopupMenuItem(value: 'rename', child: Text(l10n.renameAction)),
-          PopupMenuItem(value: 'move', child: Text(l10n.moveAction)),
-          PopupMenuItem(value: 'attach', child: Text(l10n.attachToAiAction)),
-          PopupMenuItem(value: 'delete', child: Text(l10n.deleteAction)),
-        ];
-      },
-    );
-  }
 }

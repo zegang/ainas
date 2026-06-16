@@ -264,11 +264,12 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
     final List<Widget> blocks = [];
     final String fullText = message.text;
 
-    // Regex for blocks that might be unclosed during streaming
-    // Matches <tag>content</tag> OR <tag>content (at end of string)
-    final thinkRegExp = RegExp(r'<think>([\s\S]*?)(?:</think>|$)');
-    final toolRegExp = RegExp(r'<tool_call>([\s\S]*?)(?:</tool_call>|$)');
-    final toolResultRegExp = RegExp(r'<tool_result>([\s\S]*?)(?:</tool_result>|$)');
+    // Regex for blocks that might be unclosed during streaming.
+    // We use lookaheads to prevent a block from swallowing subsequent tags 
+    // if the model forgets a closing tag or is still streaming.
+    final thinkRegExp = RegExp(r'<think>([\s\S]*?)(?:</think>|(?=<tool_call>|<tool_result>|<think>)|$)');
+    final toolRegExp = RegExp(r'<tool_call>([\s\S]*?)(?:</tool_call>|(?=<think>|<tool_result>|<tool_call>)|$)');
+    final toolResultRegExp = RegExp(r'<tool_result>([\s\S]*?)(?:</tool_result>|(?=<think>|<tool_call>|<tool_result>)|$)');
 
     // Collect all potential matches and their types
     final List<Map<String, dynamic>> allMatches = [];
@@ -301,17 +302,21 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
 
       final content = m.group(1)?.trim() ?? "";
       final String tagText = m.group(0) ?? "";
+      
+      // A block is "complete" if it has its explicit closing tag 
+      // OR if the stream has moved on (the match doesn't end at the string's current end).
+      final bool isActuallyAtEnd = m.end == fullText.length;
 
       if (item['type'] == 'think') {
-        final isComplete = tagText.contains('</think>');
+        final isComplete = tagText.contains('</think>') || !isActuallyAtEnd;
         if (content.isNotEmpty || !isComplete) {
           blocks.add(_buildThinkingBlock(context, content, isComplete: isComplete));
         }
       } else if (item['type'] == 'tool') {
-        final isComplete = tagText.contains('</tool_call>');
+        final isComplete = tagText.contains('</tool_call>') || !isActuallyAtEnd;
         blocks.add(_buildToolCallBlock(context, content, isComplete: isComplete));
       } else if (item['type'] == 'result') {
-        final isComplete = tagText.contains('</tool_result>');
+        final isComplete = tagText.contains('</tool_result>') || !isActuallyAtEnd;
         blocks.add(_buildToolResultBlock(context, content, isComplete: isComplete));
       }
       
@@ -603,6 +608,16 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   }
 
   Widget _buildToolResultBlock(BuildContext context, String content, {required bool isComplete}) {
+    String displayContent = content;
+    String? duration;
+
+    // Parse duration if present (e.g., "[0.52s] Tool 'name' result: ...")
+    final durationMatch = RegExp(r'\[([\d\.]+)s\]').firstMatch(content);
+    if (durationMatch != null) {
+      duration = durationMatch.group(1);
+      displayContent = content.substring(durationMatch.end).trim();
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8, left: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -620,7 +635,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
               Icon(Icons.assignment_turned_in_outlined, size: 16, color: Theme.of(context).colorScheme.secondary),
               const SizedBox(width: 8),
               Text(
-                "Tool Result",
+                duration != null ? "Tool Result (${duration}s)" : "Tool Result",
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -631,7 +646,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
           ),
           const SizedBox(height: 4),
           Text(
-            content,
+            displayContent,
             style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         ],

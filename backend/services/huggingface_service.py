@@ -48,12 +48,32 @@ class HuggingFaceService:
         except Exception as e:
             logger.error("Failed to list local models in %s: %s", self.models_dir, e)
             raise
+    
+    def is_model_downloaded(self, repo_id: str, filename: str) -> bool:
+        """
+        Checks if a specific model file from a Hugging Face repository 
+        is already present and valid in the local storage.
+        """
+        # Models are stored in the path defined in config
+        target_path = os.path.join(config.AINAS_MODEL_PATH, filename)
+        
+        if os.path.exists(target_path):
+            # Ensure the file is not empty (e.g., from a failed previous attempt)
+            return os.path.getsize(target_path) > 0
+        return False
 
     def download_model(self, repo_id: str, filename: str) -> str:
         """
-        Downloads a specific model file from a repository into the configured HF cache directory.
+        Downloads a specific model file from a repository into the configured HF cache directory if not already present.
         """
         logger = logging.getLogger(__name__)
+        if self.is_model_downloaded(repo_id, filename):
+            target_path = os.path.join(config.AINAS_MODEL_PATH, filename)
+            logging.getLogger(__name__).info(
+                f"Model {filename} already exists at {target_path}. Skipping download."
+            )
+            return target_path
+
         try:
             logger.info("Downloading %s from %s into %s...", filename, repo_id, self.cache_dir)
             
@@ -88,7 +108,7 @@ class HuggingFaceService:
         logger = logging.getLogger(__name__)
         try:
             repo_path = os.path.join(self.cache_dir, "repos", repo_id.replace("/", "--"))
-            logger.info("Ensuring snapshot for %s in %s...", repo_id, repo_path)
+            logger.info("Downloading snapshot for %s in %s...", repo_id, repo_path)
             return snapshot_download(
                 repo_id=repo_id,
                 local_dir=repo_path,

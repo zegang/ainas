@@ -15,7 +15,7 @@ class HttpChatRepository implements ChatRepository {
   @override
   Future<ChatMessage> sendMessage(String text, {List<String>? files}) async {
     final response = await _client.post(
-      Uri.parse('$baseUrl/ai/chat'),
+      Uri.parse('$baseUrl/api/ai/chat'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'text': text,
@@ -40,7 +40,7 @@ class HttpChatRepository implements ChatRepository {
     };
     final request = http.Request(
       'GET',
-      Uri.parse('$baseUrl/ai/chat/stream').replace(queryParameters: queryParams),
+      Uri.parse('$baseUrl/api/ai/chat/stream').replace(queryParameters: queryParams),
     );
 
     final response = await _client.send(request);

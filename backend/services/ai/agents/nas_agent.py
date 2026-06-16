@@ -8,145 +8,173 @@ from langchain_core.messages import SystemMessage, AIMessage, AIMessageChunk, Ba
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
 from backend.services.monitoring.prometheus import TrackNodeTime, AI_AGENT_ITERATIONS_PER_REQUEST, AI_TOOL_CALL_TOTAL, AI_TOOL_DURATION
+
+def _get_system_message(tools: list) -> SystemMessage:
+    """Constructs the primary system instructions for the NAS AI Assistant."""
+    tool_desc = "\n".join([f"- {t.name}: {t.description}" for t in tools])
+    return SystemMessage(content=(
+        f"You are a NAS AI Assistant. You have access to the following tools:\n{tool_desc}\n\n"
+        "STRICT RULES:\n"
+        "1. Filenames in [Attached files] are wrapped in quotes. Use the EXACT filename string for tool arguments.\n"
+        "2. To call a tool, you MUST use: <tool_call>{\"name\": \"tool_name\", \"args\": {...}}</tool_call>\n"
+        "3. For images (PNG, JPG, JPEG, WEBP, etc.), you MUST use the 'explain_image' tool to see or analyze the content.\n"
+        "4. For documents (PDF, DOCX, TXT, MD, etc.), you MUST use the 'query_documents' tool to search and retrieve text content.\n"
+        "4. Once a tool provides the requested info, STOP and provide the final answer.\n"
+        "5. DO NOT perform extra unrequested actions or call unrelated tools.\n"
+        "6. If the ACTUAL CONTENT or ANSWER is already in chat history, do NOT call tools again.\n"
+        "7. A filename in '[Attached files]' is just a pointer. It is NOT the content itself. You MUST query the tool to read it."
+    ))
+
+def _parse_manual_tool_calls(response_message: AIMessage, history: list) -> None:
+    """
+    Parses raw <tool_call> tags from message content if structured tool_calls are missing.
+    Updates the message object in-place.
+    """
+    logger = logging.getLogger(__name__)
+    if not response_message.content or "<tool_call>" not in response_message.content:
+        return
+
+    logger.info("Structured tool_calls missing. Attempting manual parse from content tags.")
+    tool_call_regex = r"<tool_call>\s*(.*?)(?:\s*</tool_call>|$)"
+    matches = re.findall(tool_call_regex, response_message.content, re.DOTALL)
+    
+    manual_calls = []
+    for m in matches:
+        try:
+            cleaned_json = m.strip()
+            # Remove unbalanced trailing braces
+            while cleaned_json.count('{') < cleaned_json.count('}') and cleaned_json.endswith('}'):
+                cleaned_json = cleaned_json[:-1].strip()
+            
+            data = json.loads(cleaned_json)
+            t_name = data.get("name")
+            t_args = data.get("arguments", data.get("args", {}))
+            
+            if not t_name:
+                continue
+
+            # Redundancy check
+            if any(isinstance(msg, AIMessage) and hasattr(msg, 'tool_calls') and 
+                   any(tc['name'] == t_name and tc['args'] == t_args for tc in msg.tool_calls) 
+                   for msg in history):
+                logger.warning("Agent attempted redundant tool call for '%s'. Ignoring.", t_name)
+                continue
+
+            manual_calls.append({
+                "name": t_name,
+                "args": t_args,
+                "id": f"call_{uuid.uuid4().hex[:12]}",
+                "type": "tool_call"
+            })
+        except Exception as e:
+            logger.warning("Manual tool call parsing failed: %s", e)
+    
+    if manual_calls:
+        if not hasattr(response_message, "tool_calls") or response_message.tool_calls is None:
+            response_message.tool_calls = []
+        response_message.tool_calls.extend(manual_calls)
+        response_message.content = re.sub(r"<tool_call>.*?(?:</tool_call>|$)", "", response_message.content, flags=re.DOTALL).strip()
+        logger.info("Recovered %d tool calls from tags.", len(manual_calls))
+
 def create_nas_agent(llm, tools):
     llm_with_tools = llm.bind_tools(tools)
 
-    async def call_agent(state: dict): # State is a dict
+    async def call_agent(state: dict):
         logger = logging.getLogger(__name__)
         with TrackNodeTime("agent"):
             logger.info("--- Entering Node: 'agent' ---")
             
-            # Check for cancellation at the start of the node
             if state.get('cancellation_event') and state['cancellation_event'].is_set():
-                logger.info("Agent node: Cancellation event detected.")
                 raise asyncio.CancelledError("Agent processing cancelled.")
 
-            state.setdefault('iterations', 0)
-            # Safety guard: prevent the agent from looping indefinitely
-            if state['iterations'] >= 8:
+            messages = state.get('messages', [])
+            iterations = state.get('iterations', 0) + 1
+            
+            if iterations > 8:
                 logger.warning("Agent reached maximum iterations (8). Terminating loop.")
                 return {"messages": [AIMessage(content="I've reached my maximum reasoning steps for this request. Please try being more specific.")]}
             
-            state['iterations'] += 1
-            
-            # Generate a detailed list of tool capabilities for the LLM
-            tool_desc = "\n".join([f"- {t.name}: {t.description}" for t in tools])
-            
-            sys_msg = SystemMessage(content=(
-                f"You are a NAS AI Assistant. You have access to the following tools:\n{tool_desc}\n\n"
-                "STRICT RULES:\n"
-                "1. Filenames in [Attached files] are wrapped in quotes. Use the EXACT filename string for tool arguments.\n"
-                "2. To call a tool, you MUST use: <tool_call>{\"name\": \"tool_name\", \"args\": {...}}</tool_call>\n"
-                "3. For questions about the content of PDF, DOCX, or text files, use the 'query_documents' tool.\n"
-                "4. Once a tool provides the requested info, STOP and provide the final answer.\n"
-                "5. DO NOT perform extra unrequested actions or call unrelated tools.\n"
-                "6. If you already have the data in chat history, do NOT call tools again."
-            ))
-            
-            # Prepare LLM input. If we just received a tool result, add a Completion Nudge.
-            llm_input = [sys_msg] + state['messages']
-            if state['messages'] and isinstance(state['messages'][-1], ToolMessage):
-                logger.debug(f"Agent received ToolMessage: {state['messages'][-1].content}")
-                # Use a specific instruction prefix that signals the end of action-taking
-                llm_input.append(HumanMessage(content="[INSTRUCTION] You have received the tool data. Do not call any more tools. Summarize the information and provide your final response to the user now."))
+            # logic: First enter vs Re-entry
+            has_system_msg = any(isinstance(m, SystemMessage) for m in messages)
+            if not has_system_msg:
+                logger.info("First entry: Preparing SystemMessage.")
+                
+                # Nudge the agent if files are attached but no tool has been called yet
+                if state.get('filenames'):
+                    logger.info("Files attached. Determining specific tool instructions.")
+                    filenames = state['filenames']
+                    images = [f for f in filenames if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'))]
+                    docs = [f for f in filenames if f.lower().endswith(('.pdf', '.docx', '.txt', '.md', '.log'))]
+                    
+                    nudges = []
+                    if images:
+                        logger.info("To use 'explain_iamge' to analyze visual content of: %s", ', '.join(images))
+                        nudges.append(f"Use 'explain_image' to analyze visual content of: {', '.join(images)}.")
+                    if docs:
+                        logger.info("To use 'query_documents' to retrieve text from: %s", ', '.join(docs))
+                        nudges.append(f"Use 'query_documents' to retrieve text from: {', '.join(docs)}.")
+                    
+                    if nudges:
+                        messages[-1].content += f"\n\n[MANDATORY] You only have filenames. {' '.join(nudges)}"
+                
+                messages = [_get_system_message(tools)] + messages
+            else:
+                logger.info("Re-entry: SystemMessage already present in history.")
 
-            # Use llm_with_tools.astream instead of invoke for streaming capabilities
+            # Prepare LLM Input
+            llm_input = messages
+            last_msg = messages[-1] if messages else None
+            
+            # Parse and deal with tool responds: provide a nudge if we just received data
+            if isinstance(last_msg, ToolMessage):
+                logger.debug("Parsing tool response: Providing completion nudge to LLM.")
+                llm_input = messages + [HumanMessage(content="[INSTRUCTION] You have received the tool data. Do not call any more tools. Summarize the information and provide your final response to the user now.")]
+            
             full_response = None
             async for chunk in llm_with_tools.astream(llm_input):
-                # Check for cancellation during streaming
                 if state.get('cancellation_event') and state['cancellation_event'].is_set():
-                    logger.info("Agent node: Cancellation event detected during LLM stream.")
                     raise asyncio.CancelledError("Agent LLM stream cancelled.")
                 
-                # Defensive check: only merge if chunk is a valid message type
                 if isinstance(chunk, BaseMessage):
                     if full_response is None:
                         full_response = chunk
                     else:
                         full_response += chunk
             
-            responds = full_response or AIMessage(content="")
+            response = full_response or AIMessage(content="")
         
-        # Fallback mechanism: Manually parse tool calls from content if structured tool_calls are missing
-        if not (hasattr(responds, "tool_calls") and responds.tool_calls) and responds.content and "<tool_call>" in responds.content:
-            logger.info("Structured tool_calls missing. Attempting manual parse from content tags.")
-            # Regex to capture JSON content inside <tool_call> tags, allowing for unclosed tags at the end of the string
-            tool_call_regex = r"<tool_call>\s*(.*?)(?:\s*</tool_call>|$)"
-            matches = re.findall(tool_call_regex, responds.content, re.DOTALL)
-            
-            manual_calls = []
-            for m in matches:
-                try:
-                    # Clean common artifacts (extra braces, triple braces, etc.)
-                    cleaned_json = m.strip()
-                    # Iteratively remove unbalanced trailing braces instead of all of them
-                    while cleaned_json.count('{') < cleaned_json.count('}') and cleaned_json.endswith('}'):
-                        cleaned_json = cleaned_json[:-1].strip()
-                    
-                    data = json.loads(cleaned_json)
-                    t_name = data.get("name")
-                    t_args = data.get("arguments", data.get("args", {}))
-                    
-                    if not t_name:
-                        continue
+        # Handle potential manual tool calls in content
+        if not (hasattr(response, "tool_calls") and response.tool_calls):
+            _parse_manual_tool_calls(response, messages)
 
-                    # Logic to "take care" of redundant calls:
-                    # Check if this exact tool has already been called in the history
-                    already_called = False
-                    for msg in state['messages']:
-                        if isinstance(msg, AIMessage) and hasattr(msg, 'tool_calls'):
-                            if any(tc['name'] == t_name and tc['args'] == t_args for tc in msg.tool_calls):
-                                already_called = True
-                                break
-                    
-                    if already_called:
-                        logger.warning("Agent attempted redundant tool call for '%s'. Ignoring to break loop.", t_name)
-                        continue
-
-                    manual_calls.append({
-                        "name": t_name,
-                        "args": t_args,
-                        "id": f"call_{uuid.uuid4().hex[:12]}", # Required for ToolNode execution
-                        "type": "tool_call"
-                    })
-                except Exception as e:
-                    logger.warning("Manual tool call parsing failed for: %s. Error: %s", m, e)
-            
-            if manual_calls:
-                responds.tool_calls = manual_calls
-                # Remove the tool call tags and content from the message content to prevent showing raw tags
-                responds.content = re.sub(r"<tool_call>.*?(?:</tool_call>|$)", "", responds.content, flags=re.DOTALL).strip()
-                logger.info("Successfully recovered %d tool calls from content tags.", len(manual_calls))
-
-        if hasattr(responds, "tool_calls") and responds.tool_calls:
-            for tool_call in responds.tool_calls:
+        if hasattr(response, "tool_calls") and response.tool_calls:
+            for tool_call in response.tool_calls:
                 logger.info("Agent requesting tool: %s with args: %s", tool_call['name'], tool_call['args'])
                 AI_TOOL_CALL_TOTAL.labels(tool_name=tool_call['name']).inc()
         else:
-            logger.info("Agent final response: %s", responds.content)
-            # Record final iteration count when agent finishes
-            AI_AGENT_ITERATIONS_PER_REQUEST.observe(state.get('iterations', 1))
+            logger.info("Agent final response: %s", response.content)
+            AI_AGENT_ITERATIONS_PER_REQUEST.observe(iterations)
             
-        return {"messages": [responds]}
+        return {
+            "messages": messages + [response],
+            "iterations": iterations
+        }
 
-    async def call_tools_node(state: dict): # State is a dict
+    async def call_tools_node(state: dict):
         logger = logging.getLogger(__name__)
         with TrackNodeTime("tools"):
             logger.info("--- Entering Node: 'tools' ---")
             
-            # Check for cancellation at the start of the node
             if state.get('cancellation_event') and state['cancellation_event'].is_set():
-                logger.info("Tools node: Cancellation event detected.")
                 raise asyncio.CancelledError("Tools processing cancelled.")
 
             tool_node = ToolNode(tools)
-            # Use ainvoke to support both sync and async tools efficiently
             result = await tool_node.ainvoke(state)
             
             if state.get('cancellation_event') and state['cancellation_event'].is_set():
-                logger.info("Tools node: Cancellation event detected after tool invocation.")
                 raise asyncio.CancelledError("Tools processing cancelled.")
-            
+
+            logger.info("Tools result: %s", result)
             return result
 
     # LangGraph's StateGraph can work with a simple dict for state.

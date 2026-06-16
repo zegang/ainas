@@ -132,4 +132,55 @@ def get_file_tools(storage_path: str, es_service=None, embeddings=None):
         except Exception as e:
             return f"Failed to query documents: {str(e)}"
 
-    return [list_files, search_files, get_storage_status, query_documents]
+    @tool
+    async def summarize_indexed_documents() -> str:
+        """
+        Provides a summary of all documents currently indexed in the RAG system (Elasticsearch).
+        Returns the total count and a list of filenames. 
+        Use this to see what files the AI has 'read' and can answer questions about.
+        """
+        if not es_service:
+            return "Error: Document search service is not available."
+
+        try:
+            summary = await es_service.get_index_summary()
+            if "error" in summary:
+                return f"Error retrieving summary: {summary['error']}"
+
+            total = summary["total_documents"]
+            docs = summary["documents"]
+
+            if total == 0:
+                return "The search index is currently empty. No documents have been indexed yet."
+
+            result = f"The AI has indexed a total of {total} documents.\n\n"
+            result += "Recently indexed files:\n"
+            for doc in docs[:15]:  # Show a concise list of 15
+                result += f"- {doc['filename']} (Path: {doc['path']})\n"
+            
+            if total > 15:
+                result += f"\n... and {total - 15} more items."
+            return result
+        except Exception as e:
+            return f"Failed to summarize indexed documents: {str(e)}"
+
+    @tool
+    async def delete_indexed_document(path: str) -> str:
+        """
+        Removes a specific document from the AI's search index (Elasticsearch).
+        Use this when a file is physically deleted or should be forgotten by the RAG system.
+        The path must be the exact relative path as stored in the index (e.g., 'folder/report.pdf').
+        """
+        if not es_service:
+            return "Error: Document search service (Elasticsearch) is not available."
+
+        try:
+            deleted_count = await es_service.delete_document(path)
+            if deleted_count > 0:
+                return f"Successfully deleted '{path}' from the search index ({deleted_count} entries removed)."
+            else:
+                return f"Document with path '{path}' was not found in the search index."
+        except Exception as e:
+            return f"Error during document deletion from index: {str(e)}"
+
+    return [list_files, search_files, get_storage_status, query_documents, summarize_indexed_documents, delete_indexed_document]

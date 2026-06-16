@@ -45,14 +45,19 @@ class ElasticsearchService:
         except Exception as e:
             self.logger.error(f"Failed to create Elasticsearch index: {e}")
 
-    async def index_file(self, filename: str, path: str, tags: List[str], content: str = "", embedding: Optional[List[float]] = None):
+    async def index_file(self, filename: str, path: str, tags: List[str],
+                         content: str = "", embedding: Optional[List[float]] = None,
+                         created_at = None, updated_at = None):
         """Indexes file metadata and optional vector embeddings."""
+        from datetime import datetime
+        now = datetime.now().isoformat()
         doc = {
             "filename": filename,
             "path": path,
             "tags": tags,
             "content": content,
-            "created_at": "now"
+            "created_at": created_at or now,
+            "updated_at": updated_at or now
         }
         if embedding:
             doc["vector_embedding"] = embedding
@@ -62,6 +67,28 @@ class ElasticsearchService:
             self.logger.info(f"File '{filename}' indexed in Elasticsearch.")
         except Exception as e:
             self.logger.error(f"Failed to index file in Elasticsearch: {e}")
+
+    async def get_index_summary(self) -> Dict[str, Any]:
+        """Returns a summary of all indexed documents including total count and a sample of files."""
+        try:
+            # Get total document count
+            count_resp = await self.client.count(index=self.index_name)
+            total = count_resp.get("count", 0)
+
+            # Get document metadata for a summary list (limit to 50 for the agent)
+            search_resp = await self.client.search(
+                index=self.index_name,
+                body={
+                    "_source": ["filename", "path", "tags"],
+                    "query": {"match_all": {}}
+                },
+                size=50
+            )
+            docs = [hit["_source"] for hit in search_resp["hits"]["hits"]]
+            return {"total_documents": total, "documents": docs}
+        except Exception as e:
+            self.logger.error(f"Failed to get index summary: {e}")
+            return {"error": str(e)}
 
     async def check_file_exists(self, path: str) -> bool:
         """Checks if a file with the given relative path is already indexed."""
@@ -78,6 +105,26 @@ class ElasticsearchService:
         except Exception as e:
             self.logger.error(f"Failed to check file existence in Elasticsearch: {e}")
             return False
+
+    async def delete_document(self, path: str) -> int:
+        """
+        Deletes documents from the index based on their relative path.
+        Returns the number of documents deleted.
+        """
+        try:
+            response = await self.client.delete_by_query(
+                index=self.index_name,
+                body={
+                    "query": {
+                        "term": {"path": path}
+                    }
+                },
+                refresh=True
+            )
+            return response.get("deleted", 0)
+        except Exception as e:
+            self.logger.error(f"Failed to delete document from Elasticsearch: {e}")
+            return 0
 
     async def hybrid_search(self, query_text: str, query_vector: Optional[List[float]] = None, top_k: int = 5) -> List[Dict[str, Any]]:
         """

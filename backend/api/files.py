@@ -1,7 +1,9 @@
+import asyncio
 import os
 import shutil
 import logging
 from typing import List, Optional
+from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -14,7 +16,7 @@ from backend.services.elasticsearch_service import ElasticsearchService
 from backend.db.database import SessionLocal, FileRecord, TagRecord
 from backend.core import config
 
-router = APIRouter()
+router = APIRouter(prefix="/api/files", tags=["Files"])
 
 # Dependency to get DB session
 def get_db():
@@ -46,7 +48,7 @@ class CreateFolderRequest(BaseModel):
 
 # --- Endpoints ---
 
-@router.get("/api/files/download")
+@router.get("/download")
 async def download_file(path: str, thumbnail: bool = False):
     """Serves a file for download or preview, with optional thumbnail optimization."""
     clean_path = path.strip().lstrip("/")
@@ -65,7 +67,7 @@ async def download_file(path: str, thumbnail: bool = False):
 
     return FileResponse(full_path)
 
-@router.get("/api/files/index-status")
+@router.get("/index-status")
 async def get_file_index_status(path: str, request: Request):
     """Checks if a specific file path is indexed in Elasticsearch."""
     es = getattr(request.app.state, "es", None)
@@ -74,7 +76,7 @@ async def get_file_index_status(path: str, request: Request):
     indexed = await es.check_file_exists(path)
     return {"path": path, "indexed": indexed}
 
-@router.get("/api/files")
+@router.get("")
 async def list_files(path: str = "", db: Session = Depends(get_db)):
     """Lists files and directories at the given path with associated metadata and tags."""
     clean_path = path.strip().lstrip("/")
@@ -103,7 +105,7 @@ async def list_files(path: str = "", db: Session = Depends(get_db)):
         })
     return {"items": results}
 
-@router.post("/api/files/folder")
+@router.post("/folder")
 async def create_folder(request: CreateFolderRequest):
     """Creates a new directory at the specified path."""
     full_path = os.path.join(config.AINAS_DATA_PATH, request.path.lstrip("/"))
@@ -116,7 +118,7 @@ async def create_folder(request: CreateFolderRequest):
         logging.getLogger(__name__).error("Folder creation failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/api/files")
+@router.delete("")
 async def delete_item(path: str, db: Session = Depends(get_db)):
     """Deletes a file or directory and cleans up associated database records."""
     full_path = os.path.join(config.AINAS_DATA_PATH, path)
@@ -133,7 +135,7 @@ async def delete_item(path: str, db: Session = Depends(get_db)):
     db.commit()
     return {"message": f"Successfully deleted {path}"}
 
-@router.patch("/api/files/rename")
+@router.patch("/rename")
 async def rename_item(request: RenameRequest, db: Session = Depends(get_db)):
     """Renames an item and updates its path in the database."""
     old_abs = os.path.join(config.AINAS_DATA_PATH, request.path)
@@ -156,7 +158,7 @@ async def rename_item(request: RenameRequest, db: Session = Depends(get_db)):
     db.commit()
     return {"new_path": new_rel}
 
-@router.patch("/api/files/move")
+@router.patch("/move")
 async def move_item(request: MoveRequest, db: Session = Depends(get_db)):
     """Moves an item to a new location."""
     old_abs = os.path.join(config.AINAS_DATA_PATH, request.path)
@@ -178,8 +180,10 @@ async def move_item(request: MoveRequest, db: Session = Depends(get_db)):
     db.commit()
     return {"new_path": request.new_path}
 
-@router.post("/api/upload")
-async def upload_file(background_tasks: BackgroundTasks, request: Request, path: str = "", file: UploadFile = File(...), db: Session = Depends(get_db), ai: AIEngine = Depends(get_ai)):
+@router.post("/upload")
+async def upload_file(background_tasks: BackgroundTasks, request: Request, path: str = "",
+                      file: UploadFile = File(...), db: Session = Depends(get_db),
+                      ai: Optional[AIEngine] = Depends(get_ai)):
     """Handles file uploads, triggers thumbnail generation, AI tagging, and indexing."""
     logger = logging.getLogger(__name__)
     safe_filename = os.path.basename(file.filename)
@@ -192,25 +196,82 @@ async def upload_file(background_tasks: BackgroundTasks, request: Request, path:
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     content = await file.read()
     with open(file_path, "wb") as f: f.write(content)
-    
-    background_tasks.add_task(thumbnail_task, file_rel_path)
-    tags = ai.generate_tags(file_rel_path) if ai else []
-    
+
+    # Create basic database record immediately so the file is visible in lists
     file_rec = db.query(FileRecord).filter(FileRecord.path == file_rel_path).first()
     if not file_rec:
         file_rec = FileRecord(path=file_rel_path)
         db.add(file_rec); db.commit(); db.refresh(file_rec)
+
+    # Schedule heavy processing tasks in the background
+    background_tasks.add_task(thumbnail_task, file_rel_path)
     
-    for tag_name in tags: db.add(TagRecord(name=tag_name, file_id=file_rec.id))
-    db.commit()
-
     es = getattr(request.app.state, "es", None)
-    if es:
-        file_content = extract_text(file_path)
-        file_embedding = await ai.embeddings.aembed_query(file_content) if ai and file_content else None
-        await es.index_file(filename=safe_filename, path=file_rel_path, tags=tags, content=file_content, embedding=file_embedding)
+    background_tasks.add_task(process_upload_task, file_rel_path, file_path, safe_filename, ai, es)
 
-    return {"filename": file.filename, "path": file_rel_path, "ai_tags": tags}
+    return {"filename": file.filename, "path": file_rel_path, "status": "processing"}
+
+async def process_upload_task(file_rel_path: str, file_path: str,
+                              safe_filename: str, ai: Optional[AIEngine],
+                              es: Optional[ElasticsearchService]):
+    """Background task to handle AI tagging, text extraction, embedding generation, and indexing."""
+    logger = logging.getLogger(__name__)
+    db = SessionLocal()
+    try:
+        # 1. AI Tagging (Images only)
+        is_image = safe_filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'))
+        tags = ai.generate_tags(file_rel_path) if ai and is_image else []
+        
+        if tags:
+            logger.info("AI generated tags on %s: %s", file_rel_path, ",".join(tags))
+            file_rec = db.query(FileRecord).filter(FileRecord.path == file_rel_path).first()
+            if file_rec:
+                for tag_name in tags:
+                    # Avoid duplicate tags for the same file
+                    if not db.query(TagRecord).filter(TagRecord.file_id == file_rec.id, TagRecord.name == tag_name).first():
+                        db.add(TagRecord(name=tag_name, file_id=file_rec.id))
+                db.commit()
+
+        # 2. Text extraction and Elasticsearch Indexing
+        if es:
+            is_doc = safe_filename.lower().endswith(('.pdf', '.docx', '.txt', '.md', '.log'))
+            file_content = extract_text(file_path)
+            if file_content and (is_doc or is_image):
+                st = os.stat(file_path)
+                created_at = datetime.fromtimestamp(st.st_ctime).isoformat()
+                updated_at = datetime.fromtimestamp(st.st_mtime).isoformat()
+
+                # Retry logic for Elasticsearch indexing
+                max_retries = 3
+                initial_delay = 2 # seconds
+                current_delay = initial_delay
+                # Generate AI embeddings for the extracted text
+                file_embedding = await ai.embeddings.aembed_query(file_content) if ai else None
+                for attempt in range(max_retries):
+                    try:
+                        logger.info("Attempting Elasticsearch indexing for %s (Attempt %d/%d)", file_rel_path, attempt + 1, max_retries)
+                        await es.index_file( # Index document in Elasticsearch for vector and full-text search
+                            filename=safe_filename, 
+                            path=file_rel_path, 
+                            tags=tags, 
+                            content=file_content, 
+                            embedding=file_embedding,
+                            created_at=created_at,
+                            updated_at=updated_at
+                        )
+                        logger.info("Elasticsearch successfully indexed file: %s, %s", safe_filename, file_rel_path)
+                        break # Success, exit retry loop
+                    except Exception as e:
+                        logger.warning(f"Elasticsearch indexing failed for {file_rel_path} (Attempt {attempt + 1}/{max_retries}): {e}")
+                        if attempt < max_retries - 1:
+                            await asyncio.sleep(current_delay)
+                            current_delay *= 2 # Exponential backoff
+                        else:
+                            logger.error(f"Elasticsearch indexing failed permanently for {file_rel_path} after {max_retries} attempts.")
+    except Exception as e:
+        logger.error(f"Error in background processing for {file_rel_path}: {e}")
+    finally:
+        db.close()
 
 def thumbnail_task(rel_path: str):
     """Background task to generate thumbnails for images."""
@@ -241,7 +302,7 @@ async def run_reindex(ai: Optional[AIEngine], es: ElasticsearchService):
                     except Exception as e: logger.error(f"Error re-indexing {rel_path}: {e}")
     finally: db.close()
 
-@router.post("/api/system/reindex")
+@router.post("/reindex")
 async def trigger_reindex(background_tasks: BackgroundTasks, request: Request, ai: AIEngine = Depends(get_ai)):
     """Triggers a full re-scan and index of the NAS storage."""
     es = getattr(request.app.state, "es", None)

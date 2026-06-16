@@ -1,8 +1,8 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:ainas_frontend/services/api_service.dart';
-import 'package:ainas_frontend/services/mdns_service.dart';
-import 'package:ainas_frontend/shared/models/nas_server.dart';
+import '../widgets/mdns_discovery_widget.dart';
+import '../widgets/storage_dashboard_widget.dart';
+import '../widgets/ai_config_widget.dart';
+import '../../../../services/api_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,131 +12,67 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final List<NasServer> _discoveredServers = [];
+  final ApiService _api = ApiService();
   bool _isScanning = false;
+  List<String> _discoveredServers = [];
+  Map<String, dynamic>? _storageUsage;
+  Map<String, dynamic>? _aiConfig;
+  Map<String, dynamic>? _ragStatus;
 
   @override
   void initState() {
     super.initState();
-    _scanForServers();
+    _refreshAll();
   }
 
-  Future<void> _scanForServers() async {
-    if (_isScanning) return;
-
-    setState(() {
-      _isScanning = true;
-      _discoveredServers.clear();
-    });
-
+  Future<void> _refreshAll() async {
+    setState(() => _isScanning = true);
+    
     try {
-      await for (final server in MdnsService.scanForServers()) {
-        if (!_discoveredServers.any((s) => s.url == server.url)) {
-          setState(() => _discoveredServers.add(server));
-        }
-      }
+      // Execute backend fetches in parallel for better performance
+      final results = await Future.wait([
+        _api.getSystemUsage(),
+        _api.getAiConfig(),
+        _api.getRagStatus(),
+      ]);
+
+      setState(() {
+        _storageUsage = results[0];
+        _aiConfig = results[1];
+        _ragStatus = results[2];
+        _discoveredServers = [_api.baseUrl.replaceAll(RegExp(r'https?://'), '')];
+      });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Discovery error: $e')),
-        );
-      }
+      debugPrint("Home Page Refresh Error: $e");
     } finally {
-      if (mounted) setState(() => _isScanning = false);
-    }
-  }
-
-  void _selectServer(NasServer server) async {
-    final api = ApiService();
-    if (server.url == api.baseUrl) return;
-
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Switch Server'),
-        content: Text('Do you want to switch to ${server.name} (${server.url})?'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Connect'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true && mounted) {
-      await api.updateBaseUrl(server.url);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Connected to ${server.name}')),
-        );
-      }
+      setState(() => _isScanning = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final api = ApiService();
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('NAS Discovery'),
-        actions: [
-          if (_isScanning)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-            )
-          else
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _scanForServers),
-        ],
-      ),
-      body: _discoveredServers.isEmpty 
-        ? _buildEmptyState(theme)
-        : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _discoveredServers.length,
-            itemBuilder: (context, index) {
-              final server = _discoveredServers[index];
-              final isSelected = server.url == api.baseUrl;
-
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: isSelected
-                    ? RoundedRectangleBorder(
-                        side: BorderSide(color: theme.colorScheme.primary, width: 2),
-                        borderRadius: BorderRadius.circular(12))
-                    : null,
-                child: ListTile(
-                  selected: isSelected,
-                  leading: Icon(Icons.storage, 
-                      color: isSelected ? theme.colorScheme.primary : Colors.blue),
-                  title: Text(server.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(server.url),
-                  trailing: isSelected
-                      ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
-                      : const Icon(Icons.power_settings_new),
-                  onTap: () => _selectServer(server),
-                ),
-              );
-            },
-          ),
-    );
-  }
-
-  Widget _buildEmptyState(ThemeData theme) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      appBar: AppBar(title: const Text("AI-NAS Home")),
+      body: ListView(
+        padding: const EdgeInsets.all(16.0),
         children: [
-          Icon(Icons.podcasts, size: 80, color: theme.disabledColor),
+          MdnsDiscoveryWidget(
+            discoveredServices: _discoveredServers,
+            isScanning: _isScanning,
+            onRefresh: _refreshAll,
+            onServiceSelected: (s) => print("Selected $s"),
+          ),
           const SizedBox(height: 16),
-          Text(_isScanning ? 'Searching network...' : 'No AI-NAS servers found'),
+          StorageDashboardWidget(
+            usageData: _storageUsage,
+            onRefresh: _refreshAll,
+          ),
+          const SizedBox(height: 16),
+          AiConfigWidget(
+            modelConfig: _aiConfig,
+            ragStatus: _ragStatus,
+            onRefresh: _refreshAll,
+          ),
         ],
       ),
     );

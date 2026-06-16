@@ -319,8 +319,8 @@ class _NASBrowserState extends State<NASBrowser> {
   void _handleAttachToAi(FileItem item) {
     final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
     api.stageFilesForAi([fullPath]);
-    // Switch to the AI Assistant tab (Index 1) instead of pushing a route
-    api.setTabIndex(1);
+    // Switch to the AI Assistant tab (Index 2)
+    api.setTabIndex(2);
   }
 
   void _handleBatchAttachToAi() {
@@ -333,8 +333,8 @@ class _NASBrowserState extends State<NASBrowser> {
     api.stageFilesForAi(paths);
     final count = _selectedItems.length;
     setState(() => _selectedItems.clear());
-    // Switch to the AI Assistant tab (Index 1)
-    api.setTabIndex(1);
+    // Switch to the AI Assistant tab (Index 2)
+    api.setTabIndex(2);
   }
 
   Future<void> _handleBatchMove() async {

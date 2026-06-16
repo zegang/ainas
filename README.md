@@ -18,6 +18,10 @@ AI-NAS is a smart Network Attached Storage (NAS) management solution that integr
 - **RAG with elasticsearch**: Exact retrieval and semantic similarity retrieval.
 - **Cross-Platform GUI**: Responsive frontend built with Flutter.
 
+## Demo Records
+
+![Search Images By AI Auto-Generated Tags](./doc/images/searchbyimagetags.gif)
+
 ## Quantization Models
 
 - Quant models with llama.cpp to run on resource constrained devices.

@@ -82,7 +82,6 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _selectedIndex = 0;
   Timer? _statusSyncTimer;
 
   @override
@@ -152,7 +151,7 @@ class _MainShellState extends State<MainShell> {
           ),
           actions: [
             // AI Status Widget
-            if (api.isServerConnected && !isMobile) ...[
+            if (api.isServerConnected) ...[
               Tooltip(
                 message: _getAiStatusTooltip(api.aiStatus),
                 child: Row(
@@ -230,12 +229,8 @@ class _MainShellState extends State<MainShell> {
               ],
             ),
             bottomNavigationBar: NavigationBar(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (int index) {
-                setState(() {
-                  _selectedIndex = index;
-                });
-              },
+              selectedIndex: api.currentTabIndex,
+              onDestinationSelected: (int index) => api.setTabIndex(index),
           destinations: [
             NavigationDestination(
               icon: const Icon(Icons.home_outlined),
@@ -269,12 +264,8 @@ class _MainShellState extends State<MainShell> {
               NavigationRail(
                 extended: true,
                 minExtendedWidth: 200,
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: (int index) {
-                  setState(() {
-                    _selectedIndex = index;
-                  });
-                },
+                selectedIndex: api.currentTabIndex,
+                onDestinationSelected: (int index) => api.setTabIndex(index),
                 destinations: [
                   NavigationRailDestination(
                     icon: Icon(Icons.home_outlined),
@@ -314,7 +305,8 @@ class _MainShellState extends State<MainShell> {
   }
 
   Widget _buildBody() {
-    switch (_selectedIndex) {
+    final api = ApiService();
+    switch (api.currentTabIndex) {
       case 0:
         return const HomePage(key: ValueKey(0));
       case 1:

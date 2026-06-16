@@ -39,7 +39,7 @@ class ApiService with ChangeNotifier {
   String storageLabel = "Loading...";
 
   // Navigation state to control the app shell tabs
-  int currentTabIndex = 0; // 0: Files, 1: AI, 2: Home/Discovery, etc.
+  int currentTabIndex = 0; // 0: Home, 1: Files, 2: AI, 3: Settings
   void setTabIndex(int index) {
     currentTabIndex = index;
     notifyListeners();
@@ -58,6 +58,7 @@ class ApiService with ChangeNotifier {
 
   void stageFilesForAi(List<String> paths) {
     stagedFilesForAi.addAll(paths);
+    setTabIndex(2); // Jump to AI Assistant page (Tab index 2)
     notifyListeners();
     _log.info('Staged ${paths.length} files for AI Assistant');
   }
@@ -79,7 +80,7 @@ class ApiService with ChangeNotifier {
 
   /// Sends a signal to the backend to stop a specific AI request.
   Future<void> cancelAiChat(String requestId) async {
-    final url = '$baseUrl/ai/chat/cancel/$requestId';
+    final url = '$baseUrl/api/ai/chat/cancel/$requestId';
     _log.info('--> POST $url');
     try {
       await http.post(Uri.parse(url));
@@ -154,6 +155,51 @@ class ApiService with ChangeNotifier {
       notifyListeners();
     }
     return connected;
+  }
+
+  /// Fetches the current storage usage from the backend.
+  Future<Map<String, dynamic>> getSystemUsage() async {
+    final url = '$baseUrl/api/system/usage';
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final free = (data['free_gb'] as num?)?.toDouble() ?? 0.0;
+        final total = (data['total_gb'] as num?)?.toDouble() ?? 0.0;
+        final used = total - free;
+        storagePercent = used / total;
+        storageLabel = "${storagePercent.toStringAsFixed(1)}% Used (${free.toStringAsFixed(1)} GB Free)";
+        notifyListeners();
+
+        return data;
+      }
+      throw Exception('Failed to load storage usage');
+    } catch (e) {
+      _log.severe('Error fetching system usage: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches the active AI model configuration.
+  Future<Map<String, dynamic>> getAiConfig() async {
+    final url = '$baseUrl/api/ai/config/models';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load AI config');
+    }
+  }
+
+  /// Fetches the RAG/Elasticsearch status.
+  Future<Map<String, dynamic>> getRagStatus() async {
+    final url = '$baseUrl/api/ai/rag';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load RAG status');
+    }
   }
 
   Future<List<FileItem>> listFiles(String path) async {
@@ -267,7 +313,7 @@ class ApiService with ChangeNotifier {
 
     try {
       final encodedPath = Uri.encodeComponent(task.parentPath);
-      final uploadUrl = '$baseUrl/api/upload?path=$encodedPath';
+      final uploadUrl = '$baseUrl/api/files/upload?path=$encodedPath';
       _log.info('Uploading file "${task.fileName}" to $uploadUrl');
 
       final request = ProgressMultipartRequest(
@@ -319,7 +365,7 @@ class ApiService with ChangeNotifier {
     notifyListeners();
 
     final requestId = DateTime.now().millisecondsSinceEpoch.toString();
-    final url = '$baseUrl/ai/chat/stream?text=${Uri.encodeComponent(text)}&files=${Uri.encodeComponent(files)}&request_id=$requestId';
+    final url = '$baseUrl/api/ai/chat/stream?text=${Uri.encodeComponent(text)}&files=${Uri.encodeComponent(files)}&request_id=$requestId';
     
     final client = http.Client();
     final request = http.Request('GET', Uri.parse(url));

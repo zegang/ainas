@@ -1,6 +1,7 @@
 import os
 import logging
 import asyncio
+import time
 import uuid
 import subprocess
 from typing import List, Generator, AsyncGenerator, Dict, Any
@@ -12,7 +13,7 @@ from backend.services.ai.modlesvc.model_loader import ModelLoader
 from backend.services.ai.tools.image_tools import get_image_tools
 from backend.services.ai.tools.file_tools import get_file_tools
 from backend.services.ai.tools.system_tools import get_system_tools, get_system_stats_summary
-from backend.services.monitoring.prometheus import AI_REQUEST_DURATION # New import for monitoring
+from backend.services.monitoring.prometheus import AI_REQUEST_DURATION, AI_TOOL_DURATION # New import for monitoring
 from backend.core import config
 from backend.services.system_service import get_disk_usage
 from backend.services.elasticsearch_service import ElasticsearchService
@@ -147,6 +148,7 @@ class AIEngine:
         initial_state = {"messages": [HumanMessage(content=prompt_text)], "filenames": filenames, "cancellation_event": cancellation_event}
 
         with AI_REQUEST_DURATION.labels(type='stream').time():
+            tool_start_times = {} # Track individual tool timings
             self._log_resource_usage(request_id, "STREAM_START")
             try:
                 # Use astream_events (v2) to capture internal LLM tokens in real-time
@@ -160,15 +162,25 @@ class AIEngine:
                         if isinstance(chunk, BaseMessage) and chunk.content:
                             yield chunk.content
 
+                    elif event["event"] == "on_tool_start":
+                        # Record the start time for this specific tool run
+                        tool_start_times[event["run_id"]] = time.perf_counter()
+
                     elif event["event"] == "on_tool_end":
                         # Stream the result of the tool call so the UI can display it
                         tool_name = event["name"]
                         tool_output = event["data"].get("output")
-                        if tool_output:
+                        
+                        # Calculate duration
+                        start_time = tool_start_times.pop(event["run_id"], None)
+                        duration = time.perf_counter() - start_time if start_time else 0
+                        AI_TOOL_DURATION.labels(tool_name=tool_name).observe(duration)
+
+                        if tool_output is not None:
                             # Extract content from ToolMessage or convert result to string
                             content = tool_output.content if hasattr(tool_output, 'content') else str(tool_output)
                             # Yield wrapped in a custom tag for the frontend to parse
-                            yield f"\n<tool_result>\nTool '{tool_name}' result: {content}\n</tool_result>\n"
+                            yield f"\n<tool_result>\n[{duration:.2f}s] Tool '{tool_name}' result: {content}\n</tool_result>\n"
 
                 self._log_resource_usage(request_id, "STREAM_END")
             except asyncio.CancelledError:
