@@ -22,8 +22,8 @@ dependencies = [
     "sentence-transformers>=5.5.1",
     "pypdf>=6.13.2",
     "python-docx>=1.2.0",
-    "pypdfium2",
-    "alembic",
+    "pypdfium2>=5.10.1",
+    "alembic>=1.18.4",
 ]
 
 [tool.uv]
