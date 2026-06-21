@@ -18,13 +18,16 @@ class AIAssistantPage extends StatefulWidget {
   State<AIAssistantPage> createState() => _AIAssistantPageState();
 }
 
-class _AIAssistantPageState extends State<AIAssistantPage> {
+class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProviderStateMixin {
   final _log = Logger('AIAssistantPage');
   final ApiService api = ApiService();
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  List<String> _selectedFiles = []; // State to hold selected files
-  StreamSubscription<String>? _localSubscription; // Local subscription for listening to updates
+  List<String> _selectedFiles = [];
+  late AnimationController _borderAnimController;
+  late Animation<double> _borderAnimation;
+  late FocusNode _textFocusNode;
+  StreamSubscription<String>? _localSubscription;
 
   late final ChatRepository _repository = HttpChatRepository(
     baseUrl: api.baseUrl,
@@ -40,6 +43,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
     if (api.currentRequestId != null) {
       api.cancelAiChat(api.currentRequestId!);
     }
+    _borderAnimController.stop();
     api.markResponseComplete();
     setState(() {}); // Trigger rebuild with updated api state
     _log.info('AI Request cancelled by user');
@@ -59,7 +63,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
       _selectedFiles.clear(); // Clear selected files after sending
     });
     
-    // Update global state in ApiService
+    _borderAnimController.repeat();
     api.isAwaitingResponse = true;
     api.currentRequestId = requestId;
     api.notifyListeners();
@@ -100,6 +104,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
         });
         _scrollToBottom();
       }, onDone: () {
+        _borderAnimController.stop();
         if (mounted) {
           api.markResponseComplete();
           setState(() {});
@@ -138,6 +143,21 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   @override
   void initState() {
     super.initState();
+    _borderAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    );
+    _borderAnimation = Tween<double>(begin: 0, end: 360).animate(_borderAnimController);
+    _textFocusNode = FocusNode();
+    _textFocusNode.onKey = (node, event) {
+      if (event is RawKeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+        if (!event.isShiftPressed || event.isControlPressed) {
+          _handleSend();
+          return KeyEventResult.handled;
+        }
+      }
+      return KeyEventResult.ignored;
+    };
     // Initialize welcome message with localization support
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final l10n = AppLocalizations.of(context)!;
@@ -147,6 +167,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
       
       // If there's an ongoing AI response, reconnect to the broadcast stream
       if (api.isAwaitingResponse && api.currentRequestId != null) {
+        _borderAnimController.repeat();
         _localSubscription = api.getChatStream().listen((chunk) {
           if (!mounted) return;
           
@@ -174,8 +195,8 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
 
   @override
   void dispose() {
-    // Don't cancel the subscription - it's kept alive in ApiService
-    // so the response continues in the background
+    _textFocusNode.dispose();
+    _borderAnimController.dispose();
     _localSubscription = null;
     _controller.dispose();
     _scrollController.dispose();
@@ -725,50 +746,72 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
 
   Widget _buildInputArea() {
     final theme = Theme.of(context);
-    
     final l10n = AppLocalizations.of(context)!;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-      child: Row(
-        children: [
-          // Button to add files
-          IconButton(
-            icon: const Icon(Icons.attach_file),
-            tooltip: l10n.attachFiles,
-            onPressed: () async {
-              final List<String>? result = await showModalBottomSheet<List<String>>(
-                context: context,
-                isScrollControlled: true, // Make it full screen
-                builder: (context) => FractionallySizedBox(
-                  heightFactor: 0.9, // Take up 90% of screen height
-                  child: NasFilePicker(initialSelectedFiles: _selectedFiles),
-                ),
-              );
-              if (result != null) {
-                setState(() => _selectedFiles = result);
-              }
-            },
-          ),
-          Expanded(
-            child: TextField(
+      padding: const EdgeInsets.fromLTRB(12.0, 4.0, 12.0, 12.0),
+      child: AnimatedBuilder(
+        animation: _borderAnimation,
+        builder: (context, child) {
+          final borderColor = api.isAwaitingResponse
+              ? HSLColor.fromAHSL(1, _borderAnimation.value, 0.8, 0.5).toColor()
+              : theme.dividerColor;
+          return Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderColor),
+            ),
+            child: child,
+          );
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
               controller: _controller,
+              focusNode: _textFocusNode,
+              minLines: 1,
+              maxLines: 6,
               decoration: InputDecoration(
                 hintText: l10n.askAiHint,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               ),
-              onSubmitted: (_) => _handleSend(),
             ),
-          ),
-          IconButton.filled(
-            onPressed: api.isAwaitingResponse ? _handleStop : _handleSend,
-            icon: api.isAwaitingResponse
-                ? const _AnimatedStopIcon()
-                : const Icon(Icons.send),
-          ),
-        ],
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.attach_file),
+                  tooltip: l10n.attachFiles,
+                  onPressed: () async {
+                    final List<String>? result = await showModalBottomSheet<List<String>>(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (context) => FractionallySizedBox(
+                        heightFactor: 0.9,
+                        child: NasFilePicker(initialSelectedFiles: _selectedFiles),
+                      ),
+                    );
+                    if (result != null) {
+                      setState(() => _selectedFiles = result);
+                    }
+                  },
+                ),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.only(right: 4, bottom: 4),
+                  child: IconButton.filled(
+                    onPressed: api.isAwaitingResponse ? _handleStop : _handleSend,
+                    icon: api.isAwaitingResponse
+                        ? const _AnimatedStopIcon()
+                        : const Icon(Icons.send),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

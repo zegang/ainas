@@ -19,6 +19,7 @@ class _SettingsWidgetState extends State<SettingsWidget> {
   bool _isChecking = false;
   late String _selectedLocale;
   late ThemeMode _selectedThemeMode;
+  late double _selectedFontScale;
   Timer? _debounceTimer;
   String? _hostError;
   String? _portError;
@@ -38,6 +39,7 @@ class _SettingsWidgetState extends State<SettingsWidget> {
     _portController = TextEditingController(text: defaultPort);
     _selectedLocale = _api.locale;
     _selectedThemeMode = _api.themeMode;
+    _selectedFontScale = _api.fontScale;
 
     _hostController.addListener(_onSettingChanged);
     _portController.addListener(_onSettingChanged);
@@ -97,6 +99,7 @@ class _SettingsWidgetState extends State<SettingsWidget> {
       // Always persist local preferences immediately
       await _api.persistThemeMode(_selectedThemeMode);
       await _api.persistLocale(_selectedLocale);
+      await _api.persistFontScale(_selectedFontScale);
 
       if (urlChanged) {
         // If the URL changed, verify it before persisting
@@ -243,6 +246,26 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                     }
                   },
                 ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<double>(
+                  value: _selectedFontScale,
+                  decoration: InputDecoration(
+                    labelText: "Font Size",
+                    border: const OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 0.85, child: Text("Small")),
+                    DropdownMenuItem(value: 1.0, child: Text("Normal")),
+                    DropdownMenuItem(value: 1.15, child: Text("Large")),
+                    DropdownMenuItem(value: 1.3, child: Text("Extra Large")),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedFontScale = value);
+                      _onSettingChanged();
+                    }
+                  },
+                ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -266,6 +289,7 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                       // Always persist local preferences regardless of server connectivity.
                       await _api.persistThemeMode(_selectedThemeMode);
                       await _api.persistLocale(_selectedLocale);
+                      await _api.persistFontScale(_selectedFontScale);
 
                       if (urlChanged && !isHealthy) {
                         ScaffoldMessenger.of(context).showSnackBar(

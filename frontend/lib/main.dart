@@ -24,21 +24,24 @@ void main() async {
     ListenableBuilder(
       listenable: api,
       builder: (context, _) {
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          // Use centralized themes
-          theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          // Use the themeMode from ApiService
-          themeMode: api.themeMode,
-          // Use the locale from ApiService
-          locale: Locale(api.locale),
-          // Localization delegates
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: AdSplashScreen(
-            duration: const Duration(milliseconds: 3000),
-            child: const MainShell(),
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaleFactor: api.fontScale),
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            // Use centralized themes
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            // Use the themeMode from ApiService
+            themeMode: api.themeMode,
+            // Use the locale from ApiService
+            locale: Locale(api.locale),
+            // Localization delegates
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: AdSplashScreen(
+              duration: const Duration(milliseconds: 3000),
+              child: const MainShell(),
+            ),
           ),
         );
       },
@@ -163,12 +166,19 @@ class _MainShellState extends State<MainShell> {
         final bool isMobile = constraints.maxWidth < 600;
 
         final appBar = AppBar(
-          title: Row(
-            children: [
-              const Icon(Icons.dns, size: 28, color: Colors.blue),
-              const SizedBox(width: 12),
-              Text(l10n.appTitle),
-            ],
+          title: ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [Colors.cyan, Colors.blue, Colors.purple],
+            ).createShader(bounds),
+            child: Text(
+              l10n.appTitle,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                letterSpacing: 6.0,
+                fontSize: 30,
+                color: Colors.white,
+              ),
+            ),
           ),
           actions: [
             // AI Status Widget

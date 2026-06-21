@@ -332,6 +332,8 @@ run_frontend() {
     cd "$PROJECT_ROOT/frontend"
     if [[ "$FRONTEND_PLATFORM" == "linux" ]]; then
         echo "Step: Launching Frontend (Native Linux)..."
+        # Ensure libpdfium.so and other bundled shared libraries are found
+        export LD_LIBRARY_PATH="$PROJECT_ROOT/frontend/build/linux/x64/debug/bundle/lib:${LD_LIBRARY_PATH:-}"
         if [[ "$is_bg" == "true" ]]; then
             flutter run -d linux \
                 --dart-define=NAS_HOST="$NAS_HOST" \

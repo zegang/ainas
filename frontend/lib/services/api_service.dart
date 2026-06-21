@@ -31,8 +31,10 @@ class ApiService with ChangeNotifier {
   static const String _loggedInKey = 'nas_logged_in';
   static const String _usernameKey = 'nas_username';
   static const String _vipStatusKey = 'nas_vip_status';
+  static const String _fontScaleKey = 'nas_font_scale';
   String locale = 'en';
   ThemeMode themeMode = ThemeMode.system;
+  double fontScale = 1.0;
   bool isLoggedIn = false;
   String username = 'Guest';
   String vipStatus = 'Visitor';
@@ -166,6 +168,15 @@ class ApiService with ChangeNotifier {
     _log.info('Persisted new theme mode: $mode');
   }
 
+  /// Persists the font scale to local storage.
+  Future<void> persistFontScale(double scale) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_fontScaleKey, scale);
+    fontScale = scale;
+    notifyListeners();
+    _log.info('Persisted font scale: $scale');
+  }
+
   /// Loads persisted settings from local storage.
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -178,6 +189,7 @@ class ApiService with ChangeNotifier {
         orElse: () => ThemeMode.system, // Fallback if stored value is invalid
       );
     }
+    fontScale = prefs.getDouble(_fontScaleKey) ?? 1.0;
     isLoggedIn = prefs.getBool(_loggedInKey) ?? false;
     username = prefs.getString(_usernameKey) ?? 'Guest';
     vipStatus = prefs.getString(_vipStatusKey) ?? (isLoggedIn ? 'VIP Member' : 'Visitor');

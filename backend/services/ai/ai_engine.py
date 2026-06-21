@@ -38,6 +38,7 @@ class AIEngine:
         self.tools = get_image_tools(
             self.nas_data_path, 
             self.api_key,
+            chat_llm=self.llm,
             blip_processor=self.blip_processor,
             blip_model=self.blip_model
         ) + get_file_tools(

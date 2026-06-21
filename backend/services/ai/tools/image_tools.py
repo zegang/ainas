@@ -1,16 +1,17 @@
 import logging
 import os
+import re
 import base64
 import requests
 from typing import List
 from PIL import Image
 from openai import OpenAI
 from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage # type: ignore
+from langchain_core.messages import HumanMessage, SystemMessage # type: ignore
 from backend.core import config
 
 
-def get_image_tools(storage_path: str, api_key: str, vision_model=None, projector_path=None, **kwargs):
+def get_image_tools(storage_path: str, api_key: str, vision_model=None, chat_llm=None, projector_path=None, **kwargs):
     logger = logging.getLogger(__name__)
 
     @tool
@@ -23,27 +24,30 @@ def get_image_tools(storage_path: str, api_key: str, vision_model=None, projecto
             logger.info("Tagging image: %s", full_path)
             if not os.path.exists(full_path):
                 return f"File '{file_name}' not found."
-            
-            # Use pre-loaded BLIP model if vision_model (LangChain LLM) is not available
-            if not vision_model and kwargs.get('blip_processor') and kwargs.get('blip_model'):
-                processor = kwargs['blip_processor']
-                model = kwargs['blip_model']
-                inputs = processor(Image.open(full_path).convert("RGB"), return_tensors="pt") # type: ignore
-                out = model.generate(**inputs, max_new_tokens=50) # type: ignore
-                return processor.decode(out[0], skip_special_tokens=True) # type: ignore
-            llm = vision_model
 
-            with open(full_path, "rb") as f:
-                encoded = base64.b64encode(f.read()).decode("utf-8")
-                
-            msg = llm.invoke([
-                HumanMessage(content=[
-                    {"type": "text", "text": "Generate a comma-separated list of 5-10 descriptive tags for this image."},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded}"}}
+            processor = kwargs.get('blip_processor')
+            blip_model = kwargs.get('blip_model')
+            if not processor or not blip_model:
+                return "BLIP model not available for tagging."
+
+            inputs = processor(Image.open(full_path).convert("RGB"), return_tensors="pt")
+            out = blip_model.generate(**inputs, max_new_tokens=50)
+            caption = processor.decode(out[0], skip_special_tokens=True)
+            logger.info("BLIP caption: %s", caption)
+
+            if chat_llm:
+                msg = chat_llm.invoke([
+                    SystemMessage(content="You are a helpful assistant that extracts descriptive tags from image captions."),
+                    HumanMessage(content=f"Based on this image caption: \"{caption}\"\nSelect 2 to 10 descriptive words from it as tags. Only output the comma separated tags wrapped by <tags></tags>. Do not include any other text.")
                 ])
-            ])
-            logger.info("Tags generated: %s", msg.content)
-            return msg.content
+                logger.info("Tags generated via LLM: %s", msg.content)
+                m = re.search(r"<tags>(.*?)</tags>", msg.content, re.DOTALL)
+                if m:
+                    return m.group(1).strip()
+                return msg.content.strip()
+
+            return caption
+
         except Exception as e:
             return f"Failed to tag image: {str(e)}"
 

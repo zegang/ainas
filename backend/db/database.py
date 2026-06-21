@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, BigInteger, DateTime, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, BigInteger, DateTime, ForeignKey, Boolean, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -30,6 +30,19 @@ class TagRecord(Base):
     name = Column(String, index=True)
     file_id = Column(Integer, ForeignKey("files.id"))
     file = relationship("FileRecord", back_populates="tags")
+
+
+class AiModelRecord(Base):
+    __tablename__ = "ai_models"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    provider = Column(String, nullable=False)
+    model_type = Column(String, nullable=False, default="chat")
+    api_base = Column(String, nullable=True)
+    config = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=False)
+    created_at = Column(DateTime, nullable=True, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 def run_migrations() -> None:

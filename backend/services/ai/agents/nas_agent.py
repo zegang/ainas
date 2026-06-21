@@ -22,7 +22,8 @@ def _get_system_message(tools: list) -> SystemMessage:
         "4. Once a tool provides the requested info, STOP and provide the final answer.\n"
         "5. DO NOT perform extra unrequested actions or call unrelated tools.\n"
         "6. If the ACTUAL CONTENT or ANSWER is already in chat history, do NOT call tools again.\n"
-        "7. A filename in '[Attached files]' is just a pointer. It is NOT the content itself. You MUST query the tool to read it."
+        "7. A filename in '[Attached files]' is just a pointer. It is NOT the content itself. You MUST query the tool to read it.\n"
+        "8. CRITICAL: ALWAYS respond in the SAME LANGUAGE as the user's message. If the user writes in Chinese, respond entirely in Chinese. If they write in English, respond in English. Detect the language from the user's input and match it exactly."
     ))
 
 def _parse_manual_tool_calls(response_message: AIMessage, history: list) -> None:

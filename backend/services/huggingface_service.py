@@ -1,9 +1,12 @@
+import json
 import os
+import shutil
 import logging
 from typing import List, Dict, Any
 from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 from huggingface_hub.errors import RepositoryNotFoundError, RevisionNotFoundError
 from backend.core import config
+from backend.db.database import SessionLocal, AiModelRecord
 
 class HuggingFaceService:
     """
@@ -101,22 +104,110 @@ class HuggingFaceService:
             logger.error("Unexpected error during model download: %s", e)
             raise
 
+    def is_snapshot_downloaded(self, repo_id: str) -> bool:
+        """
+        Checks whether a snapshot is recorded in the database and its local path still exists.
+        """
+        db = SessionLocal()
+        try:
+            record = db.query(AiModelRecord).filter_by(name=repo_id, provider="huggingface").first()
+            if record is None:
+                return False
+            return record.api_base is not None and os.path.exists(record.api_base)
+        except Exception:
+            return False
+        finally:
+            db.close()
+
     def download_snapshot(self, repo_id: str) -> str:
         """
         Downloads a full repository from Hugging Face into a subdirectory of the cache.
+        Records the model in the database on success.
         """
         logger = logging.getLogger(__name__)
+        repo_path = os.path.join(self.cache_dir, "repos", repo_id.replace("/", "--"))
+
+        if self.is_snapshot_downloaded(repo_id):
+            logger.info("Snapshot %s already downloaded at %s. Skipping.", repo_id, repo_path)
+            return repo_path
+
         try:
-            repo_path = os.path.join(self.cache_dir, "repos", repo_id.replace("/", "--"))
             logger.info("Downloading snapshot for %s in %s...", repo_id, repo_path)
-            return snapshot_download(
+            downloaded_path = snapshot_download(
                 repo_id=repo_id,
                 local_dir=repo_path,
                 token=self.token
             )
+
+            try:
+                info = self.api.model_info(repo_id)
+                config_data = {
+                    "pipeline_tag": getattr(info, "pipeline_tag", None),
+                    "downloads": getattr(info, "downloads", 0),
+                    "likes": getattr(info, "likes", 0),
+                    "tags": list(getattr(info, "tags", [])),
+                    "siblings": [s.rfilename for s in getattr(info, "siblings", [])],
+                }
+                super_params = json.dumps(config_data)
+            except Exception:
+                logger.warning("Could not fetch model info for %s", repo_id)
+                super_params = None
+
+            db = SessionLocal()
+            try:
+                existing = db.query(AiModelRecord).filter_by(name=repo_id).first()
+                if existing:
+                    existing.provider = "huggingface"
+                    existing.api_base = downloaded_path
+                    existing.config = super_params
+                else:
+                    record = AiModelRecord(
+                        name=repo_id,
+                        provider="huggingface",
+                        model_type="snapshot",
+                        api_base=downloaded_path,
+                        config=super_params,
+                    )
+                    db.add(record)
+                db.commit()
+            except Exception:
+                logger.warning("Failed to record snapshot in database", exc_info=True)
+                db.rollback()
+            finally:
+                db.close()
+
+            return downloaded_path
+
         except Exception as e:
             logger.error("Failed to download snapshot for %s: %s", repo_id, e)
             raise
+
+    def remove_snapshot(self, repo_id: str):
+        """
+        Deletes a downloaded snapshot from disk and removes its database record.
+        """
+        logger = logging.getLogger(__name__)
+        repo_path = os.path.join(self.cache_dir, "repos", repo_id.replace("/", "--"))
+        if os.path.exists(repo_path):
+            shutil.rmtree(repo_path)
+            logger.info("Deleted snapshot directory for %s", repo_id)
+        else:
+            logger.warning("Snapshot directory not found for %s", repo_id)
+
+        db = SessionLocal()
+        try:
+            record = db.query(AiModelRecord).filter_by(name=repo_id).first()
+            if record:
+                db.delete(record)
+                db.commit()
+                logger.info("Removed database record for snapshot %s", repo_id)
+            else:
+                logger.warning("No database record found for snapshot %s", repo_id)
+        except Exception:
+            logger.warning("Failed to remove database record for snapshot %s", repo_id, exc_info=True)
+            db.rollback()
+        finally:
+            db.close()
 
     def remove_local_model(self, filename: str):
         """
