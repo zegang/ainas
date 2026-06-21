@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:intl/intl.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../../../services/api_service.dart';
-import '../../../file_browser/presentation/widgets/breadcrumb_bar.dart';
-import '../../../../shared/models/file_item.dart';
+import 'package:ainas_frontend/l10n/app_localizations.dart';
+import 'package:ainas_frontend/services/api_service.dart';
+import 'package:ainas_frontend/shared/widgets/breadcrumb_bar.dart';
+import 'package:ainas_frontend/shared/widgets/file_list_view.dart';
+import 'package:ainas_frontend/shared/models/file_item.dart';
 
 class NasFilePicker extends StatefulWidget {
   final List<String> initialSelectedFiles;
@@ -21,6 +21,7 @@ class _NasFilePickerState extends State<NasFilePicker> {
   List<String> _pathStack = [""];
   late Future<List<FileItem>> _fileListFuture;
   final Set<String> _currentSelection = {}; // Store full paths of selected files
+  final Set<FileItem> _selectedItems = {}; // For FileListView selection support
 
   @override
   void initState() {
@@ -39,6 +40,7 @@ class _NasFilePickerState extends State<NasFilePicker> {
     if (item.isDir) {
       setState(() {
         _pathStack.add(_pathStack.last.isEmpty ? item.name : "${_pathStack.last}/${item.name}");
+        _selectedItems.clear();
       });
       _refreshFileList();
     } else {
@@ -47,8 +49,10 @@ class _NasFilePickerState extends State<NasFilePicker> {
       setState(() {
         if (_currentSelection.contains(fullPath)) {
           _currentSelection.remove(fullPath);
+          _selectedItems.remove(item);
         } else {
           _currentSelection.add(fullPath);
+          _selectedItems.add(item);
         }
       });
     }
@@ -57,6 +61,7 @@ class _NasFilePickerState extends State<NasFilePicker> {
   void _onPathPressed(int index) {
     setState(() {
       _pathStack = _pathStack.sublist(0, index + 1);
+      _selectedItems.clear();
     });
     _refreshFileList();
   }
@@ -122,28 +127,38 @@ class _NasFilePickerState extends State<NasFilePicker> {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
                 final items = snapshot.data ?? [];
-                return ListView.builder(
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final item = items[index];
+                return FileListView(
+                  items: items,
+                  sortColumnIndex: 0,
+                  sortAscending: true,
+                  onSort: (index, ascending) {},
+                  onItemTap: _onItemTap,
+                  onActionSelected: (action, item) {},
+                  selectedItems: _selectedItems,
+                  onSelectAll: (val) {
+                    setState(() {
+                      if (val == true) {
+                        _selectedItems.clear();
+                        _selectedItems.addAll(items.where((item) => !item.isDir));
+                        _currentSelection.clear();
+                        _currentSelection.addAll(items.where((item) => !item.isDir).map((item) => _pathStack.last.isEmpty ? item.name : "${_pathStack.last}/${item.name}"));
+                      } else {
+                        _selectedItems.clear();
+                        _currentSelection.clear();
+                      }
+                    });
+                  },
+                  onItemSelected: (item, val) {
                     final fullPath = _pathStack.last.isEmpty ? item.name : "${_pathStack.last}/${item.name}";
-                    final isSelected = _currentSelection.contains(fullPath);
-                    return ListTile(
-                      leading: Icon(item.isDir ? Icons.folder : Icons.insert_drive_file),
-                      title: Text(item.name),
-                      subtitle: item.isDir
-                          ? null
-                          : Text(
-                              '${(item.size / 1024).toStringAsFixed(2)} KB - '
-                              '${DateFormat.yMd().add_jm().format(item.updatedAt)}',
-                            ),
-                      trailing: item.isDir
-                          ? null
-                          : (isSelected ? const Icon(Icons.check_circle, color: Colors.green) : null),
-                      onTap: () => _onItemTap(item),
-                      selected: isSelected,
-                      enabled: !item.isDir, // Only files can be selected
-                    );
+                    setState(() {
+                      if (val == true) {
+                        _selectedItems.add(item);
+                        _currentSelection.add(fullPath);
+                      } else {
+                        _selectedItems.remove(item);
+                        _currentSelection.remove(fullPath);
+                      }
+                    });
                   },
                 );
               },

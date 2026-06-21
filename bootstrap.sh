@@ -23,6 +23,40 @@ export ENABLE_AI=${ENABLE_AI:-false}
 export CONTAINER_TOOL=${CONTAINER_TOOL:-podman}
 COMMAND=""
 
+show_usage() {
+    echo "AI-NAS Bootstrap Script"
+    echo "Usage: ./bootstrap.sh [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  --upgrade    Upgrade Python and Flutter dependencies to latest allowed versions"
+    echo "  --outdated   Check for outdated Flutter dependencies"
+    echo "  --setup      Install Python dependencies and Flutter SDK submodule"
+    echo "  --backend    Setup and run only the FastAPI backend"
+    echo "  --platform   Frontend target (web, linux; default: web)"
+    echo "  --openapi    Export the backend OpenAPI spec to openapi.json"
+    echo "  --container-tool Tool for services (podman, docker; default: podman)"
+    echo "  --frontend   Setup and run only the Flutter frontend"
+    echo "  --build-web  Compile the Flutter Web GUI for production"
+    echo "  --rag        Start RAG services (Elasticsearch/Kibana)"
+    echo "  --check-rag-health Check RAG services health (Elasticsearch)"
+    echo "  --logs-rag   View RAG service logs"
+    echo "  --stop-rag   Stop RAG services"
+    echo "  --observability Start Prometheus observability services"
+    echo "  --logs-observability View observability logs"
+    echo "  --stop-observability Stop observability services"
+    echo "  --web        Run the Flutter frontend as a web application"
+    echo "  --linux      Run the Flutter frontend as a native Linux app"
+    echo "  --android    Build the Android APK (Release)"
+    echo "  --all        Setup and run both backend and frontend (default)"
+    echo "  --help, -h   Show this help message"
+    echo ""
+    echo "Environment Variables:"
+    echo "  NAS_HOST     Listening IP (default: 0.0.0.0)"
+    echo "  NAS_PORT     Listening port (default: 9026)"
+    echo "  FRONTEND_PORT Listening port for GUI (default: 8080)"
+    echo "  ENABLE_AI    Enable AI features (true/false, default: false)"
+}
+
 # Parse Arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -63,40 +97,6 @@ if [ -z "$FRONTEND_PLATFORM" ]; then
         export FRONTEND_PLATFORM="web"
     fi
 fi
-
-show_usage() {
-    echo "AI-NAS Bootstrap Script"
-    echo "Usage: ./bootstrap.sh [OPTIONS]"
-    echo ""
-    echo "Options:"
-    echo "  --upgrade    Upgrade Python and Flutter dependencies to latest allowed versions"
-    echo "  --outdated   Check for outdated Flutter dependencies"
-    echo "  --setup      Install Python dependencies and Flutter SDK submodule"
-    echo "  --backend    Setup and run only the FastAPI backend"
-    echo "  --platform   Frontend target (web, linux; default: web)"
-    echo "  --openapi    Export the backend OpenAPI spec to openapi.json"
-    echo "  --container-tool Tool for services (podman, docker; default: podman)"
-    echo "  --frontend   Setup and run only the Flutter frontend"
-    echo "  --build-web  Compile the Flutter Web GUI for production"
-    echo "  --rag        Start RAG services (Elasticsearch/Kibana)"
-    echo "  --check-rag-health Check RAG services health (Elasticsearch)"
-    echo "  --logs-rag   View RAG service logs"
-    echo "  --stop-rag   Stop RAG services"
-    echo "  --observability Start Prometheus observability services"
-    echo "  --logs-observability View observability logs"
-    echo "  --stop-observability Stop observability services"
-    echo "  --web        Run the Flutter frontend as a web application"
-    echo "  --linux      Run the Flutter frontend as a native Linux app"
-    echo "  --android    Build the Android APK (Release)"
-    echo "  --all        Setup and run both backend and frontend (default)"
-    echo "  --help, -h   Show this help message"
-    echo ""
-    echo "Environment Variables:"
-    echo "  NAS_HOST     Listening IP (default: 0.0.0.0)"
-    echo "  NAS_PORT     Listening port (default: 9026)"
-    echo "  FRONTEND_PORT Listening port for GUI (default: 8080)"
-    echo "  ENABLE_AI    Enable AI features (true/false, default: false)"
-}
 
 setup_python() {
     echo "Step: Setting up Python Backend..."
@@ -203,7 +203,8 @@ build_web() {
     flutter build web \
         --dart-define=NAS_HOST="$NAS_HOST" \
         --dart-define=NAS_PORT="$NAS_PORT" \
-        --dart-define=ENABLE_AI="$ENABLE_AI"
+        --dart-define=ENABLE_AI="$ENABLE_AI" \
+        --release
     cd "$PROJECT_ROOT"
 }
 

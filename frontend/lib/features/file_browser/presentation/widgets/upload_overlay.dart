@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../services/api_service.dart';
-import '../../../../shared/models/upload_models.dart';
+import 'package:ainas_frontend/services/api_service.dart';
+import 'package:ainas_frontend/shared/models/upload_models.dart';
 
 class UploadOverlay extends StatelessWidget {
   final ApiService api;

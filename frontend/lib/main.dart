@@ -6,9 +6,11 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:developer' as developer;
 import 'l10n/app_localizations.dart';
 import 'features/file_browser/presentation/widgets/nas_browser_page.dart';
-import 'features/settings/presentation/widgets/settings_page.dart';
+import 'features/mine/presentation/widgets/login_widget.dart';
+import 'features/mine/presentation/widgets/mine_page.dart';
 import './services/api_service.dart';
 import 'shared/themes/app_theme.dart';
+import 'shared/widgets/ad_splash_screen.dart';
 import 'features/home/presentation/widgets/home_page.dart';
 import 'features/ai_assistant/presentation/widgets/ai_assistant_page.dart';
 
@@ -34,7 +36,10 @@ void main() async {
           // Localization delegates
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const MainShell(),
+          home: AdSplashScreen(
+            duration: const Duration(milliseconds: 3000),
+            child: const MainShell(),
+          ),
         );
       },
     ),
@@ -44,21 +49,10 @@ void main() async {
 void _setupLogging() {
   // Set the root level (usually Level.INFO for production, Level.ALL for debug)
   Logger.root.level = Level.ALL;
-  Logger.root.onRecord.listen((record) {
-    // Pass logs to dart:developer for structured viewing in DevTools
-    developer.log(
-      record.message,
-      time: record.time,
-      level: record.level.value,
-      name: record.loggerName,
-      error: record.error,
-      stackTrace: record.stackTrace,
-    );
-  });
 
   // Append logs to a local file if running on a native platform (Linux/Android)
   if (!kIsWeb) {
-    final logFile = File('../logs/ainas_frontend.log');
+    final logFile = File('ainas_frontend.log');
     Logger.root.onRecord.listen((record) {
       final sb = StringBuffer();
       sb.writeln('${record.time} [${record.level.name}] ${record.loggerName}: ${record.message}');
@@ -69,6 +63,25 @@ void _setupLogging() {
         sb.writeln('StackTrace:\n${record.stackTrace}');
       }
       logFile.writeAsStringSync(sb.toString(), mode: FileMode.append, flush: true);
+    });
+  } else {
+      Logger.root.onRecord.listen((record) {
+      print('${record.time} [${record.level.name}] ${record.loggerName}: ${record.message}');
+      if (record.error != null) {
+        print('Error: ${record.error}');
+      }
+      if (record.stackTrace != null) {
+        print('StackTrace:\n${record.stackTrace}');
+      }
+      // Pass logs to dart:developer for structured viewing in DevTools
+      developer.log(
+        record.message,
+        time: record.time,
+        level: record.level.value,
+        name: record.loggerName,
+        error: record.error,
+        stackTrace: record.stackTrace,
+      );
     });
   }
 }
@@ -104,12 +117,20 @@ class _MainShellState extends State<MainShell> {
 
   void _syncNasStatus() => ApiService().checkStatus();
 
+  Future<bool> _ensureLoggedIn(BuildContext context) async {
+    final api = ApiService();
+    if (api.isLoggedIn) {
+      return true;
+    }
+    return await showLoginDialog(context);
+  }
+
   String _getAiStatusLabel(String status) {
     switch (status) {
       case 'ready':
         return "AI Ready";
       case 'initializing':
-        return "AI Not Ready - Initializing";
+        return "AI Initializing";
       case 'disabled':
         return "AI Disabled";
       default:
@@ -230,8 +251,12 @@ class _MainShellState extends State<MainShell> {
             ),
             bottomNavigationBar: NavigationBar(
               selectedIndex: api.currentTabIndex,
-              onDestinationSelected: (int index) => api.setTabIndex(index),
-          destinations: [
+              onDestinationSelected: (int index) {
+                _ensureLoggedIn(context).then((loggedIn) {
+                  if (loggedIn) api.setTabIndex(index);
+                });
+              },
+              destinations: [
             NavigationDestination(
               icon: const Icon(Icons.home_outlined),
               selectedIcon: const Icon(Icons.home),
@@ -248,9 +273,9 @@ class _MainShellState extends State<MainShell> {
               label: l10n.aiAssistant,
             ),
             NavigationDestination(
-              icon: const Icon(Icons.settings_outlined),
-              selectedIcon: const Icon(Icons.settings),
-              label: l10n.settingsTooltip,
+              icon: const Icon(Icons.person_outline),
+              selectedIcon: const Icon(Icons.person),
+              label: l10n.minePage,
             ),
           ],
         ),
@@ -265,7 +290,11 @@ class _MainShellState extends State<MainShell> {
                 extended: true,
                 minExtendedWidth: 200,
                 selectedIndex: api.currentTabIndex,
-                onDestinationSelected: (int index) => api.setTabIndex(index),
+                onDestinationSelected: (int index) {
+                  _ensureLoggedIn(context).then((loggedIn) {
+                    if (loggedIn) api.setTabIndex(index);
+                  });
+                },
                 destinations: [
                   NavigationRailDestination(
                     icon: Icon(Icons.home_outlined),
@@ -283,9 +312,9 @@ class _MainShellState extends State<MainShell> {
                     label: Text(l10n.aiAssistant),
                   ),
                   NavigationRailDestination(
-                    icon: const Icon(Icons.settings_outlined),
-                    selectedIcon: const Icon(Icons.settings),
-                    label: Text(l10n.settingsTooltip),
+                    icon: const Icon(Icons.person_outline),
+                    selectedIcon: const Icon(Icons.person),
+                    label: Text(l10n.minePage),
                   ),
                 ],
               ),
@@ -314,7 +343,7 @@ class _MainShellState extends State<MainShell> {
       case 2:
         return const AIAssistantPage(key: ValueKey(2));
       case 3:
-        return const SettingsPage(key: ValueKey(3));
+        return const MinePage(key: ValueKey(3));
       default:
         return const HomePage(key: ValueKey(0));
     }

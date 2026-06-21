@@ -6,19 +6,21 @@ import 'package:nsd/nsd.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:logging/logging.dart';
 import 'package:intl/intl.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../../../shared/themes/app_theme.dart';
-import '../../../../services/api_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:ainas_frontend/l10n/app_localizations.dart';
+import 'package:ainas_frontend/shared/themes/app_theme.dart';
+import 'package:ainas_frontend/services/api_service.dart';
 import '../controllers/file_browser_controller.dart';
-import '../../../../shared/models/file_item.dart';
-import '../widgets/breadcrumb_bar.dart';
-import '../widgets/file_grid_view.dart';
-import '../widgets/file_list_view.dart';
-import '../../../ai_assistant/presentation/widgets/ai_assistant_page.dart';
-import '../../../../shared/widgets/viewers/pdf_viewer_page.dart';
-import '../../../../shared/widgets/viewers/docx_viewer_page.dart';
-import '../../../../shared/widgets/viewers/image_viewer_page.dart';
-import '../widgets/upload_overlay.dart';
+import 'package:ainas_frontend/shared/models/file_item.dart';
+import 'package:ainas_frontend/shared/widgets/breadcrumb_bar.dart';
+import 'package:ainas_frontend/shared/widgets/file_grid_view.dart';
+import 'package:ainas_frontend/shared/widgets/file_list_view.dart';
+import 'package:ainas_frontend/features/file_browser/presentation/widgets/file_filter_sheet.dart';
+import 'package:ainas_frontend/features/ai_assistant/presentation/widgets/ai_assistant_page.dart';
+import 'package:ainas_frontend/shared/widgets/viewers/pdf_viewer_page.dart';
+import 'package:ainas_frontend/shared/widgets/viewers/docx_viewer_page.dart';
+import 'package:ainas_frontend/shared/widgets/viewers/image_viewer_page.dart';
+import 'upload_overlay.dart';
 
 class NASBrowser extends StatefulWidget {
   const NASBrowser({super.key});
@@ -41,6 +43,8 @@ class _NASBrowserState extends State<NASBrowser> {
   int _sortColumnIndex = 0; // 0: Name, 1: Size, 2: Type, 3: Date
   bool _sortAscending = true;
   final Set<FileItem> _selectedItems = {};
+  Map<String, dynamic> _fileFilter = {}; // e.g. { 'types': Set<String>, 'tags': 'a,b' }
+  Set<String> _availableTags = {};
 
   @override
   void initState() {
@@ -108,7 +112,7 @@ class _NASBrowserState extends State<NASBrowser> {
 
   Future<void> _handleUpload() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      FilePickerResult? result = await FilePicker.pickFiles(
         allowMultiple: true,
         withData: true,
         type: FileType.any,
@@ -134,7 +138,7 @@ class _NASBrowserState extends State<NASBrowser> {
 
     try {
       // 1. Pick the directory path
-      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+      String? selectedDirectory = await FilePicker.getDirectoryPath();
 
       if (selectedDirectory != null) {
         final dir = Directory(selectedDirectory);
@@ -162,6 +166,28 @@ class _NASBrowserState extends State<NASBrowser> {
     } catch (e, st) {
       _log.severe('Folder upload failed', e, st);
     }
+  }
+
+  Future<void> _openTransfers() async {
+    // Show the transfer/upload overlay as a modal bottom sheet
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FractionallySizedBox(
+        heightFactor: 0.6,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(12),
+              topRight: Radius.circular(12),
+            ),
+          ),
+          child: UploadOverlay(api: api),
+        ),
+      ),
+    );
   }
 
   Future<void> _handleCreateFolder() async {
@@ -361,97 +387,317 @@ class _NASBrowserState extends State<NASBrowser> {
     }
   }
 
+  Widget _buildDesktopToolBar(BuildContext context, AppLocalizations l10n) {
+    return Row(
+      children: [
+        if (pathStack.length > 1)
+          IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              setState(() => pathStack.removeLast());
+              _refresh();
+            },
+          ),
+        Expanded(
+          child: _isSearching
+              ? TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  decoration: InputDecoration(hintText: l10n.searchHint, border: InputBorder.none),
+                  onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
+                )
+              : BreadcrumbBar(
+                  pathStack: pathStack,
+                  onPathPressed: (index) {
+                    setState(() {
+                      pathStack = pathStack.sublist(0, index + 1);
+                    });
+                    _refresh();
+                  },
+                ),
+        ),
+        IconButton(
+          icon: Icon(_isSearching ? Icons.close : Icons.search),
+          onPressed: () => setState(() {
+            _isSearching = !_isSearching;
+            if (!_isSearching) {
+              _searchQuery = "";
+              _searchController.clear();
+            }
+          }),
+        ),
+        if (_selectedItems.length > 1) ...[
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
+            tooltip: l10n.deleteAction,
+            onPressed: _handleBatchDelete,
+          ),
+          IconButton(
+            icon: const Icon(Icons.drive_file_move_outlined),
+            tooltip: l10n.moveAction,
+            onPressed: _handleBatchMove,
+          ),
+          IconButton(
+            icon: const Icon(Icons.auto_awesome_outlined),
+            tooltip: l10n.attachToAiAction,
+            onPressed: _handleBatchAttachToAi,
+          ),
+          IconButton(
+            icon: const Icon(Icons.deselect_outlined),
+            tooltip: l10n.clear,
+            onPressed: () => setState(() => _selectedItems.clear()),
+          ),
+        ],
+        IconButton(
+          icon: const Icon(Icons.create_new_folder_outlined),
+          tooltip: l10n.newFolderTitle,
+          onPressed: _handleCreateFolder,
+        ),
+        if (!kIsWeb) // Hide folder upload on web
+          IconButton(
+            icon: const Icon(Icons.drive_folder_upload),
+            tooltip: l10n.uploadFolder,
+            onPressed: _handleFolderUpload,
+          ),
+        // Select files to upload
+        IconButton(
+          icon: const Icon(Icons.upload_file),
+          tooltip: l10n.uploadLabel,
+          onPressed: _handleUpload,
+        ),
+        // Open transfers list
+        IconButton(
+          icon: const Icon(Icons.list_alt),
+          tooltip: l10n.transferList,
+          onPressed: _openTransfers,
+        ),
+        IconButton(
+          icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
+          tooltip: _isGridView ? l10n.switchViewList : l10n.switchViewGrid,
+          onPressed: () => setState(() => _isGridView = !_isGridView),
+        ),
+        IconButton(
+          icon: const Icon(Icons.filter_list),
+          tooltip: l10n.filterTooltip,
+          onPressed: () async {
+            final width = MediaQuery.of(context).size.width;
+            if (kIsWeb && width >= 800) {
+              final result = await showDialog<Map<String, dynamic>>(
+                context: context,
+                builder: (context) => Dialog(
+                  insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: math.min(900, width - 160), maxHeight: 800),
+                    child: FileFilterSheet(initial: _fileFilter, availableTags: _availableTags.toList()),
+                  ),
+                ),
+              );
+              if (result != null) setState(() => _fileFilter = result);
+            } else {
+              final result = await showModalBottomSheet<Map<String, dynamic>>(
+                context: context,
+                isScrollControlled: true,
+                builder: (context) => FractionallySizedBox(
+                  heightFactor: 0.6,
+                  child: FileFilterSheet(initial: _fileFilter, availableTags: _availableTags.toList()),
+                ),
+              );
+              if (result != null) setState(() => _fileFilter = result);
+            }
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          tooltip: l10n.refreshTooltip,
+          onPressed: _refresh,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileToolBar(BuildContext context, AppLocalizations l10n) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Row 1: Search
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.search, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: l10n.searchHint,
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
+                ),
+              ),
+              if (_searchQuery.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () {
+                    setState(() {
+                      _searchQuery = "";
+                      _searchController.clear();
+                    });
+                  },
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        
+        // Row 2: Path/Breadcrumbs
+        Row(
+          children: [
+            if (pathStack.length > 1)
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                visualDensity: VisualDensity.compact,
+                onPressed: () {
+                  setState(() {
+                    pathStack.removeLast();
+                    _selectedItems.clear();
+                  });
+                  _refresh();
+                },
+              ),
+            Expanded(
+              child: BreadcrumbBar(
+                pathStack: pathStack,
+                onPathPressed: (index) {
+                  setState(() {
+                    pathStack = pathStack.sublist(0, index + 1);
+                    _selectedItems.clear();
+                  });
+                  _refresh();
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        // Row 3: Action icons
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              if (_selectedItems.isNotEmpty) ...[
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  tooltip: l10n.deleteAction,
+                  onPressed: _handleBatchDelete,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.drive_file_move_outlined),
+                  tooltip: l10n.moveAction,
+                  onPressed: _handleBatchMove,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.auto_awesome_outlined),
+                  tooltip: l10n.attachToAiAction,
+                  onPressed: _handleBatchAttachToAi,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.deselect_outlined),
+                  tooltip: l10n.clear,
+                  onPressed: () => setState(() => _selectedItems.clear()),
+                ),
+                Container(height: 24, width: 1, color: Colors.grey, margin: const EdgeInsets.symmetric(horizontal: 8)),
+              ],
+              IconButton(
+                icon: const Icon(Icons.create_new_folder_outlined),
+                tooltip: l10n.newFolderTitle,
+                onPressed: _handleCreateFolder,
+              ),
+              if (!kIsWeb)
+                IconButton(
+                  icon: const Icon(Icons.drive_folder_upload),
+                  tooltip: l10n.uploadFolder,
+                  onPressed: _handleFolderUpload,
+                ),
+              // Select files to upload
+              IconButton(
+                icon: const Icon(Icons.upload_file),
+                tooltip: l10n.uploadLabel,
+                onPressed: _handleUpload,
+              ),
+              // Open transfers list
+              IconButton(
+                icon: const Icon(Icons.list_alt),
+                tooltip: l10n.transferList,
+                onPressed: _openTransfers,
+              ),
+              IconButton(
+                icon: const Icon(Icons.filter_list),
+                tooltip: l10n.filterTooltip,
+                onPressed: () async {
+                  final result = await showModalBottomSheet<Map<String, dynamic>>(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (context) => FractionallySizedBox(
+                      heightFactor: 0.6,
+                      child: FileFilterSheet(initial: _fileFilter, availableTags: _availableTags.toList()),
+                    ),
+                  );
+                  if (result != null) {
+                    setState(() {
+                      _fileFilter = result;
+                    });
+                  }
+                },
+              ),
+              IconButton(
+                icon: Icon(_sortColumnIndex == 3 ? Icons.access_time : Icons.sort_by_alpha),
+                tooltip: 'Sort',
+                onPressed: () => setState(() {
+                  if (_sortColumnIndex == 3) {
+                    _sortColumnIndex = 0; // name
+                  } else {
+                    _sortColumnIndex = 3; // date/time
+                  }
+                }),
+              ),
+              IconButton(
+                icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
+                tooltip: _isGridView ? l10n.switchViewList : l10n.switchViewGrid,
+                onPressed: () {
+                  setState(() {
+                    _isGridView = !_isGridView;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final themeExt = Theme.of(context).extension<AppThemeExtension>()!;
+    final isSmallScreen = MediaQuery.of(context).size.width < 600;
 
     final toolBar = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-      child: Row(
-        children: [
-          if (pathStack.length > 1)
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () {
-                setState(() => pathStack.removeLast());
-                _refresh();
-              },
-            ),
-          Expanded(
-            child: _isSearching
-                ? TextField(
-                    controller: _searchController,
-                    autofocus: true,
-                    decoration: InputDecoration(hintText: l10n.searchHint, border: InputBorder.none),
-                    onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
-                  )
-                : BreadcrumbBar(
-                    pathStack: pathStack,
-                    onPathPressed: (index) {
-                      setState(() {
-                        pathStack = pathStack.sublist(0, index + 1);
-                      });
-                      _refresh();
-                    },
-                  ),
-          ),
-          IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
-            onPressed: () => setState(() {
-              _isSearching = !_isSearching;
-              if (!_isSearching) {
-                _searchQuery = "";
-                _searchController.clear();
-              }
-            }),
-          ),
-          if (_selectedItems.length > 1) ...[
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-              tooltip: "Delete Selected",
-              onPressed: _handleBatchDelete,
-            ),
-            IconButton(
-              icon: const Icon(Icons.drive_file_move_outlined),
-              tooltip: "Move Selected",
-              onPressed: _handleBatchMove,
-            ),
-            IconButton(
-              icon: const Icon(Icons.auto_awesome_outlined),
-              tooltip: "Attach to AI",
-              onPressed: _handleBatchAttachToAi,
-            ),
-            IconButton(
-              icon: const Icon(Icons.deselect_outlined),
-              tooltip: "Clear Selection",
-              onPressed: () => setState(() => _selectedItems.clear()),
-            ),
-          ],
-          IconButton(
-            icon: const Icon(Icons.create_new_folder_outlined),
-            tooltip: l10n.newFolderTitle,
-            onPressed: _handleCreateFolder,
-          ),
-          if (!kIsWeb) // Hide folder upload on web
-            IconButton(
-              icon: const Icon(Icons.drive_folder_upload),
-              tooltip: "Upload Folder",
-              onPressed: _handleFolderUpload,
-            ),
-          IconButton(
-            icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
-            tooltip: _isGridView ? "Switch to List" : "Switch to Grid",
-            onPressed: () => setState(() => _isGridView = !_isGridView),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: l10n.refreshTooltip,
-            onPressed: _refresh,
-          ),
-        ],
-      ),
+      child: isSmallScreen ? _buildMobileToolBar(context, l10n) : _buildDesktopToolBar(context, l10n),
     );
 
     return Scaffold(
@@ -498,10 +744,54 @@ class _NASBrowserState extends State<NASBrowser> {
                   );
                 }
 
-                final items = (snapshot.data ?? []).where((item) {
-                  return _searchQuery.isEmpty ||
-                      item.name.toLowerCase().contains(_searchQuery) ||
-                      item.tags.any((tag) => tag.toLowerCase().contains(_searchQuery));
+                final rawItems = (snapshot.data ?? []).toList();
+
+                // collect available tags from current view
+                final tags = <String>{};
+                for (final it in rawItems) {
+                  for (final t in it.tags) {
+                    if (t.trim().isNotEmpty) tags.add(t.trim());
+                  }
+                }
+                if (tags.length != _availableTags.length || !tags.containsAll(_availableTags)) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) setState(() => _availableTags = tags);
+                  });
+                }
+
+                final items = rawItems.where((item) {
+                  final nameMatch = _searchQuery.isEmpty || item.name.toLowerCase().contains(_searchQuery);
+                  final tagMatch = _searchQuery.isEmpty || item.tags.any((tag) => tag.toLowerCase().contains(_searchQuery));
+                  if (!(nameMatch || tagMatch)) return false;
+
+                  // Type filters
+                  if (_fileFilter['types'] != null && (_fileFilter['types'] as Set).isNotEmpty) {
+                    if (!item.isDir) {
+                      final ext = item.name.contains('.') ? item.name.split('.').last.toLowerCase() : '';
+                      final Set types = (_fileFilter['types'] as Set).cast<String>();
+                      bool typeMatch = false;
+                      if (types.contains('images') && ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(ext)) typeMatch = true;
+                      if (types.contains('pdf') && ext == 'pdf') typeMatch = true;
+                      if (types.contains('docx') && ext == 'docx') typeMatch = true;
+                      if (types.contains('others') && !['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'pdf', 'docx'].contains(ext)) typeMatch = true;
+                      if (!typeMatch) return false;
+                    }
+                  }
+
+                  // Tags filter (comma-separated)
+                  if (_fileFilter['tags'] != null && (_fileFilter['tags'] as String).trim().isNotEmpty) {
+                    final wanted = (_fileFilter['tags'] as String)
+                        .split(',')
+                        .map((s) => s.trim().toLowerCase())
+                        .where((s) => s.isNotEmpty)
+                        .toSet();
+                    if (wanted.isNotEmpty) {
+                      final itemTags = item.tags.map((t) => t.toLowerCase()).toSet();
+                      if (itemTags.intersection(wanted).isEmpty) return false;
+                    }
+                  }
+
+                  return true;
                 }).toList();
 
                 _sortItems(items);
@@ -561,15 +851,7 @@ class _NASBrowserState extends State<NASBrowser> {
           ),
         ],
       ),
-      bottomSheet: UploadOverlay(api: api),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 60.0), // Avoid overlap with upload widget
-        child: FloatingActionButton.extended(
-          onPressed: _handleUpload,
-          label: Text(l10n.uploadLabel),
-          icon: const Icon(Icons.upload_file),
-        ),
-      ),
+      // UploadOverlay is shown on demand via the transfer list button
     );
   }
 
@@ -578,6 +860,29 @@ class _NASBrowserState extends State<NASBrowser> {
     if (action == 'move') _handleMove(item);
     if (action == 'delete') _handleDelete(item);
     if (action == 'attach') _handleAttachToAi(item);
+    if (action == 'download') _handleDownload(item);
+  }
+
+  Future<void> _handleDownload(FileItem item) async {
+    if (item.isDir) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Folder download is not supported yet')),
+        );
+      }
+      return;
+    }
+    final downloadUrl = '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}';
+    final uri = Uri.parse(downloadUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not launch download for ${item.name}')),
+        );
+      }
+    }
   }
 
   void _onItemTap(FileItem item) async {
@@ -621,7 +926,12 @@ class _NASBrowserState extends State<NASBrowser> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ImageViewerPage(url: downloadUrl, title: item.name),
+            builder: (context) => ImageViewerPage(
+              thumbnailUrl: item.thumbnailUrl,
+              originalUrl: downloadUrl,
+              title: item.name,
+              fileSize: item.size,
+            ),
           ),
         );
       }

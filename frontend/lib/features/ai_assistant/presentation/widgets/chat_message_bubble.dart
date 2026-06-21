@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../shared/models/chat_message.dart';
-import '../../../../shared/widgets/viewers/pdf_viewer_page.dart'; // Keep this import as it's a viewer
-import '../../../../shared/widgets/viewers/docx_viewer_page.dart'; // Keep this import as it's a viewer
+import 'package:ainas_frontend/shared/models/chat_message.dart';
+import 'package:ainas_frontend/shared/widgets/viewers/pdf_viewer_page.dart'; // Keep this import as it's a viewer
+import 'package:ainas_frontend/shared/widgets/viewers/docx_viewer_page.dart'; // Keep this import as it's a viewer
 
 class ChatMessageBubble extends StatelessWidget {
   final ChatMessage message;

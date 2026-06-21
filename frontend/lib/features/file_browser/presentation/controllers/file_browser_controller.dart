@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../shared/models/file_item.dart';
-import '../../../../services/api_service.dart';
+import 'package:ainas_frontend/shared/models/file_item.dart';
+import 'package:ainas_frontend/services/api_service.dart';
 
 /// Industry Standard: Logic is moved from the Widget to a Controller/ChangeNotifier.
 class FileBrowserController extends ChangeNotifier {

@@ -28,8 +28,14 @@ class ApiService with ChangeNotifier {
   static const String _baseUrlKey = 'nas_base_url';
   static const String _localeKey = 'nas_locale';
   static const String _themeModeKey = 'nas_theme_mode';
+  static const String _loggedInKey = 'nas_logged_in';
+  static const String _usernameKey = 'nas_username';
+  static const String _vipStatusKey = 'nas_vip_status';
   String locale = 'en';
   ThemeMode themeMode = ThemeMode.system;
+  bool isLoggedIn = false;
+  String username = 'Guest';
+  String vipStatus = 'Visitor';
   String currentPath = ''; // Tracks the directory currently being navigated by the user
   final List<UploadTask> uploads = [];
   
@@ -39,19 +45,30 @@ class ApiService with ChangeNotifier {
   String storageLabel = "Loading...";
 
   // Navigation state to control the app shell tabs
-  int currentTabIndex = 0; // 0: Home, 1: Files, 2: AI, 3: Settings
+  int currentTabIndex = 0; // 0: Home, 1: Files, 2: AI, 3: Mine
   void setTabIndex(int index) {
     currentTabIndex = index;
     notifyListeners();
   }
 
   // Persisted chat history for the AI Assistant during the current session
-  final List<ChatMessage> chatHistory = [
-    ChatMessage(
-      text: "Hello! I'm your AI Assistant. How can I help you manage your NAS today?",
+  final List<ChatMessage> chatHistory = [];
+
+  /// Sets the initial welcome message for the chat (called from UI with localized text).
+  void setWelcomeMessage(String message) {
+    chatHistory.clear();
+    chatHistory.add(ChatMessage(
+      text: message,
       isUser: false,
-    ),
-  ];
+    ));
+    notifyListeners();
+  }
+
+  // Chat state that persists across page navigation
+  bool isAwaitingResponse = false;
+  String? currentRequestId;
+  StreamSubscription<String>? _activeChatSubscription; // Active subscription kept alive across pages
+  final StreamController<String> _chatStreamController = StreamController<String>.broadcast();
 
   // Staging area for AI Assistant attachments
   final List<String> stagedFilesForAi = [];
@@ -63,12 +80,45 @@ class ApiService with ChangeNotifier {
     _log.info('Staged ${paths.length} files for AI Assistant');
   }
 
-  void clearChatHistory() {
+  void clearChatHistory(String welcomeMessage) {
     chatHistory.clear();
     chatHistory.add(ChatMessage(
-      text: "Hello! I'm your AI Assistant. How can I help you manage your NAS today?",
+      text: welcomeMessage,
       isUser: false,
     ));
+    isAwaitingResponse = false;
+    currentRequestId = null;
+    _activeChatSubscription?.cancel();
+    _activeChatSubscription = null;
+    notifyListeners();
+  }
+
+  /// Connects the repository stream to the internal broadcast stream controller.
+  /// This keeps the subscription alive across page navigation while allowing
+  /// multiple listeners via the broadcast stream.
+  void setupChatStream(Stream<String> repositoryStream) {
+    // Cancel any existing subscription
+    _activeChatSubscription?.cancel();
+    
+    // Subscribe to repository stream and forward to broadcast controller
+    _activeChatSubscription = repositoryStream.listen(
+      (chunk) => _chatStreamController.add(chunk),
+      onDone: () => markResponseComplete(),
+      onError: (e) {
+        _chatStreamController.addError(e);
+        markResponseComplete();
+      },
+      cancelOnError: false,
+    );
+  }
+
+  /// Returns the broadcast stream for UI listeners to connect to.
+  Stream<String> getChatStream() => _chatStreamController.stream;
+
+  /// Marks the response as received (called when stream completes).
+  void markResponseComplete() {
+    isAwaitingResponse = false;
+    currentRequestId = null;
     notifyListeners();
   }
 
@@ -128,8 +178,41 @@ class ApiService with ChangeNotifier {
         orElse: () => ThemeMode.system, // Fallback if stored value is invalid
       );
     }
+    isLoggedIn = prefs.getBool(_loggedInKey) ?? false;
+    username = prefs.getString(_usernameKey) ?? 'Guest';
+    vipStatus = prefs.getString(_vipStatusKey) ?? (isLoggedIn ? 'VIP Member' : 'Visitor');
+    if (!isLoggedIn) {
+      username = 'Guest';
+      vipStatus = 'Visitor';
+    }
     notifyListeners();
     _log.info('Loaded base URL: $baseUrl');
+  }
+
+  /// Marks the user as logged in.
+  Future<void> login(String username, String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_loggedInKey, true);
+    await prefs.setString(_usernameKey, username);
+    await prefs.setString(_vipStatusKey, 'VIP Member');
+    isLoggedIn = true;
+    this.username = username;
+    vipStatus = 'VIP Member';
+    notifyListeners();
+    _log.info('User logged in: $username');
+  }
+
+  /// Logs the user out and clears the local login state.
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_loggedInKey, false);
+    await prefs.setString(_usernameKey, 'Guest');
+    await prefs.setString(_vipStatusKey, 'Visitor');
+    isLoggedIn = false;
+    username = 'Guest';
+    vipStatus = 'Visitor';
+    notifyListeners();
+    _log.info('User logged out');
   }
 
   /// Verifies connectivity to the backend by calling the status endpoint.

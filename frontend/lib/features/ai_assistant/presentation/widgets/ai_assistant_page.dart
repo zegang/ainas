@@ -3,13 +3,13 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:logging/logging.dart';
-import '../../../../services/api_service.dart';
-import '../../domain/chat_repository_impl.dart';
-import '../../../../shared/models/chat_message.dart';
-import '../widgets/nas_file_picker.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../domain/chat_repository.dart';
-import '../widgets/chat_bubble.dart';
+import 'package:ainas_frontend/services/api_service.dart';
+import 'package:ainas_frontend/features/ai_assistant/domain/chat_repository_impl.dart';
+import 'package:ainas_frontend/shared/models/chat_message.dart';
+import './nas_file_picker.dart';
+import 'package:ainas_frontend/l10n/app_localizations.dart';
+import 'package:ainas_frontend/features/ai_assistant/domain/chat_repository.dart';
+import 'package:ainas_frontend/features/ai_assistant/presentation/widgets/chat_bubble.dart';
 
 class AIAssistantPage extends StatefulWidget {
   const AIAssistantPage({super.key});
@@ -24,9 +24,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   List<String> _selectedFiles = []; // State to hold selected files
-  bool _isAwaitingResponse = false; // State for loading animation
-  StreamSubscription<String>? _chatSubscription; // To track current stream
-  String? _currentRequestId; // To track current request for backend signal
+  StreamSubscription<String>? _localSubscription; // Local subscription for listening to updates
 
   late final ChatRepository _repository = HttpChatRepository(
     baseUrl: api.baseUrl,
@@ -35,15 +33,15 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   List<ChatMessage> get _messages => api.chatHistory;
 
   void _handleStop() {
-    if (_chatSubscription != null) {
-      _chatSubscription!.cancel();
-      _chatSubscription = null;
+    if (_localSubscription != null) {
+      _localSubscription!.cancel();
+      _localSubscription = null;
     }
-    if (_currentRequestId != null) {
-      api.cancelAiChat(_currentRequestId!);
-      _currentRequestId = null;
+    if (api.currentRequestId != null) {
+      api.cancelAiChat(api.currentRequestId!);
     }
-    setState(() => _isAwaitingResponse = false);
+    api.markResponseComplete();
+    setState(() {}); // Trigger rebuild with updated api state
     _log.info('AI Request cancelled by user');
   }
 
@@ -59,9 +57,12 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
       _messages.add(ChatMessage(text: text, isUser: true, files: currentFiles)); // Store files with message
       _controller.clear();
       _selectedFiles.clear(); // Clear selected files after sending
-      _isAwaitingResponse = true; // Show loading animation
-      _currentRequestId = requestId;
     });
+    
+    // Update global state in ApiService
+    api.isAwaitingResponse = true;
+    api.currentRequestId = requestId;
+    api.notifyListeners();
 
     _scrollToBottom();
 
@@ -69,7 +70,12 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
     String fullResponse = '';
 
     try {
-      _chatSubscription = _repository.streamResponse(text, files: currentFiles, requestId: requestId).listen((chunk) {
+      final stream = _repository.streamResponse(text, files: currentFiles, requestId: requestId);
+      // Setup the stream in ApiService to keep it alive across page navigation
+      api.setupChatStream(stream);
+      
+      // Listen to the broadcast stream
+      _localSubscription = api.getChatStream().listen((chunk) {
         if (!mounted) {
           _log.warning('!mounted is true. existing streamResponse...');
           return;
@@ -95,21 +101,22 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
         _scrollToBottom();
       }, onDone: () {
         if (mounted) {
-          setState(() => _isAwaitingResponse = false);
-          _chatSubscription = null;
-          _currentRequestId = null;
+          api.markResponseComplete();
+          setState(() {});
+          _localSubscription = null;
         }
       }, onError: (e) {
         throw e;
-      }, cancelOnError: true);
+      }, cancelOnError: false);
     } catch (e) {
       _log.severe('Streaming error', e);
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Communication with AI Assistant failed.'),
+            content: Text(l10n.communicationFailed),
             backgroundColor: Theme.of(context).colorScheme.error,
-            action: SnackBarAction(label: 'RETRY', textColor: Colors.white, onPressed: _handleSend),
+            action: SnackBarAction(label: l10n.retryAction, textColor: Colors.white, onPressed: _handleSend),
           ),
         );
       }
@@ -131,6 +138,31 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   @override
   void initState() {
     super.initState();
+    // Initialize welcome message with localization support
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final l10n = AppLocalizations.of(context)!;
+      if (api.chatHistory.isEmpty) {
+        api.setWelcomeMessage(l10n.aiWelcomeMessage);
+      }
+      
+      // If there's an ongoing AI response, reconnect to the broadcast stream
+      if (api.isAwaitingResponse && api.currentRequestId != null) {
+        _localSubscription = api.getChatStream().listen((chunk) {
+          if (!mounted) return;
+          
+          setState(() {
+            if (_messages.isNotEmpty && !_messages.last.isUser) {
+              // Update the last AI message with incoming chunk
+              _messages[_messages.length - 1] = _messages.last.copyWith(
+                text: _messages.last.text + chunk,
+              );
+            }
+          });
+          _scrollToBottom();
+        });
+        _log.info('Reconnected to ongoing AI response (requestId: ${api.currentRequestId})');
+      }
+    });
     // Check for files staged from the File Browser
     final staged = api.stagedFilesForAi;
     if (staged.isNotEmpty) {
@@ -142,30 +174,33 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
 
   @override
   void dispose() {
-    _chatSubscription?.cancel();
+    // Don't cancel the subscription - it's kept alive in ApiService
+    // so the response continues in the background
+    _localSubscription = null;
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
   void _handleClearHistory() async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Clear History"),
-        content: const Text("Are you sure you want to clear the entire chat history?"),
+        title: Text(l10n.clearHistoryTitle),
+        content: Text(l10n.clearHistoryConfirm),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancelButton)),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("Clear", style: TextStyle(color: Colors.red)),
+            child: Text(l10n.clear, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
 
     if (confirmed == true) {
-      api.clearChatHistory();
+      api.clearChatHistory(l10n.aiWelcomeMessage);
     }
   }
 
@@ -196,7 +231,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
               padding: const EdgeInsets.all(16),
               // Show indicator only if waiting for the very first response chunk
               itemCount: _messages.length + 
-                ((_isAwaitingResponse && (_messages.isEmpty || _messages.last.isUser)) ? 1 : 0),
+                ((api.isAwaitingResponse && (_messages.isEmpty || _messages.last.isUser)) ? 1 : 0),
               itemBuilder: (context, index) {
                 if (index == _messages.length) {
                   return const _TypingIndicator();
@@ -245,6 +280,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   }
 
   Widget _buildMessage(BuildContext context, ChatMessage message) {
+    final l10n = AppLocalizations.of(context)!;
     if (message.isUser) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -345,9 +381,9 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
                 children: [
                   Icon(Icons.auto_awesome, size: 14, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(width: 4),
-                  Text("Response", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                  Text(l10n.responseLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
                   if (_isMarkdown(remainingText)) 
-                    Text(" (Markdown)", style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.outline)),
+                    Text(l10n.markdownLabel, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.outline)),
                 ],
               ),
             ),
@@ -367,6 +403,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   }
 
   Widget _buildMessageActions(BuildContext context, ChatMessage message, {bool canEdit = false}) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
       child: Row(
@@ -380,17 +417,18 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
                 // Move cursor to the end
                 _controller.selection = TextSelection.fromPosition(TextPosition(offset: _controller.text.length));
               },
-              tooltip: "Edit and resend",
+              tooltip: l10n.editAndResend,
             ),
           IconButton(
             icon: const Icon(Icons.copy_outlined, size: 16),
             onPressed: () {
+              final l10n = AppLocalizations.of(context)!;
               Clipboard.setData(ClipboardData(text: message.text));
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Copied to clipboard"), duration: Duration(seconds: 1)),
+                SnackBar(content: Text(l10n.copiedToClipboard), duration: const Duration(seconds: 1)),
               );
             },
-            tooltip: "Copy text",
+            tooltip: l10n.copyText,
           ),
         ],
       ),
@@ -521,6 +559,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   }
 
   Widget _buildThinkingBlock(BuildContext context, String thought, {required bool isComplete}) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.only(bottom: 8, left: 12),
       decoration: BoxDecoration(
@@ -534,7 +573,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
           initiallyExpanded: !isComplete, // Expand automatically while thinking
           dense: true,
           title: Text(
-            isComplete ? "Thinking Process" : "Thinking...",
+            isComplete ? l10n.thinkingProcess : l10n.thinking,
             style: TextStyle(
               fontSize: 12,
               color: Theme.of(context).colorScheme.secondary,
@@ -563,14 +602,19 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   }
 
   Widget _buildToolCallBlock(BuildContext context, String jsonContent, {required bool isComplete}) {
-    String toolName = "AI Tool";
+    final l10n = AppLocalizations.of(context)!;
+    String toolName = l10n.aiToolName;
     try {
       final data = json.decode(isComplete ? jsonContent : "$jsonContent}"); 
-      toolName = data['name'] ?? "AI Tool";
+      toolName = data['name'] ?? l10n.aiToolName;
     } catch (_) {
       // Partial stream regex fallback to extract tool name before JSON is valid
       final nameMatch = RegExp(r'"name"\s*:\s*"([^"]*)').firstMatch(jsonContent);
-      if (nameMatch != null) toolName = nameMatch.group(1)!;
+      if (nameMatch != null) {
+        toolName = nameMatch.group(1)!;
+      } else {
+        toolName = l10n.aiToolName;
+      }
     }
 
     return Container(
@@ -587,7 +631,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
           Icon(Icons.terminal, size: 16, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 8),
           Text(
-            isComplete ? "Executed: $toolName" : "Calling: $toolName...",
+            isComplete ? l10n.toolExecuted(toolName) : l10n.toolCalling(toolName),
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
@@ -608,6 +652,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   }
 
   Widget _buildToolResultBlock(BuildContext context, String content, {required bool isComplete}) {
+    final l10n = AppLocalizations.of(context)!;
     String displayContent = content;
     String? duration;
 
@@ -635,7 +680,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
               Icon(Icons.assignment_turned_in_outlined, size: 16, color: Theme.of(context).colorScheme.secondary),
               const SizedBox(width: 8),
               Text(
-                duration != null ? "Tool Result (${duration}s)" : "Tool Result",
+                duration != null ? l10n.toolResultWithDuration(duration) : l10n.toolResult,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -655,22 +700,23 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   }
 
   Widget _buildQuickActions() {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
           _QuickActionChip(
-            label: "Check Storage", 
-            onTap: () => _controller.text = "How much storage is left?",
+            label: l10n.checkStorage,
+            onTap: () => _controller.text = l10n.checkStoragePrompt,
           ),
           _QuickActionChip(
-            label: "Search Documents", 
-            onTap: () => _controller.text = "Find all PDF files in /Home",
+            label: l10n.searchDocuments,
+            onTap: () => _controller.text = l10n.searchDocumentsPrompt,
           ),
           _QuickActionChip(
-            label: "Optimize NAS", 
-            onTap: () => _controller.text = "Run a performance check",
+            label: l10n.optimizeNas,
+            onTap: () => _controller.text = l10n.optimizeNasPrompt,
           ),
         ],
       ),
@@ -680,6 +726,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
   Widget _buildInputArea() {
     final theme = Theme.of(context);
     
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
       child: Row(
@@ -687,7 +734,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
           // Button to add files
           IconButton(
             icon: const Icon(Icons.attach_file),
-            tooltip: "Attach files",
+            tooltip: l10n.attachFiles,
             onPressed: () async {
               final List<String>? result = await showModalBottomSheet<List<String>>(
                 context: context,
@@ -706,7 +753,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
             child: TextField(
               controller: _controller,
               decoration: InputDecoration(
-                hintText: "Ask the AI assistant...",
+                hintText: l10n.askAiHint,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                 ),
@@ -716,8 +763,8 @@ class _AIAssistantPageState extends State<AIAssistantPage> {
             ),
           ),
           IconButton.filled(
-            onPressed: _isAwaitingResponse ? _handleStop : _handleSend,
-            icon: _isAwaitingResponse
+            onPressed: api.isAwaitingResponse ? _handleStop : _handleSend,
+            icon: api.isAwaitingResponse
                 ? const _AnimatedStopIcon()
                 : const Icon(Icons.send),
           ),

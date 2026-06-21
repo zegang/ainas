@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../../../../shared/models/chat_message.dart';
+import 'package:ainas_frontend/shared/models/chat_message.dart';
 import 'chat_repository.dart';
 
 

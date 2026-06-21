@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../../../shared/models/file_item.dart';
+import 'package:ainas_frontend/l10n/app_localizations.dart';
+import 'package:ainas_frontend/shared/models/file_item.dart';
 
 class FileActionMenu extends StatelessWidget {
   final FileItem item;
@@ -27,7 +27,7 @@ class FileActionMenu extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "AI Tags",
+                    l10n.aiTags,
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.outline),
                   ),
                   Text(
@@ -41,6 +41,7 @@ class FileActionMenu extends StatelessWidget {
           PopupMenuItem(value: 'rename', child: Text(l10n.renameAction)),
           PopupMenuItem(value: 'move', child: Text(l10n.moveAction)),
           PopupMenuItem(value: 'attach', child: Text(l10n.attachToAiAction)),
+          PopupMenuItem(value: 'download', child: Text(l10n.downloadAction)),
           PopupMenuItem(value: 'delete', child: Text(l10n.deleteAction)),
         ];
       },

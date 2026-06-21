@@ -230,11 +230,173 @@ abstract class AppLocalizations {
   /// **'Home Page'**
   String get homePage;
 
+  /// No description provided for @minePage.
+  ///
+  /// In en, this message translates to:
+  /// **'Mine'**
+  String get minePage;
+
   /// No description provided for @aiAssistant.
   ///
   /// In en, this message translates to:
   /// **'AI Assistant'**
   String get aiAssistant;
+
+  /// No description provided for @aiTags.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Tags'**
+  String get aiTags;
+
+  /// No description provided for @aiToolName.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Tool'**
+  String get aiToolName;
+
+  /// No description provided for @thinkingProcess.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking Process'**
+  String get thinkingProcess;
+
+  /// No description provided for @thinking.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking...'**
+  String get thinking;
+
+  /// No description provided for @toolResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool Result'**
+  String get toolResult;
+
+  /// No description provided for @toolResultWithDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool Result ({duration}s)'**
+  String toolResultWithDuration(Object duration);
+
+  /// No description provided for @toolExecuted.
+  ///
+  /// In en, this message translates to:
+  /// **'Executed: {name}'**
+  String toolExecuted(Object name);
+
+  /// No description provided for @toolCalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Calling: {name}...'**
+  String toolCalling(Object name);
+
+  /// No description provided for @checkStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Check Storage'**
+  String get checkStorage;
+
+  /// No description provided for @searchDocuments.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Documents'**
+  String get searchDocuments;
+
+  /// No description provided for @optimizeNas.
+  ///
+  /// In en, this message translates to:
+  /// **'Optimize NAS'**
+  String get optimizeNas;
+
+  /// No description provided for @attachFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach files'**
+  String get attachFiles;
+
+  /// No description provided for @askAiHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask the AI assistant...'**
+  String get askAiHint;
+
+  /// No description provided for @checkStoragePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'How much storage is left?'**
+  String get checkStoragePrompt;
+
+  /// No description provided for @searchDocumentsPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Find all PDF files in /Home'**
+  String get searchDocumentsPrompt;
+
+  /// No description provided for @optimizeNasPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Run a performance check'**
+  String get optimizeNasPrompt;
+
+  /// No description provided for @retryAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retryAction;
+
+  /// No description provided for @editAndResend.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit and resend'**
+  String get editAndResend;
+
+  /// No description provided for @copyText.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy text'**
+  String get copyText;
+
+  /// No description provided for @communicationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Communication with AI Assistant failed.'**
+  String get communicationFailed;
+
+  /// No description provided for @clearHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear History'**
+  String get clearHistoryTitle;
+
+  /// No description provided for @clearHistoryConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to clear the entire chat history?'**
+  String get clearHistoryConfirm;
+
+  /// No description provided for @copiedToClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get copiedToClipboard;
+
+  /// No description provided for @responseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Response'**
+  String get responseLabel;
+
+  /// No description provided for @markdownLabel.
+  ///
+  /// In en, this message translates to:
+  /// **' (Markdown)'**
+  String get markdownLabel;
+
+  /// No description provided for @aiWelcomeMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Hello! I\'m your AI Assistant. How can I help you manage your NAS today?'**
+  String get aiWelcomeMessage;
 
   /// Label for the rename action in the file browser
   ///
@@ -259,6 +421,300 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get deleteAction;
+
+  /// Label for the download action in the file browser
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get downloadAction;
+
+  /// No description provided for @loginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get loginTitle;
+
+  /// No description provided for @usernameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get usernameLabel;
+
+  /// No description provided for @passwordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get passwordLabel;
+
+  /// No description provided for @loginButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get loginButton;
+
+  /// No description provided for @guestUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest'**
+  String get guestUser;
+
+  /// No description provided for @userInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'User Info'**
+  String get userInfoTitle;
+
+  /// No description provided for @vipLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'VIP Status'**
+  String get vipLabel;
+
+  /// No description provided for @loginStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Login Status'**
+  String get loginStatusLabel;
+
+  /// No description provided for @loggedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged in'**
+  String get loggedIn;
+
+  /// No description provided for @loggedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged out'**
+  String get loggedOut;
+
+  /// No description provided for @aiScanTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Scan'**
+  String get aiScanTooltip;
+
+  /// No description provided for @logout.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout'**
+  String get logout;
+
+  /// No description provided for @logoutSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged out successfully.'**
+  String get logoutSuccess;
+
+  /// No description provided for @switchViewList.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to List View'**
+  String get switchViewList;
+
+  /// No description provided for @switchViewGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to Grid View'**
+  String get switchViewGrid;
+
+  /// No description provided for @uploadFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload Folder'**
+  String get uploadFolder;
+
+  /// No description provided for @transferList.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer List'**
+  String get transferList;
+
+  /// No description provided for @transferCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Completed'**
+  String get transferCompleted;
+
+  /// No description provided for @transferFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Failed'**
+  String get transferFailed;
+
+  /// No description provided for @transferInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer In Progress'**
+  String get transferInProgress;
+
+  /// No description provided for @transferPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Paused'**
+  String get transferPaused;
+
+  /// No description provided for @transferPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Pending'**
+  String get transferPending;
+
+  /// No description provided for @transferCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Cancelled'**
+  String get transferCancelled;
+
+  /// No description provided for @transferRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Retry'**
+  String get transferRetry;
+
+  /// No description provided for @transferResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Resume'**
+  String get transferResume;
+
+  /// No description provided for @transferPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Pause'**
+  String get transferPause;
+
+  /// No description provided for @transferCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Cancel'**
+  String get transferCancel;
+
+  /// No description provided for @transferClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Clear'**
+  String get transferClear;
+
+  /// No description provided for @transferDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Details'**
+  String get transferDetails;
+
+  /// No description provided for @transferSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Speed'**
+  String get transferSpeed;
+
+  /// No description provided for @transferProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Progress'**
+  String get transferProgress;
+
+  /// No description provided for @transferTimeRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Time Remaining'**
+  String get transferTimeRemaining;
+
+  /// No description provided for @transferTotalSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Size'**
+  String get transferTotalSize;
+
+  /// No description provided for @transferUploadedSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded Size'**
+  String get transferUploadedSize;
+
+  /// No description provided for @transferDownloadedSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded Size'**
+  String get transferDownloadedSize;
+
+  /// No description provided for @transferUploadSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload Speed'**
+  String get transferUploadSpeed;
+
+  /// No description provided for @transferDownloadSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Speed'**
+  String get transferDownloadSpeed;
+
+  /// No description provided for @transferStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Status'**
+  String get transferStatus;
+
+  /// No description provided for @filterTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get filterTooltip;
+
+  /// No description provided for @filterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter files'**
+  String get filterTitle;
+
+  /// No description provided for @filterTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get filterTypeLabel;
+
+  /// No description provided for @filterTagsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags (comma separated)'**
+  String get filterTagsLabel;
+
+  /// No description provided for @filterTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'tag1, tag2'**
+  String get filterTagsHint;
+
+  /// No description provided for @applyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get applyButton;
+
+  /// No description provided for @filterTypeImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Images'**
+  String get filterTypeImages;
+
+  /// No description provided for @filterTypePdf.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF'**
+  String get filterTypePdf;
+
+  /// No description provided for @filterTypeDocx.
+  ///
+  /// In en, this message translates to:
+  /// **'DOCX'**
+  String get filterTypeDocx;
+
+  /// No description provided for @filterTypeOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Others'**
+  String get filterTypeOthers;
 }
 
 class _AppLocalizationsDelegate

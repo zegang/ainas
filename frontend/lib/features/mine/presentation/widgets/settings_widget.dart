@@ -1,16 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../../../services/api_service.dart';
+import 'package:ainas_frontend/l10n/app_localizations.dart';
+import 'package:ainas_frontend/services/api_service.dart';
+import 'login_widget.dart';
 
-class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+class SettingsWidget extends StatefulWidget {
+  const SettingsWidget({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  State<SettingsWidget> createState() => _SettingsWidgetState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsWidgetState extends State<SettingsWidget> {
   late TextEditingController _hostController;
   late TextEditingController _portController;
   final ApiService _api = ApiService();
@@ -40,6 +41,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
     _hostController.addListener(_onSettingChanged);
     _portController.addListener(_onSettingChanged);
+    _api.addListener(_handleApiChanged);
+  }
+
+  void _handleApiChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   void _onSettingChanged() {
@@ -135,7 +142,15 @@ class _SettingsPageState extends State<SettingsPage> {
     _hostController.dispose();
     _portController.dispose();
     _debounceTimer?.cancel();
+    _api.removeListener(_handleApiChanged);
     super.dispose();
+  }
+
+  Future<bool> _ensureLoggedIn(BuildContext context) async {
+    if (_api.isLoggedIn) {
+      return true;
+    }
+    return await showLoginDialog(context);
   }
 
   @override
@@ -143,16 +158,15 @@ class _SettingsPageState extends State<SettingsPage> {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
                 Text(
-                  l10n.appTitle,
+                  l10n.settingsTooltip,
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
@@ -236,6 +250,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     onPressed: (_hostError != null || _portError != null || _isChecking)
                         ? null
                         : () async {
+                      if (!await _ensureLoggedIn(context)) {
+                        return;
+                      }
+
                       final host = _hostController.text.trim();
                       final port = _portController.text.trim();
                       final newUrl = "http://$host:$port";
@@ -274,10 +292,34 @@ class _SettingsPageState extends State<SettingsPage> {
                     label: Text(l10n.refreshTooltip),
                   ),
                 ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                      side: BorderSide(color: theme.colorScheme.error),
+                    ),
+                    onPressed: _api.isLoggedIn
+                        ? () async {
+                            await _api.logout();
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(l10n.logoutSuccess),
+                                backgroundColor: theme.colorScheme.background,
+                              ),
+                            );
+                          }
+                        : null,
+                    icon: const Icon(Icons.logout),
+                    label: Text(l10n.logout),
+                  ),
+                ),
               ],
             ),
-          ),
-          if (_isAutoSaving)
+        ),
+        if (_isAutoSaving)
             Positioned(
               top: 10,
               right: 10,
@@ -311,8 +353,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
             ),
-        ],
-      ),
+      ],
     );
   }
 }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../widgets/mdns_discovery_widget.dart';
-import '../widgets/storage_dashboard_widget.dart';
-import '../widgets/ai_config_widget.dart';
-import '../../../../services/api_service.dart';
+import 'package:ainas_frontend/features/home/presentation/widgets/mdns_discovery_widget.dart';
+import 'package:ainas_frontend/features/home/presentation/widgets/storage_dashboard_widget.dart';
+import 'package:ainas_frontend/features/home/presentation/widgets/ai_config_widget.dart';
+import 'package:ainas_frontend/services/api_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
