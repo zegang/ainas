@@ -1,5 +1,12 @@
 # ainas_frontend
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/zegang/ainas/releases)
+[![Dart SDK](https://img.shields.io/badge/dart-%3E%3D3.0.0-blue)](https://dart.dev)
+[![Flutter](https://img.shields.io/badge/flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
+[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20android-3ddc84?logo=linux)](https://flutter.dev)
+[![License](https://img.shields.io/github/license/zegang/ainas)](https://github.com/zegang/ainas/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/zegang/ainas?style=social)](https://github.com/zegang/ainas)
+
 A Flutter-based GUI for the AI-NAS.
 
 ## Getting Started

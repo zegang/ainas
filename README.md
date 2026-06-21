@@ -1,5 +1,14 @@
 # AI-NAS: Intelligent Storage Management
 
+[![GitHub release](https://img.shields.io/github/v/release/zegang/ainas)](https://github.com/zegang/ainas/releases)
+[![GitHub stars](https://img.shields.io/github/stars/zegang/ainas?style=social)](https://github.com/zegang/ainas)
+[![Python](https://img.shields.io/badge/python-3.10+-3776AB?logo=python)](https://python.org)
+[![Flutter](https://img.shields.io/badge/flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
+[![Dart SDK](https://img.shields.io/badge/dart-%3E%3D3.0-blue)](https://dart.dev)
+[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20android-3ddc84?logo=linux)](https://flutter.dev)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/zegang/ainas/pulls)
+[![Website](https://img.shields.io/badge/website-github.io-8ab4f8)](https://zegang.github.io/ainas)
+
 AI-NAS is a smart Network Attached Storage (NAS) management solution that integrates a powerful AI Assistant to simplify data management, system monitoring, and file operations through natural language.
 
 ## 🚀 Features
@@ -20,7 +29,7 @@ AI-NAS is a smart Network Attached Storage (NAS) management solution that integr
 
 ## Demo Records
 
-![Search Images By AI Auto-Generated Tags](./doc/images/searchbyimagetags.gif)
+![Search Images By AI Auto-Generated Tags](./docs/images/searchbyimagetags.gif)
 
 ## Quantization Models
 
