@@ -14,6 +14,7 @@ from backend.net.discovery import NASDiscovery
 from backend.api.api import router as api_router
 from backend.services.ai.ai_engine import AIEngine
 from backend.services.elasticsearch_service import ElasticsearchService
+from backend.db.database import run_migrations
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -21,6 +22,10 @@ async def lifespan(app: FastAPI):
 
     startup_logger = logging.getLogger(__name__)
     startup_logger.info("AI-NAS starting... AI Features: %s", "Enabled" if config.AINAS_ENABLE_AI else "Disabled")
+
+    # Apply any pending database schema migrations before accepting requests
+    await asyncio.to_thread(run_migrations)
+
     await discovery.register()
 
     if config.AINAS_ENABLE_AI:

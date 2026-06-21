@@ -8,7 +8,7 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Backgro
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from backend.services.image_service import create_thumbnail
+from backend.services.image_service import create_thumbnail, create_pdf_thumbnail
 from backend.services.system_service import check_disk_and_alert
 from backend.services.document_service import extract_text
 from backend.services.ai.ai_engine import AIEngine
@@ -62,6 +62,10 @@ async def download_file(path: str, thumbnail: bool = False):
 
     if thumbnail:
         thumb_path = os.path.abspath(os.path.join(config.AINAS_THUMBNAIL_DIR, clean_path))
+        # PDF thumbnails are stored with an extra .jpg extension
+        pdf_thumb_path = thumb_path + ".jpg"
+        if os.path.exists(pdf_thumb_path):
+            return FileResponse(pdf_thumb_path)
         if os.path.exists(thumb_path):
             return FileResponse(thumb_path)
 
@@ -120,18 +124,37 @@ async def create_folder(request: CreateFolderRequest):
 
 @router.delete("")
 async def delete_item(path: str, db: Session = Depends(get_db)):
-    """Deletes a file or directory and cleans up associated database records."""
+    """Deletes a file or directory and cleans up associated database records (including tags via cascade)."""
+    logger = logging.getLogger(__name__)
     full_path = os.path.join(config.AINAS_DATA_PATH, path)
     if not os.path.exists(full_path):
         raise HTTPException(status_code=404, detail="Item not found")
-    
+
     if os.path.isdir(full_path):
         shutil.rmtree(full_path)
+        # Load all child FileRecords (and the dir itself if recorded) and delete via ORM
+        # so the cascade="all, delete-orphan" on TagRecord fires correctly.
+        records = db.query(FileRecord).filter(
+            (FileRecord.path == path) | FileRecord.path.like(f"{path}/%")
+        ).all()
+        for rec in records:
+            db.delete(rec)
     else:
         os.remove(full_path)
-        
-    db.query(FileRecord).filter(FileRecord.path == path).delete()
-    db.query(FileRecord).filter(FileRecord.path.like(f"{path}/%")).delete()
+        # Also remove thumbnail if it exists (image or PDF)
+        for thumb_suffix in ["", ".jpg"]:
+            thumb_path = os.path.join(config.AINAS_THUMBNAIL_DIR, path.lstrip("/") + thumb_suffix)
+            if os.path.exists(thumb_path):
+                try:
+                    os.remove(thumb_path)
+                    logger.info("Removed thumbnail: %s", thumb_path)
+                except OSError as e:
+                    logger.warning("Could not remove thumbnail %s: %s", thumb_path, e)
+
+        rec = db.query(FileRecord).filter(FileRecord.path == path).first()
+        if rec:
+            db.delete(rec)
+
     db.commit()
     return {"message": f"Successfully deleted {path}"}
 
@@ -197,11 +220,25 @@ async def upload_file(background_tasks: BackgroundTasks, request: Request, path:
     content = await file.read()
     with open(file_path, "wb") as f: f.write(content)
 
-    # Create basic database record immediately so the file is visible in lists
+    # Stat the file immediately after writing for accurate metadata
+    st = os.stat(file_path)
+    now = datetime.utcnow()
+
+    # Upsert the FileRecord with full metadata so the file is visible in lists right away
     file_rec = db.query(FileRecord).filter(FileRecord.path == file_rel_path).first()
     if not file_rec:
-        file_rec = FileRecord(path=file_rel_path)
-        db.add(file_rec); db.commit(); db.refresh(file_rec)
+        file_rec = FileRecord(
+            path=file_rel_path,
+            size=st.st_size,
+            created_at=datetime.fromtimestamp(st.st_ctime),
+            updated_at=datetime.fromtimestamp(st.st_mtime),
+        )
+        db.add(file_rec)
+    else:
+        file_rec.size = st.st_size
+        file_rec.updated_at = now
+    db.commit()
+    db.refresh(file_rec)
 
     # Schedule heavy processing tasks in the background
     background_tasks.add_task(thumbnail_task, file_rel_path)
@@ -274,12 +311,17 @@ async def process_upload_task(file_rel_path: str, file_path: str,
         db.close()
 
 def thumbnail_task(rel_path: str):
-    """Background task to generate thumbnails for images."""
+    """Background task to generate thumbnails for images and PDFs."""
     source = os.path.join(config.AINAS_DATA_PATH, rel_path.lstrip("/"))
     destination = os.path.join(config.AINAS_THUMBNAIL_DIR, rel_path.lstrip("/"))
     os.makedirs(os.path.dirname(destination), exist_ok=True)
-    if rel_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif')):
+    lower = rel_path.lower()
+    if lower.endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif')):
         try: create_thumbnail(source, destination)
+        except Exception: pass
+    elif lower.endswith('.pdf'):
+        # PDF thumbnails are saved as <rel_path>.jpg next to the original path in thumbnail dir
+        try: create_pdf_thumbnail(source, destination)
         except Exception: pass
 
 async def run_reindex(ai: Optional[AIEngine], es: ElasticsearchService):

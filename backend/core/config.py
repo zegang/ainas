@@ -39,7 +39,7 @@ class AppConfig:
         # Storage Settings
         self.AINAS_DATA_PATH = os.path.abspath(os.path.join(self.AINAS_STORAGE_PATH, "nasdata"))
         self.AINAS_METADATA_DIR = os.path.abspath(os.path.join(self.AINAS_STORAGE_PATH, "nasmetadata"))
-        self.AINAS_THUMBNAIL_DIR = os.path.join(self.AINAS_METADATA_DIR, "thumbnail")
+        self.AINAS_THUMBNAIL_DIR = os.path.join(self.AINAS_METADATA_DIR, "thumbnails")
 
         # AI Settings
         self.AINAS_ENABLE_AI = str(self.get_setting("AINAS_ENABLE_AI", "false")).lower() == "true"

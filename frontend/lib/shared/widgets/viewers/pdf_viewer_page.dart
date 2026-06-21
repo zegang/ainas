@@ -3,6 +3,29 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:http/http.dart' as http;
+import 'package:web/web.dart' as web;
+import 'dart:ui_web' as ui_web;
+import 'dart:html' as html;
+
+String? _currentPdfUrl;
+
+void registerPdfViewFactory() {
+  if (kIsWeb) {
+    ui_web.platformViewRegistry.registerViewFactory(
+      'pdf-iframe-view',
+      (int viewId) {
+        final iframe = web.HTMLIFrameElement()
+          ..src = _currentPdfUrl ?? ''
+          ..style.border = 'none'
+          ..style.width = '100%'
+          ..style.height = '100%'
+          ..allowFullscreen = true;
+        iframe.setAttribute('allow', 'fullscreen');
+        return iframe;
+      },
+    );
+  }
+}
 
 class PdfViewerPage extends StatelessWidget {
   final String url;
@@ -19,27 +42,23 @@ class PdfViewerPage extends StatelessWidget {
     final _log = Logger('PdfViewerPage');
     _log.info('Loading PDF from URL: $url');
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-      ),
-      body: kIsWeb
-          ? FutureBuilder<http.Response>(
-              future: http.get(Uri.parse(url)),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Failed to load PDF: ${snapshot.error}'));
-                }
-                final response = snapshot.data;
-                if (response == null || response.statusCode != 200) {
-                  return Center(child: Text('Failed to load PDF: ${response?.statusCode ?? 'unknown'}'));
-                }
-                return SfPdfViewer.memory(response.bodyBytes);
-              },
-            )
-          : SfPdfViewer.network(url),
+      appBar: AppBar(title: Text(title)),
+      body: kIsWeb ? _buildWebPdfViewer() : _buildMobilePdfViewer(),
     );
+  }
+
+  Widget _buildWebPdfViewer() {
+    registerPdfViewFactory();
+    _currentPdfUrl = url;
+    
+    return SizedBox(
+      width: double.infinity,
+      height: double.infinity,
+      child: HtmlElementView(viewType: 'pdf-iframe-view'),
+    );
+  }
+
+  Widget _buildMobilePdfViewer() {
+    return SfPdfViewer.network(url);
   }
 }

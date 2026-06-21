@@ -27,6 +27,8 @@ class FileGridView extends StatelessWidget {
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(ext);
   }
 
+  bool _isPdf(String fileName) => fileName.toLowerCase().endsWith('.pdf');
+
   String _formatSize(int bytes) {
     if (bytes <= 0) return "---";
     const suffixes = ["B", "KB", "MB", "GB", "TB"];
@@ -153,14 +155,14 @@ class FileGridView extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (!item.isDir && _isImage(item.name))
+                      if (!item.isDir && (_isImage(item.name) || _isPdf(item.name)))
                         SizedBox(
                           width: 64,
                           height: 64,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: Image.network(
-                              item.thumbnailUrl, // Use the new thumbnailUrl from FileItem
+                              item.thumbnailUrl,
                               fit: BoxFit.cover,
                               loadingBuilder: (context, child, loadingProgress) {
                                 if (loadingProgress == null) return child;
@@ -177,11 +179,33 @@ class FileGridView extends StatelessWidget {
                                   ),
                                 );
                               },
-                              errorBuilder: (context, error, stackTrace) => Icon(
-                                Icons.insert_drive_file,
-                                size: 48,
-                                color: themeExt.getFileColor(extension),
-                              ),
+                              errorBuilder: (context, error, stackTrace) => _isPdf(item.name)
+                                  ? Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Container(
+                                          width: 64,
+                                          height: 64,
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.shade50,
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                        ),
+                                        Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.picture_as_pdf, size: 36, color: Colors.red.shade400),
+                                            const SizedBox(height: 2),
+                                            Text('PDF', style: TextStyle(fontSize: 9, color: Colors.red.shade400, fontWeight: FontWeight.bold)),
+                                          ],
+                                        ),
+                                      ],
+                                    )
+                                  : Icon(
+                                      Icons.insert_drive_file,
+                                      size: 48,
+                                      color: themeExt.getFileColor(extension),
+                                    ),
                             ),
                           ),
                         )
