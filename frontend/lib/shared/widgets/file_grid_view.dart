@@ -1,9 +1,10 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/shared/themes/app_theme.dart';
 import 'package:ainas_frontend/shared/models/file_item.dart';
-import 'package:ainas_frontend/features/file_browser/presentation/widgets/file_action_menu.dart';
+import 'package:ainas_frontend/shared/widgets/file_action_menu.dart';
 
 class FileGridView extends StatelessWidget {
   final List<FileItem> items;
@@ -161,25 +162,19 @@ class FileGridView extends StatelessWidget {
                           height: 64,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
-                            child: Image.network(
-                              item.thumbnailUrl,
+                            child: CachedNetworkImage(
+                              imageUrl: item.thumbnailUrl,
                               fit: BoxFit.cover,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      value: loadingProgress.expectedTotalBytes != null
-                                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                          : null,
-                                    ),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) => _isPdf(item.name)
+                              width: 64,
+                              height: 64,
+                              placeholder: (context, url) => Center(
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => _isPdf(item.name)
                                   ? Stack(
                                       alignment: Alignment.center,
                                       children: [

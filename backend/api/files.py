@@ -18,6 +18,15 @@ from backend.core import config
 
 router = APIRouter(prefix="/api/files", tags=["Files"])
 
+# Global semaphore to cap concurrent post-upload tasks (AI tagging, indexing, thumbnail)
+_task_semaphore: Optional[asyncio.Semaphore] = None
+
+def _get_task_semaphore() -> asyncio.Semaphore:
+    global _task_semaphore
+    if _task_semaphore is None:
+        _task_semaphore = asyncio.Semaphore(config.AINAS_MAX_CONCURRENT_TASKS)
+    return _task_semaphore
+
 # Dependency to get DB session
 def get_db():
     db = SessionLocal()
@@ -253,62 +262,58 @@ async def process_upload_task(file_rel_path: str, file_path: str,
                               es: Optional[ElasticsearchService]):
     """Background task to handle AI tagging, text extraction, embedding generation, and indexing."""
     logger = logging.getLogger(__name__)
-    db = SessionLocal()
-    try:
-        # 1. AI Tagging (Images only)
-        is_image = safe_filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'))
-        tags = ai.generate_tags(file_rel_path) if ai and is_image else []
-        
-        if tags:
-            logger.info("AI generated tags on %s: %s", file_rel_path, ",".join(tags))
-            file_rec = db.query(FileRecord).filter(FileRecord.path == file_rel_path).first()
-            if file_rec:
-                for tag_name in tags:
-                    # Avoid duplicate tags for the same file
-                    if not db.query(TagRecord).filter(TagRecord.file_id == file_rec.id, TagRecord.name == tag_name).first():
-                        db.add(TagRecord(name=tag_name, file_id=file_rec.id))
-                db.commit()
+    sem = _get_task_semaphore()
+    async with sem:
+        db = SessionLocal()
+        try:
+            # 1. AI Tagging (Images only) — run in thread pool to avoid blocking the event loop
+            is_image = safe_filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'))
+            tags = await asyncio.to_thread(ai.generate_tags, file_rel_path) if ai and is_image else []
+            
+            if tags:
+                logger.info("AI generated tags on %s: %s", file_rel_path, ",".join(tags))
+                file_rec = db.query(FileRecord).filter(FileRecord.path == file_rel_path).first()
+                if file_rec:
+                    for tag_name in tags:
+                        if not db.query(TagRecord).filter(TagRecord.file_id == file_rec.id, TagRecord.name == tag_name).first():
+                            db.add(TagRecord(name=tag_name, file_id=file_rec.id))
+                    db.commit()
 
-        # 2. Text extraction and Elasticsearch Indexing
-        if es:
-            is_doc = safe_filename.lower().endswith(('.pdf', '.docx', '.txt', '.md', '.log'))
-            file_content = extract_text(file_path)
-            if file_content and (is_doc or is_image):
-                st = os.stat(file_path)
-                created_at = datetime.fromtimestamp(st.st_ctime).isoformat()
-                updated_at = datetime.fromtimestamp(st.st_mtime).isoformat()
+            # 2. Text extraction and Elasticsearch Indexing
+            if es:
+                is_doc = safe_filename.lower().endswith(('.pdf', '.docx', '.txt', '.md', '.log'))
+                file_content = await asyncio.to_thread(extract_text, file_path)
+                if file_content and (is_doc or is_image):
+                    st = os.stat(file_path)
+                    created_at = datetime.fromtimestamp(st.st_ctime).isoformat()
+                    updated_at = datetime.fromtimestamp(st.st_mtime).isoformat()
 
-                # Retry logic for Elasticsearch indexing
-                max_retries = 3
-                initial_delay = 2 # seconds
-                current_delay = initial_delay
-                # Generate AI embeddings for the extracted text
-                file_embedding = await ai.embeddings.aembed_query(file_content) if ai else None
-                for attempt in range(max_retries):
-                    try:
-                        logger.info("Attempting Elasticsearch indexing for %s (Attempt %d/%d)", file_rel_path, attempt + 1, max_retries)
-                        await es.index_file( # Index document in Elasticsearch for vector and full-text search
-                            filename=safe_filename, 
-                            path=file_rel_path, 
-                            tags=tags, 
-                            content=file_content, 
-                            embedding=file_embedding,
-                            created_at=created_at,
-                            updated_at=updated_at
-                        )
-                        logger.info("Elasticsearch successfully indexed file: %s, %s", safe_filename, file_rel_path)
-                        break # Success, exit retry loop
-                    except Exception as e:
-                        logger.warning(f"Elasticsearch indexing failed for {file_rel_path} (Attempt {attempt + 1}/{max_retries}): {e}")
-                        if attempt < max_retries - 1:
-                            await asyncio.sleep(current_delay)
-                            current_delay *= 2 # Exponential backoff
-                        else:
-                            logger.error(f"Elasticsearch indexing failed permanently for {file_rel_path} after {max_retries} attempts.")
-    except Exception as e:
-        logger.error(f"Error in background processing for {file_rel_path}: {e}")
-    finally:
-        db.close()
+                    max_retries = 3
+                    initial_delay = 2
+                    current_delay = initial_delay
+                    file_embedding = await ai.embeddings.aembed_query(file_content) if ai else None
+                    for attempt in range(max_retries):
+                        try:
+                            logger.info("Attempting Elasticsearch indexing for %s (Attempt %d/%d)", file_rel_path, attempt + 1, max_retries)
+                            await es.index_file(
+                                filename=safe_filename, path=file_rel_path,
+                                tags=tags, content=file_content,
+                                embedding=file_embedding,
+                                created_at=created_at, updated_at=updated_at
+                            )
+                            logger.info("Elasticsearch successfully indexed file: %s, %s", safe_filename, file_rel_path)
+                            break
+                        except Exception as e:
+                            logger.warning(f"Elasticsearch indexing failed for {file_rel_path} (Attempt {attempt + 1}/{max_retries}): {e}")
+                            if attempt < max_retries - 1:
+                                await asyncio.sleep(current_delay)
+                                current_delay *= 2
+                            else:
+                                logger.error(f"Elasticsearch indexing failed permanently for {file_rel_path} after {max_retries} attempts.")
+        except Exception as e:
+            logger.error(f"Error in background processing for {file_rel_path}: {e}")
+        finally:
+            db.close()
 
 def thumbnail_task(rel_path: str):
     """Background task to generate thumbnails for images and PDFs."""
@@ -327,22 +332,24 @@ def thumbnail_task(rel_path: str):
 async def run_reindex(ai: Optional[AIEngine], es: ElasticsearchService):
     """Walks the filesystem and re-indexes supported documents into Elasticsearch."""
     logger = logging.getLogger(__name__)
-    db = SessionLocal()
-    try:
-        for root, _, files in os.walk(config.AINAS_DATA_PATH):
-            for name in files:
-                if name.lower().endswith(('.pdf', '.docx', '.txt', '.md', '.log')):
-                    file_path = os.path.join(root, name)
-                    rel_path = os.path.relpath(file_path, config.AINAS_DATA_PATH).replace("\\", "/")
-                    try:
-                        content = extract_text(file_path)
-                        if not content: continue
-                        file_rec = db.query(FileRecord).filter(FileRecord.path == rel_path).first()
-                        tags = [t.name for t in file_rec.tags] if file_rec else []
-                        file_embedding = await ai.embeddings.aembed_query(content) if ai and config.AINAS_ENABLE_AI else None
-                        await es.index_file(filename=name, path=rel_path, tags=tags, content=content, embedding=file_embedding)
-                    except Exception as e: logger.error(f"Error re-indexing {rel_path}: {e}")
-    finally: db.close()
+    sem = _get_task_semaphore()
+    async with sem:
+        db = SessionLocal()
+        try:
+            for root, _, files in os.walk(config.AINAS_DATA_PATH):
+                for name in files:
+                    if name.lower().endswith(('.pdf', '.docx', '.txt', '.md', '.log')):
+                        file_path = os.path.join(root, name)
+                        rel_path = os.path.relpath(file_path, config.AINAS_DATA_PATH).replace("\\", "/")
+                        try:
+                            content = await asyncio.to_thread(extract_text, file_path)
+                            if not content: continue
+                            file_rec = db.query(FileRecord).filter(FileRecord.path == rel_path).first()
+                            tags = [t.name for t in file_rec.tags] if file_rec else []
+                            file_embedding = await ai.embeddings.aembed_query(content) if ai and config.AINAS_ENABLE_AI else None
+                            await es.index_file(filename=name, path=rel_path, tags=tags, content=content, embedding=file_embedding)
+                        except Exception as e: logger.error(f"Error re-indexing {rel_path}: {e}")
+        finally: db.close()
 
 @router.post("/reindex")
 async def trigger_reindex(background_tasks: BackgroundTasks, request: Request, ai: AIEngine = Depends(get_ai)):

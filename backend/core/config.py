@@ -65,6 +65,9 @@ class AppConfig:
         self.AINAS_ES_INDEX = self.get_setting("AINAS_ES_INDEX", "ainas")
         self.AINAS_ES_EMBEDDING_DIMS = int(self.get_setting("AINAS_ES_EMBEDDING_DIMS", "768"))
 
+        # Concurrency Limits (post-upload AI tagging, indexing, thumbnail generation)
+        self.AINAS_MAX_CONCURRENT_TASKS = int(self.get_setting("AINAS_MAX_CONCURRENT_TASKS", "1"))
+
         # Logging
         self.AINAS_LOG_LEVEL = self.get_setting("AINAS_LOG_LEVEL", "INFO").upper()
         self.AINAS_LOG_FILE = self.get_setting("AINAS_LOG_FILE", "../logs/backend.log")

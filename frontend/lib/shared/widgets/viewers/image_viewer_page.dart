@@ -1,12 +1,17 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ainas_frontend/l10n/app_localizations.dart';
+import 'package:ainas_frontend/shared/models/file_item.dart';
+import 'package:ainas_frontend/shared/widgets/file_action_menu.dart';
 
 class ImageViewerPage extends StatefulWidget {
   final String thumbnailUrl;
   final String originalUrl;
   final String title;
   final int fileSize;
+  final FileItem fileItem;
+  final void Function(String action, FileItem item) onActionSelected;
 
   const ImageViewerPage({
     super.key,
@@ -14,6 +19,8 @@ class ImageViewerPage extends StatefulWidget {
     required this.originalUrl,
     required this.title,
     required this.fileSize,
+    required this.fileItem,
+    required this.onActionSelected,
   });
 
   @override
@@ -30,21 +37,11 @@ class _ImageViewerPageState extends State<ImageViewerPage> {
     return ((bytes / math.pow(1024, i)).toStringAsFixed(1)) + ' ' + suffixes[i];
   }
 
-  Future<void> _downloadImage() async {
-    final uri = Uri.parse(widget.originalUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not launch download for ${widget.title}')),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final tags = widget.fileItem.tags;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -60,16 +57,13 @@ class _ImageViewerPageState extends State<ImageViewerPage> {
                 minScale: 0.5,
                 maxScale: 4.0,
                 child: Center(
-                  child: Image.network(
-                    _showOriginal ? widget.originalUrl : widget.thumbnailUrl,
+                  child: CachedNetworkImage(
+                    imageUrl: _showOriginal ? widget.originalUrl : widget.thumbnailUrl,
                     fit: BoxFit.contain,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return const Center(
-                        child: CircularProgressIndicator(color: Colors.white54),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) => const Icon(
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(color: Colors.white54),
+                    ),
+                    errorWidget: (context, url, error) => const Icon(
                       Icons.broken_image,
                       size: 80,
                       color: Colors.white54,
@@ -89,9 +83,38 @@ class _ImageViewerPageState extends State<ImageViewerPage> {
                   },
                   icon: const Icon(Icons.image_search, color: Colors.white70),
                   label: Text(
-                    "View original image (${_formatSize(widget.fileSize)})",
+                    l10n.viewOriginalImage(_formatSize(widget.fileSize)),
                     style: const TextStyle(color: Colors.white70),
                   ),
+                ),
+              ),
+            if (tags.isNotEmpty)
+              Container(
+                width: double.infinity,
+                color: Colors.black87,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.auto_awesome, size: 14, color: cs.primary),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: tags.map((tag) => Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: cs.primaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(tag, style: TextStyle(fontSize: 11, color: cs.onPrimaryContainer)),
+                          )).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
           ],
@@ -99,15 +122,14 @@ class _ImageViewerPageState extends State<ImageViewerPage> {
       ),
       bottomNavigationBar: BottomAppBar(
         color: Colors.grey.shade900,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.download, color: Colors.white),
-              tooltip: 'Download',
-              onPressed: _downloadImage,
-            ),
-          ],
+        padding: EdgeInsets.zero,
+        child: FileActionBar(
+          mainAxisAlignment: MainAxisAlignment.center,
+          item: widget.fileItem,
+          onActionSelected: (action, item) {
+            Navigator.maybePop(context);
+            widget.onActionSelected(action, item);
+          },
         ),
       ),
     );

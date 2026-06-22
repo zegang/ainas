@@ -181,6 +181,75 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteAction => 'Delete';
 
   @override
+  String get deleteConfirmTitle => 'Confirm Delete';
+
+  @override
+  String get deleteBatchConfirmTitle => 'Confirm Batch Delete';
+
+  @override
+  String deleteConfirmMessage(Object name) {
+    return 'Are you sure you want to delete $name?';
+  }
+
+  @override
+  String deleteBatchConfirmMessage(Object count) {
+    return 'Are you sure you want to delete $count items?';
+  }
+
+  @override
+  String get deleteButton => 'Delete';
+
+  @override
+  String get moveTitle => 'Move Item';
+
+  @override
+  String moveBatchTitle(Object count) {
+    return 'Move $count items';
+  }
+
+  @override
+  String get moveTargetHint => 'Enter target path';
+
+  @override
+  String get moveButton => 'Move';
+
+  @override
+  String get renameTitle => 'Rename';
+
+  @override
+  String get folderDownloadNotSupported =>
+      'Folder download is not supported yet';
+
+  @override
+  String downloadFailedMessage(Object name) {
+    return 'Could not launch download for $name';
+  }
+
+  @override
+  String get connectionFailedTitle => 'Connection Failed';
+
+  @override
+  String get connectionFailedMessage =>
+      'Unable to communicate with the NAS server. Please ensure the server is running and your network settings are correct.';
+
+  @override
+  String get retryConnection => 'Retry Connection';
+
+  @override
+  String get sortTooltip => 'Sort';
+
+  @override
+  String get folderEmpty => 'This folder is empty';
+
+  @override
+  String get moveHere => 'Move here';
+
+  @override
+  String viewOriginalImage(Object size) {
+    return 'View original image ($size)';
+  }
+
+  @override
   String get downloadAction => 'Download';
 
   @override
@@ -313,6 +382,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filterTagsHint => 'tag1, tag2';
 
   @override
+  String get filterTagsEmpty => 'No tags available';
+
+  @override
   String get applyButton => 'Apply';
 
   @override
@@ -326,4 +398,100 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filterTypeOthers => 'Others';
+
+  @override
+  String get hostLabel => 'Server IP / Host';
+
+  @override
+  String get portLabel => 'Port';
+
+  @override
+  String get hostEmptyError => 'Host cannot be empty';
+
+  @override
+  String get portEmptyError => 'Port cannot be empty';
+
+  @override
+  String get portInvalidError => 'Invalid port (1-65535)';
+
+  @override
+  String get fontSize => 'Font Size';
+
+  @override
+  String get fontSizeSmall => 'Small';
+
+  @override
+  String get fontSizeNormal => 'Normal';
+
+  @override
+  String get fontSizeLarge => 'Large';
+
+  @override
+  String get fontSizeExtraLarge => 'Extra Large';
+
+  @override
+  String get saving => 'Saving...';
+
+  @override
+  String get settingsSaved => 'Settings saved successfully!';
+
+  @override
+  String connectionFailedLocalSaved(Object url) {
+    return 'Connection failed: Unable to reach $url. Local settings saved.';
+  }
+
+  @override
+  String get languageEnglish => 'English';
+
+  @override
+  String get languageChinese => 'Chinese';
+
+  @override
+  String get aiScanLoginRequired => 'Please login to use AI scanning.';
+
+  @override
+  String get selectAll => 'Select All';
+
+  @override
+  String get taggedLabel => 'TAGGED';
+
+  @override
+  String get aiStatusReady => 'AI Ready';
+
+  @override
+  String get aiStatusInitializing => 'AI Initializing';
+
+  @override
+  String get aiStatusDisabled => 'AI Disabled';
+
+  @override
+  String get aiStatusEnabled => 'AI Enabled';
+
+  @override
+  String get aiStatusTooltipReady =>
+      'The AI system is fully operational and ready to process your files.';
+
+  @override
+  String get aiStatusTooltipInitializing =>
+      'The AI engine is currently loading neural models. This usually takes 30-60 seconds depending on server hardware.';
+
+  @override
+  String get aiStatusTooltipDisabled =>
+      'AI features are currently turned off in the backend configuration or the necessary models are missing.';
+
+  @override
+  String get aiStatusTooltipEnabled =>
+      'The AI system is active but its full capabilities are still being verified.';
+
+  @override
+  String get connected => 'Connected';
+
+  @override
+  String get offline => 'Offline';
+
+  @override
+  String get offlineBannerMessage => 'Offline: Unable to connect to NAS server';
+
+  @override
+  String get retry => 'RETRY';
 }

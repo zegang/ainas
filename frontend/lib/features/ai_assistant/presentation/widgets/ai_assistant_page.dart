@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:logging/logging.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ainas_frontend/services/api_service.dart';
 import 'package:ainas_frontend/features/ai_assistant/domain/chat_repository_impl.dart';
 import 'package:ainas_frontend/shared/models/chat_message.dart';
@@ -482,7 +483,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
                 minScale: 0.5,
                 maxScale: 4.0,
                 child: Center(
-                  child: Image.network(_getFileUrl(imageFiles[index])),
+                  child: CachedNetworkImage(imageUrl: _getFileUrl(imageFiles[index])),
                 ),
               );
             },
@@ -523,26 +524,22 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
                       border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     child: isImg
-                        ? Image.network(
-                            _getFileUrl(f, thumbnail: true),
+                        ? CachedNetworkImage(
+                            imageUrl: _getFileUrl(f, thumbnail: true),
                             fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Center(
-                                child: SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    value: loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                        : null,
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) => const Center(
-                              child: Icon(Icons.broken_image_outlined, size: 20, color: Colors.grey),
+                            width: double.infinity,
+                            height: 60,
+                            placeholder: (context, url) => Center(
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Icon(
+                              Icons.insert_drive_file,
+                              size: 28,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           )
                         : const Center(child: Icon(Icons.insert_drive_file, size: 24, color: Colors.grey)),

@@ -179,6 +179,73 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deleteAction => '删除';
 
   @override
+  String get deleteConfirmTitle => '确认删除';
+
+  @override
+  String get deleteBatchConfirmTitle => '确认批量删除';
+
+  @override
+  String deleteConfirmMessage(Object name) {
+    return '确定要删除 $name 吗？';
+  }
+
+  @override
+  String deleteBatchConfirmMessage(Object count) {
+    return '确定要删除 $count 个项目吗？';
+  }
+
+  @override
+  String get deleteButton => '删除';
+
+  @override
+  String get moveTitle => '移动文件';
+
+  @override
+  String moveBatchTitle(Object count) {
+    return '移动 $count 个项目';
+  }
+
+  @override
+  String get moveTargetHint => '输入目标路径';
+
+  @override
+  String get moveButton => '移动';
+
+  @override
+  String get renameTitle => '重命名';
+
+  @override
+  String get folderDownloadNotSupported => '暂不支持下载文件夹';
+
+  @override
+  String downloadFailedMessage(Object name) {
+    return '无法下载 $name';
+  }
+
+  @override
+  String get connectionFailedTitle => '连接失败';
+
+  @override
+  String get connectionFailedMessage => '无法与NAS服务器通信。请确保服务器正在运行且网络设置正确。';
+
+  @override
+  String get retryConnection => '重新连接';
+
+  @override
+  String get sortTooltip => '排序';
+
+  @override
+  String get folderEmpty => '此文件夹为空';
+
+  @override
+  String get moveHere => '移动到此';
+
+  @override
+  String viewOriginalImage(Object size) {
+    return '查看原始图片 ($size)';
+  }
+
+  @override
   String get downloadAction => '下载';
 
   @override
@@ -311,6 +378,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get filterTagsHint => '标签1, 标签2';
 
   @override
+  String get filterTagsEmpty => '暂无标签';
+
+  @override
   String get applyButton => '应用';
 
   @override
@@ -324,4 +394,97 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get filterTypeOthers => '其他';
+
+  @override
+  String get hostLabel => '服务器地址';
+
+  @override
+  String get portLabel => '端口';
+
+  @override
+  String get hostEmptyError => '主机地址不能为空';
+
+  @override
+  String get portEmptyError => '端口不能为空';
+
+  @override
+  String get portInvalidError => '端口无效（1-65535）';
+
+  @override
+  String get fontSize => '字体大小';
+
+  @override
+  String get fontSizeSmall => '小';
+
+  @override
+  String get fontSizeNormal => '标准';
+
+  @override
+  String get fontSizeLarge => '大';
+
+  @override
+  String get fontSizeExtraLarge => '特大';
+
+  @override
+  String get saving => '保存中...';
+
+  @override
+  String get settingsSaved => '设置保存成功！';
+
+  @override
+  String connectionFailedLocalSaved(Object url) {
+    return '连接失败：无法访问 $url。本地设置已保存。';
+  }
+
+  @override
+  String get languageEnglish => '英语';
+
+  @override
+  String get languageChinese => '中文';
+
+  @override
+  String get aiScanLoginRequired => '请登录以使用AI扫描。';
+
+  @override
+  String get selectAll => '全选';
+
+  @override
+  String get taggedLabel => '已标记';
+
+  @override
+  String get aiStatusReady => 'AI 就绪';
+
+  @override
+  String get aiStatusInitializing => 'AI 初始化中';
+
+  @override
+  String get aiStatusDisabled => 'AI 已禁用';
+
+  @override
+  String get aiStatusEnabled => 'AI 已启用';
+
+  @override
+  String get aiStatusTooltipReady => 'AI 系统已完全就绪，可以处理您的文件。';
+
+  @override
+  String get aiStatusTooltipInitializing =>
+      'AI 引擎正在加载神经模型。根据服务器硬件配置，通常需要 30-60 秒。';
+
+  @override
+  String get aiStatusTooltipDisabled => 'AI 功能当前已在后端配置中关闭，或缺少必要的模型。';
+
+  @override
+  String get aiStatusTooltipEnabled => 'AI 系统已激活，但其完整功能仍在验证中。';
+
+  @override
+  String get connected => '已连接';
+
+  @override
+  String get offline => '离线';
+
+  @override
+  String get offlineBannerMessage => '离线：无法连接到 NAS 服务器';
+
+  @override
+  String get retry => '重试';
 }

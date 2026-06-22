@@ -422,6 +422,120 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get deleteAction;
 
+  /// No description provided for @deleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Delete'**
+  String get deleteConfirmTitle;
+
+  /// No description provided for @deleteBatchConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Batch Delete'**
+  String get deleteBatchConfirmTitle;
+
+  /// No description provided for @deleteConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete {name}?'**
+  String deleteConfirmMessage(Object name);
+
+  /// No description provided for @deleteBatchConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete {count} items?'**
+  String deleteBatchConfirmMessage(Object count);
+
+  /// No description provided for @deleteButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get deleteButton;
+
+  /// No description provided for @moveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Item'**
+  String get moveTitle;
+
+  /// No description provided for @moveBatchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move {count} items'**
+  String moveBatchTitle(Object count);
+
+  /// No description provided for @moveTargetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter target path'**
+  String get moveTargetHint;
+
+  /// No description provided for @moveButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Move'**
+  String get moveButton;
+
+  /// No description provided for @renameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get renameTitle;
+
+  /// No description provided for @folderDownloadNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder download is not supported yet'**
+  String get folderDownloadNotSupported;
+
+  /// No description provided for @downloadFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not launch download for {name}'**
+  String downloadFailedMessage(Object name);
+
+  /// No description provided for @connectionFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection Failed'**
+  String get connectionFailedTitle;
+
+  /// No description provided for @connectionFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to communicate with the NAS server. Please ensure the server is running and your network settings are correct.'**
+  String get connectionFailedMessage;
+
+  /// No description provided for @retryConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry Connection'**
+  String get retryConnection;
+
+  /// No description provided for @sortTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get sortTooltip;
+
+  /// No description provided for @folderEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder is empty'**
+  String get folderEmpty;
+
+  /// No description provided for @moveHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Move here'**
+  String get moveHere;
+
+  /// No description provided for @viewOriginalImage.
+  ///
+  /// In en, this message translates to:
+  /// **'View original image ({size})'**
+  String viewOriginalImage(Object size);
+
   /// Label for the download action in the file browser
   ///
   /// In en, this message translates to:
@@ -686,6 +800,12 @@ abstract class AppLocalizations {
   /// **'tag1, tag2'**
   String get filterTagsHint;
 
+  /// No description provided for @filterTagsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No tags available'**
+  String get filterTagsEmpty;
+
   /// No description provided for @applyButton.
   ///
   /// In en, this message translates to:
@@ -715,6 +835,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Others'**
   String get filterTypeOthers;
+
+  /// No description provided for @hostLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Server IP / Host'**
+  String get hostLabel;
+
+  /// No description provided for @portLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get portLabel;
+
+  /// No description provided for @hostEmptyError.
+  ///
+  /// In en, this message translates to:
+  /// **'Host cannot be empty'**
+  String get hostEmptyError;
+
+  /// No description provided for @portEmptyError.
+  ///
+  /// In en, this message translates to:
+  /// **'Port cannot be empty'**
+  String get portEmptyError;
+
+  /// No description provided for @portInvalidError.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid port (1-65535)'**
+  String get portInvalidError;
+
+  /// No description provided for @fontSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Font Size'**
+  String get fontSize;
+
+  /// No description provided for @fontSizeSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get fontSizeSmall;
+
+  /// No description provided for @fontSizeNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get fontSizeNormal;
+
+  /// No description provided for @fontSizeLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get fontSizeLarge;
+
+  /// No description provided for @fontSizeExtraLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra Large'**
+  String get fontSizeExtraLarge;
+
+  /// No description provided for @saving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving...'**
+  String get saving;
+
+  /// No description provided for @settingsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings saved successfully!'**
+  String get settingsSaved;
+
+  /// No description provided for @connectionFailedLocalSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed: Unable to reach {url}. Local settings saved.'**
+  String connectionFailedLocalSaved(Object url);
+
+  /// No description provided for @languageEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get languageEnglish;
+
+  /// No description provided for @languageChinese.
+  ///
+  /// In en, this message translates to:
+  /// **'Chinese'**
+  String get languageChinese;
+
+  /// No description provided for @aiScanLoginRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please login to use AI scanning.'**
+  String get aiScanLoginRequired;
+
+  /// No description provided for @selectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select All'**
+  String get selectAll;
+
+  /// No description provided for @taggedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'TAGGED'**
+  String get taggedLabel;
+
+  /// No description provided for @aiStatusReady.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Ready'**
+  String get aiStatusReady;
+
+  /// No description provided for @aiStatusInitializing.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Initializing'**
+  String get aiStatusInitializing;
+
+  /// No description provided for @aiStatusDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Disabled'**
+  String get aiStatusDisabled;
+
+  /// No description provided for @aiStatusEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Enabled'**
+  String get aiStatusEnabled;
+
+  /// No description provided for @aiStatusTooltipReady.
+  ///
+  /// In en, this message translates to:
+  /// **'The AI system is fully operational and ready to process your files.'**
+  String get aiStatusTooltipReady;
+
+  /// No description provided for @aiStatusTooltipInitializing.
+  ///
+  /// In en, this message translates to:
+  /// **'The AI engine is currently loading neural models. This usually takes 30-60 seconds depending on server hardware.'**
+  String get aiStatusTooltipInitializing;
+
+  /// No description provided for @aiStatusTooltipDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'AI features are currently turned off in the backend configuration or the necessary models are missing.'**
+  String get aiStatusTooltipDisabled;
+
+  /// No description provided for @aiStatusTooltipEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'The AI system is active but its full capabilities are still being verified.'**
+  String get aiStatusTooltipEnabled;
+
+  /// No description provided for @connected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get connected;
+
+  /// No description provided for @offline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get offline;
+
+  /// No description provided for @offlineBannerMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline: Unable to connect to NAS server'**
+  String get offlineBannerMessage;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'RETRY'**
+  String get retry;
 }
 
 class _AppLocalizationsDelegate

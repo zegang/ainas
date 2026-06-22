@@ -1,11 +1,12 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/shared/themes/app_theme.dart';
 import 'package:ainas_frontend/services/api_service.dart';
 import 'package:ainas_frontend/shared/models/file_item.dart';
-import 'package:ainas_frontend/features/file_browser/presentation/widgets/file_action_menu.dart';
+import 'package:ainas_frontend/shared/widgets/file_action_menu.dart';
 
 class FileListView extends StatelessWidget {
   final List<FileItem> items;
@@ -105,6 +106,7 @@ class FileListView extends StatelessWidget {
   }
 
   Widget _buildListRow(BuildContext context, FileItem item, ApiService api) {
+    final l10n = AppLocalizations.of(context)!;
     final themeExt = Theme.of(context).extension<AppThemeExtension>()!;
     final dateStr = DateFormat.yMMMd().add_jm().format(item.updatedAt);
     final typeStr = item.isDir ? 'Folder' : (item.name.contains('.') ? item.name.split('.').last.toUpperCase() : 'File');
@@ -131,25 +133,19 @@ class FileListView extends StatelessWidget {
                       height: 24,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(2), // Use the new thumbnailUrl from FileItem
-                        child: Image.network(
-                          '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}&thumbnail=true',
+                        child: CachedNetworkImage(
+                          imageUrl: '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}&thumbnail=true',
                           fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Center(
-                              child: SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  value: loadingProgress.expectedTotalBytes != null
-                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                      : null,
-                                ),
-                              ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) => Icon(
+                          width: 24,
+                          height: 24,
+                          placeholder: (context, url) => Center(
+                            child: SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Icon(
                             Icons.insert_drive_file,
                             size: 20,
                             color: themeExt.getFileColor(extension),
@@ -168,7 +164,29 @@ class FileListView extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(flex: 1, child: Text(item.isDir ? "---" : _formatSize(item.size), style: const TextStyle(fontSize: 13))),
+            Expanded(
+              flex: 1,
+              child: Row(
+                children: [
+                  Text(item.isDir ? "---" : _formatSize(item.size), style: const TextStyle(fontSize: 13)),
+                  if (item.tags.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          l10n.taggedLabel,
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onPrimaryContainer),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
             Expanded(flex: 1, child: Text(typeStr, style: const TextStyle(fontSize: 13, color: Colors.grey))),
             Expanded(flex: 2, child: Text(dateStr, style: const TextStyle(fontSize: 13, color: Colors.grey))),
             FileActionMenu(item: item, onActionSelected: onActionSelected),
@@ -263,10 +281,12 @@ class FileListView extends StatelessWidget {
   }
 
   Widget _buildMobileListRow(BuildContext context, FileItem item, ApiService api) {
+    final l10n = AppLocalizations.of(context)!;
     final themeExt = Theme.of(context).extension<AppThemeExtension>()!;
     final dateStr = DateFormat.yMMMd().add_jm().format(item.updatedAt);
     final extension = item.name.contains('.') ? item.name.split('.').last : null;
     final sizeStr = item.isDir ? "" : " • ${_formatSize(item.size)}";
+    final tagStr = item.tags.isNotEmpty ? " • ${l10n.taggedLabel}" : "";
     final isSelected = selectedItems.contains(item);
 
     return InkWell(
@@ -283,20 +303,19 @@ class FileListView extends StatelessWidget {
                 height: 48,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}&thumbnail=true',
+                  child: CachedNetworkImage(
+                    imageUrl: '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}&thumbnail=true',
                     fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return const Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) => Container(
+                    width: 48,
+                    height: 48,
+                    placeholder: (context, url) => const Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
                       color: themeExt.getFileColor(extension).withOpacity(0.1),
                       child: Icon(
                         Icons.image,
@@ -335,7 +354,7 @@ class FileListView extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "$dateStr$sizeStr",
+                      "$dateStr$sizeStr$tagStr",
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade600),

@@ -18,59 +18,48 @@ class _FileFilterSheetState extends State<FileFilterSheet> {
     'others': false,
   };
   final Set<String> _selectedTagChips = {};
-  late TextEditingController _tagsController;
-
-  @override
-  void initState() {
-    super.initState();
-    final init = widget.initial;
-    if (init['types'] != null) {
-      for (final t in (init['types'] as Set).cast<String>()) {
-        if (_types.containsKey(t)) _types[t] = true;
-      }
-    }
-    _tagsController = TextEditingController(text: init['tags'] ?? '');
-    // initialize selected chips from initial tags
-    if (init['tags'] != null && (init['tags'] as String).trim().isNotEmpty) {
-      for (final t in (init['tags'] as String).split(',').map((s) => s.trim()).where((s) => s.isNotEmpty)) {
-        _selectedTagChips.add(t);
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _tagsController.dispose();
-    super.dispose();
-  }
 
   void _apply() {
     final selected = <String>{};
     _types.forEach((k, v) {
       if (v) selected.add(k);
     });
-    // merge selected chips and freeform tags
-    final fromText = _tagsController.text
-        .split(',')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toSet();
-    final merged = {..._selectedTagChips, ...fromText};
-    Navigator.of(context).pop({'types': selected, 'tags': merged.join(', ')});
+    Navigator.of(context).pop({'types': selected, 'tags': _selectedTagChips.join(', ')});
   }
 
   void _clear() {
     _types.keys.forEach((k) => _types[k] = false);
-    _tagsController.clear();
     _selectedTagChips.clear();
     Navigator.of(context).pop(<String, dynamic>{});
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final style = TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: cs.onSurfaceVariant);
+
+    Widget _sectionHeader(IconData icon, String label, {int? count}) {
+      return Row(
+        children: [
+          Icon(icon, size: 18, color: cs.primary),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+          if (count != null && count > 0) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+              decoration: BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(10)),
+              child: Text('$count', style: TextStyle(fontSize: 12, color: cs.onPrimaryContainer)),
+            ),
+          ],
+        ],
+      );
+    }
+
     return SafeArea(
       child: Material(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        color: cs.surface,
         child: Padding(
           padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
           child: SingleChildScrollView(
@@ -83,58 +72,69 @@ class _FileFilterSheetState extends State<FileFilterSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(AppLocalizations.of(context)!.filterTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 12),
-                      Text(AppLocalizations.of(context)!.filterTagsLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
+                      Text(l10n.filterTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      _sectionHeader(Icons.label_outline, l10n.filterTagsLabel, count: _selectedTagChips.length),
+                      const SizedBox(height: 10),
+                      if (widget.availableTags.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(l10n.filterTagsEmpty, style: style),
+                        )
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: widget.availableTags.map((tag) {
+                            final sel = _selectedTagChips.contains(tag);
+                            return FilterChip(
+                              label: Text(tag, style: TextStyle(fontSize: 13, color: sel ? cs.onSecondaryContainer : cs.onSurface)),
+                              selected: sel,
+                              selectedColor: cs.secondaryContainer,
+                              checkmarkColor: cs.onSecondaryContainer,
+                              visualDensity: VisualDensity.compact,
+                              onSelected: (val) => setState(() => val ? _selectedTagChips.add(tag) : _selectedTagChips.remove(tag)),
+                            );
+                          }).toList(),
+                        ),
+                      const SizedBox(height: 20),
+                      _sectionHeader(Icons.category_outlined, l10n.filterTypeLabel),
+                      const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
-                        children: widget.availableTags.map((tag) {
-                          final selected = _selectedTagChips.contains(tag);
-                          return FilterChip(
-                            label: Text(tag),
-                            selected: selected,
-                            onSelected: (val) => setState(() {
-                              if (val) {
-                                _selectedTagChips.add(tag);
-                              } else {
-                                _selectedTagChips.remove(tag);
-                              }
-                              // reflect into text field for visibility
-                              _tagsController.text = (_selectedTagChips.toList() + _tagsController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList()).join(', ');
-                            }),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(AppLocalizations.of(context)!.filterTypeLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      Wrap(
-                        spacing: 8,
+                        runSpacing: 4,
                         children: _types.keys.map((k) {
+                          IconData icon;
                           String label;
                           switch (k) {
                             case 'images':
-                              label = AppLocalizations.of(context)!.filterTypeImages;
+                              icon = Icons.image_outlined;
+                              label = l10n.filterTypeImages;
                               break;
                             case 'pdf':
-                              label = AppLocalizations.of(context)!.filterTypePdf;
+                              icon = Icons.picture_as_pdf_outlined;
+                              label = l10n.filterTypePdf;
                               break;
                             case 'docx':
-                              label = AppLocalizations.of(context)!.filterTypeDocx;
+                              icon = Icons.description_outlined;
+                              label = l10n.filterTypeDocx;
                               break;
                             default:
-                              label = AppLocalizations.of(context)!.filterTypeOthers;
+                              icon = Icons.insert_drive_file_outlined;
+                              label = l10n.filterTypeOthers;
                           }
-
+                          final sel = _types[k]!;
                           return FilterChip(
-                            label: Text(label),
-                            selected: _types[k]!,
+                            avatar: Icon(icon, size: 18, color: sel ? cs.onSecondaryContainer : cs.onSurfaceVariant),
+                            label: Text(label, style: TextStyle(fontSize: 13, color: sel ? cs.onSecondaryContainer : cs.onSurface)),
+                            selected: sel,
+                            selectedColor: cs.secondaryContainer,
+                            showCheckmark: false,
+                            visualDensity: VisualDensity.compact,
                             onSelected: (val) => setState(() => _types[k] = val),
                           );
                         }).toList(),
                       ),
-                      const SizedBox(height: 12),
-                      TextField(controller: _tagsController, decoration: InputDecoration(hintText: AppLocalizations.of(context)!.filterTagsHint)),
                     ],
                   ),
                 ),
@@ -148,10 +148,10 @@ class _FileFilterSheetState extends State<FileFilterSheet> {
                           onPressed: _clear,
                           style: OutlinedButton.styleFrom(
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                            side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                            side: BorderSide(color: cs.outline),
                             padding: const EdgeInsets.symmetric(vertical: 14.0),
                           ),
-                          child: Text(AppLocalizations.of(context)!.clear),
+                          child: Text(l10n.clear),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -159,11 +159,11 @@ class _FileFilterSheetState extends State<FileFilterSheet> {
                         child: ElevatedButton(
                           onPressed: _apply,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            backgroundColor: cs.primary,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                             padding: const EdgeInsets.symmetric(vertical: 14.0),
                           ),
-                          child: Text(AppLocalizations.of(context)!.applyButton, style: const TextStyle(color: Colors.white)),
+                          child: Text(l10n.applyButton, style: TextStyle(color: cs.onPrimary)),
                         ),
                       ),
                     ],

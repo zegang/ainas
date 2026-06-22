@@ -52,6 +52,8 @@ class _SettingsWidgetState extends State<SettingsWidget> {
   }
 
   void _onSettingChanged() {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
     final host = _hostController.text.trim();
     final portText = _portController.text.trim();
     final port = int.tryParse(portText);
@@ -59,17 +61,17 @@ class _SettingsWidgetState extends State<SettingsWidget> {
     bool isValid = true;
     setState(() {
       if (host.isEmpty) {
-        _hostError = "Host cannot be empty";
+        _hostError = l10n.hostEmptyError;
         isValid = false;
       } else {
         _hostError = null;
       }
 
       if (portText.isEmpty) {
-        _portError = "Port cannot be empty";
+        _portError = l10n.portEmptyError;
         isValid = false;
       } else if (port == null || port < 1 || port > 65535) {
-        _portError = "Invalid port (1-65535)";
+        _portError = l10n.portInvalidError;
         isValid = false;
       } else {
         _portError = null;
@@ -181,7 +183,7 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                       child: TextField(
                         controller: _hostController,
                         decoration: InputDecoration(
-                          labelText: "Server IP / Host",
+                          labelText: l10n.hostLabel,
                           border: const OutlineInputBorder(),
                           errorText: _hostError,
                         ),
@@ -193,7 +195,7 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                       child: TextField(
                         controller: _portController,
                         decoration: InputDecoration(
-                          labelText: "Port",
+                          labelText: l10n.portLabel,
                           border: const OutlineInputBorder(),
                           errorText: _portError,
                         ),
@@ -214,9 +216,9 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                     labelText: l10n.switchLanguage,
                     border: const OutlineInputBorder(),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'en', child: Text("English")),
-                    DropdownMenuItem(value: 'zh', child: Text("中文")),
+                  items: [
+                    DropdownMenuItem(value: 'en', child: Text(l10n.languageEnglish)),
+                    DropdownMenuItem(value: 'zh', child: Text(l10n.languageChinese)),
                   ],
                   onChanged: (value) {
                     if (value != null) {
@@ -250,14 +252,14 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                 DropdownButtonFormField<double>(
                   value: _selectedFontScale,
                   decoration: InputDecoration(
-                    labelText: "Font Size",
+                    labelText: l10n.fontSize,
                     border: const OutlineInputBorder(),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 0.85, child: Text("Small")),
-                    DropdownMenuItem(value: 1.0, child: Text("Normal")),
-                    DropdownMenuItem(value: 1.15, child: Text("Large")),
-                    DropdownMenuItem(value: 1.3, child: Text("Extra Large")),
+                  items: [
+                    DropdownMenuItem(value: 0.85, child: Text(l10n.fontSizeSmall)),
+                    DropdownMenuItem(value: 1.0, child: Text(l10n.fontSizeNormal)),
+                    DropdownMenuItem(value: 1.15, child: Text(l10n.fontSizeLarge)),
+                    DropdownMenuItem(value: 1.3, child: Text(l10n.fontSizeExtraLarge)),
                   ],
                   onChanged: (value) {
                     if (value != null) {
@@ -295,7 +297,7 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             backgroundColor: Theme.of(context).colorScheme.error,
-                            content: Text("Connection failed: Unable to reach $newUrl. Local settings saved."),
+                            content: Text(l10n.connectionFailedLocalSaved(newUrl)),
                           ),
                         );
                       } else {
@@ -307,7 +309,7 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                           Navigator.pop(context, true);
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Settings saved successfully!")),
+                            SnackBar(content: Text(l10n.settingsSaved)),
                           );
                         }
                       }
@@ -366,7 +368,7 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        "Saving...",
+                        l10n.saving,
                         style: TextStyle(
                           fontSize: 12,
                           color: theme.colorScheme.onSecondaryContainer,

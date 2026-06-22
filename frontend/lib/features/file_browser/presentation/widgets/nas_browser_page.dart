@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ import 'package:ainas_frontend/shared/widgets/viewers/pdf_viewer_page.dart';
 import 'package:ainas_frontend/shared/widgets/viewers/docx_viewer_page.dart';
 import 'package:ainas_frontend/shared/widgets/viewers/image_viewer_page.dart';
 import 'upload_overlay.dart';
+import 'folder_picker_dialog.dart';
 
 class NASBrowser extends StatefulWidget {
   const NASBrowser({super.key});
@@ -43,8 +45,13 @@ class _NASBrowserState extends State<NASBrowser> {
   int _sortColumnIndex = 0; // 0: Name, 1: Size, 2: Type, 3: Date
   bool _sortAscending = true;
   final Set<FileItem> _selectedItems = {};
+  final List<FileItem> _currentItems = [];
   Map<String, dynamic> _fileFilter = {}; // e.g. { 'types': Set<String>, 'tags': 'a,b' }
   Set<String> _availableTags = {};
+  Timer? _pollTimer;
+  int _pollAttempts = 0;
+  static const int _maxPollAttempts = 12;
+  static const Duration _pollInterval = Duration(seconds: 1);
 
   @override
   void initState() {
@@ -55,6 +62,7 @@ class _NASBrowserState extends State<NASBrowser> {
   @override
   void dispose() {
     _searchController.dispose();
+    _stopPolling();
     super.dispose();
   }
 
@@ -103,11 +111,13 @@ class _NASBrowserState extends State<NASBrowser> {
     }
   }
 
-  void _refresh() {
+  void _refresh({bool forceRefresh = false}) {
     setState(() {
       _selectedItems.clear();
-      _fileList = api.listFiles(pathStack.last);
+      _fileList = api.listFiles(pathStack.last, forceRefresh: forceRefresh);
     });
+    // Periodically poll for tag updates when files may be processing
+    _startPolling();
   }
 
   Future<void> _handleUpload() async {
@@ -121,7 +131,7 @@ class _NASBrowserState extends State<NASBrowser> {
       if (result != null && result.files.isNotEmpty) {
         for (var file in result.files) {
           if (file.bytes != null) {
-            api.uploadFile(file.name, file.bytes!).then((_) => _refresh());
+            api.uploadFile(file.name, file.bytes!).then((_) => _refresh(forceRefresh: true));
           }
         }
       }
@@ -161,7 +171,7 @@ class _NASBrowserState extends State<NASBrowser> {
         
         _log.info('Started uploading ${uploadFutures.length} files from $selectedDirectory');
         await Future.wait(uploadFutures);
-        _refresh();
+        _refresh(forceRefresh: true);
       }
     } catch (e, st) {
       _log.severe('Folder upload failed', e, st);
@@ -215,7 +225,7 @@ class _NASBrowserState extends State<NASBrowser> {
     if (folderName != null && folderName.isNotEmpty) {
       final fullPath = pathStack.last.isEmpty ? folderName : "${pathStack.last}/$folderName";
       await api.createFolder(fullPath);
-      _refresh();
+      _refresh(forceRefresh: true);
     }
   }
 
@@ -249,22 +259,23 @@ class _NASBrowserState extends State<NASBrowser> {
   }
 
   Future<void> _handleDelete(FileItem item) async {
+    final l10n = AppLocalizations.of(context)!;
     final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Confirm Delete"),
-        content: Text("Are you sure you want to delete ${item.name}?"),
+        title: Text(l10n.deleteConfirmTitle),
+        content: Text(l10n.deleteConfirmMessage(item.name)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancelButton)),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(l10n.deleteButton, style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
     if (confirmed == true) {
       try {
         await api.deleteItem(fullPath);
-        _refresh();
+        _refresh(forceRefresh: true);
       } catch (e) {
         _log.severe("Delete failed", e);
       }
@@ -272,59 +283,55 @@ class _NASBrowserState extends State<NASBrowser> {
   }
 
   Future<void> _handleRename(FileItem item) async {
+    final l10n = AppLocalizations.of(context)!;
     final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
     final controller = TextEditingController(text: item.name);
     final newName = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Rename"),
+        title: Text(l10n.renameTitle),
         content: TextField(controller: controller, autofocus: true),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Rename")),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancelButton)),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: Text(l10n.renameAction)),
         ],
       ),
     );
     if (newName != null && newName.isNotEmpty && newName != item.name) {
       await api.renameItem(fullPath, newName);
-      _refresh();
+      _refresh(forceRefresh: true);
     }
   }
 
   Future<void> _handleMove(FileItem item) async {
+    final l10n = AppLocalizations.of(context)!;
     final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
-    final controller = TextEditingController(text: fullPath);
-    final newPath = await showDialog<String>(
+    final targetDir = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Move Item"),
-        content: TextField(controller: controller, decoration: const InputDecoration(helperText: "Enter full target path")),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Move")),
-        ],
-      ),
+      builder: (context) => FolderPickerDialog(currentPath: pathStack.last),
     );
-    if (newPath != null && newPath.isNotEmpty && newPath != fullPath) {
+    if (targetDir != null && targetDir.isNotEmpty && targetDir != pathStack.last) {
+      final newPath = targetDir.isEmpty ? item.name : "$targetDir/${item.name}";
       await api.moveItem(fullPath, newPath);
-      _refresh();
+      _refresh(forceRefresh: true);
     }
   }
 
   Future<void> _handleBatchDelete() async {
+    final l10n = AppLocalizations.of(context)!;
     final count = _selectedItems.length;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Confirm Batch Delete"),
-        content: Text("Are you sure you want to delete $count items?"),
+        title: Text(l10n.deleteBatchConfirmTitle),
+        content: Text(l10n.deleteBatchConfirmMessage(count)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text("Cancel")),
+              child: Text(l10n.cancelButton)),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text("Delete", style: TextStyle(color: Colors.red))),
+              child: Text(l10n.deleteButton, style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -335,7 +342,7 @@ class _NASBrowserState extends State<NASBrowser> {
           return api.deleteItem(fullPath);
         });
         await Future.wait(futures);
-        _refresh();
+        _refresh(forceRefresh: true);
       } catch (e) {
         _log.severe("Batch delete failed", e);
       }
@@ -364,26 +371,85 @@ class _NASBrowserState extends State<NASBrowser> {
   }
 
   Future<void> _handleBatchMove() async {
-    final controller = TextEditingController();
+    final l10n = AppLocalizations.of(context)!;
     final targetDir = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Move ${_selectedItems.length} items"),
-        content: TextField(controller: controller, decoration: const InputDecoration(helperText: "Enter target directory path")),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Move")),
-        ],
-      ),
+      builder: (context) => FolderPickerDialog(currentPath: pathStack.last),
     );
-    if (targetDir != null && targetDir.isNotEmpty) {
+    if (targetDir != null && targetDir.isNotEmpty && targetDir != pathStack.last) {
       final futures = _selectedItems.map((item) {
         final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
-        final newPath = targetDir.endsWith('/') ? "$targetDir${item.name}" : "$targetDir/${item.name}";
+        final newPath = targetDir.isEmpty ? item.name : "$targetDir/${item.name}";
         return api.moveItem(fullPath, newPath);
       });
       await Future.wait(futures);
-      _refresh();
+      _refresh(forceRefresh: true);
+    }
+  }
+
+  void _toggleSelectAll() {
+    setState(() {
+      if (_selectedItems.length == _currentItems.length) {
+        _selectedItems.clear();
+      } else {
+        _selectedItems.addAll(_currentItems);
+      }
+    });
+  }
+
+  bool _isImageFile(String name) {
+    final ext = name.toLowerCase();
+    return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+        .any((s) => ext.endsWith(s));
+  }
+
+  bool _anyItemNeedsProcessing(List<FileItem> items) {
+    return items.any((item) => !item.isDir && item.tags.isEmpty && _isImageFile(item.name));
+  }
+
+  void _startPolling() {
+    if (_pollTimer != null) return;
+    _pollAttempts = 0;
+    _pollTimer = Timer.periodic(_pollInterval, (_) => _pollTags());
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    _pollAttempts = 0;
+  }
+
+  Future<void> _pollTags() async {
+    if (!mounted) return;
+    _pollAttempts++;
+    try {
+      final updatedItems = await api.listFiles(pathStack.last, forceRefresh: true);
+      if (!mounted) return;
+
+      bool tagsChanged = false;
+      for (final updated in updatedItems) {
+        for (final current in _currentItems) {
+          if (current.path == updated.path) {
+            if (current.tags.length != updated.tags.length ||
+                !current.tags.every(updated.tags.contains)) {
+              tagsChanged = true;
+              break;
+            }
+          }
+        }
+        if (tagsChanged) break;
+      }
+
+      if (tagsChanged) {
+        _refresh(forceRefresh: true);
+      }
+
+      if (_pollAttempts >= _maxPollAttempts || !_anyItemNeedsProcessing(updatedItems)) {
+        _stopPolling();
+      }
+    } catch (e) {
+      _log.warning('Tag polling failed: $e');
+      if (_pollAttempts >= _maxPollAttempts) _stopPolling();
     }
   }
 
@@ -448,6 +514,11 @@ class _NASBrowserState extends State<NASBrowser> {
             onPressed: () => setState(() => _selectedItems.clear()),
           ),
         ],
+        IconButton(
+          icon: const Icon(Icons.select_all),
+          tooltip: l10n.selectAll,
+          onPressed: _toggleSelectAll,
+        ),
         IconButton(
           icon: const Icon(Icons.create_new_folder_outlined),
           tooltip: l10n.newFolderTitle,
@@ -620,6 +691,11 @@ class _NASBrowserState extends State<NASBrowser> {
                 Container(height: 24, width: 1, color: Colors.grey, margin: const EdgeInsets.symmetric(horizontal: 8)),
               ],
               IconButton(
+                icon: const Icon(Icons.select_all),
+                tooltip: l10n.selectAll,
+                onPressed: _toggleSelectAll,
+              ),
+              IconButton(
                 icon: const Icon(Icons.create_new_folder_outlined),
                 tooltip: l10n.newFolderTitle,
                 onPressed: _handleCreateFolder,
@@ -663,7 +739,7 @@ class _NASBrowserState extends State<NASBrowser> {
               ),
               IconButton(
                 icon: Icon(_sortColumnIndex == 3 ? Icons.access_time : Icons.sort_by_alpha),
-                tooltip: 'Sort',
+                tooltip: l10n.sortTooltip,
                 onPressed: () => setState(() {
                   if (_sortColumnIndex == 3) {
                     _sortColumnIndex = 0; // name
@@ -714,7 +790,7 @@ class _NASBrowserState extends State<NASBrowser> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (snapshot.hasError) {
+                  if (snapshot.hasError) {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(32.0),
@@ -724,19 +800,19 @@ class _NASBrowserState extends State<NASBrowser> {
                           Icon(Icons.cloud_off, size: 80, color: Theme.of(context).colorScheme.error.withOpacity(0.5)),
                           const SizedBox(height: 24),
                           Text(
-                            "Connection Failed",
+                            l10n.connectionFailedTitle,
                             style: Theme.of(context).textTheme.headlineSmall,
                           ),
                           const SizedBox(height: 12),
-                          const Text(
-                            "Unable to communicate with the NAS server. Please ensure the server is running and your network settings are correct.",
+                          Text(
+                            l10n.connectionFailedMessage,
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 32),
                           FilledButton.icon(
                             onPressed: _refresh,
                             icon: const Icon(Icons.refresh),
-                            label: const Text("Retry Connection"),
+                            label: Text(l10n.retryConnection),
                           ),
                         ],
                       ),
@@ -795,6 +871,9 @@ class _NASBrowserState extends State<NASBrowser> {
                 }).toList();
 
                 _sortItems(items);
+                _currentItems
+                  ..clear()
+                  ..addAll(items);
 
                 if (_isGridView) {
                   return FileGridView(
@@ -864,10 +943,11 @@ class _NASBrowserState extends State<NASBrowser> {
   }
 
   Future<void> _handleDownload(FileItem item) async {
+    final l10n = AppLocalizations.of(context)!;
     if (item.isDir) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Folder download is not supported yet')),
+          SnackBar(content: Text(l10n.folderDownloadNotSupported)),
         );
       }
       return;
@@ -879,7 +959,7 @@ class _NASBrowserState extends State<NASBrowser> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not launch download for ${item.name}')),
+          SnackBar(content: Text(l10n.downloadFailedMessage(item.name))),
         );
       }
     }
@@ -931,6 +1011,8 @@ class _NASBrowserState extends State<NASBrowser> {
               originalUrl: downloadUrl,
               title: item.name,
               fileSize: item.size,
+              fileItem: item,
+              onActionSelected: _handleAction,
             ),
           ),
         );

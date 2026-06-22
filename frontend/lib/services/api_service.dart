@@ -40,6 +40,14 @@ class ApiService with ChangeNotifier {
   String vipStatus = 'Visitor';
   String currentPath = ''; // Tracks the directory currently being navigated by the user
   final List<UploadTask> uploads = [];
+
+  // In-memory cache for file listings
+  static const Duration _fileListCacheTtl = Duration(seconds: 30);
+  final Map<String, _CacheEntry<List<FileItem>>> _fileListCache = {};
+
+  void invalidateFileListCache() {
+    _fileListCache.clear();
+  }
   
   bool isServerConnected = false;
   String aiStatus = 'disabled'; // 'disabled', 'initializing', 'ready'
@@ -297,12 +305,20 @@ class ApiService with ChangeNotifier {
     }
   }
 
-  Future<List<FileItem>> listFiles(String path) async {
+  Future<List<FileItem>> listFiles(String path, {bool forceRefresh = false}) async {
+    currentPath = path;
+
+    // Return cached data if still valid
+    if (!forceRefresh) {
+      final cached = _fileListCache[path];
+      if (cached != null && !cached.isExpired) {
+        _log.fine('Cache hit for $path');
+        return cached.data;
+      }
+    }
+
     final url = '$baseUrl/api/files?path=$path';
     _log.info('--> GET $url');
-
-    // Update the navigation context so subsequent uploads go to the right folder
-    currentPath = path;
 
     final response = await http.get(Uri.parse(url));
     _log.info('<-- ${response.statusCode} $url');
@@ -310,7 +326,9 @@ class ApiService with ChangeNotifier {
 
     if (response.statusCode == 200) {
       List data = json.decode(response.body)['items'];
-      return data.map((item) => FileItem.fromJson(item)).toList();
+      final items = data.map((item) => FileItem.fromJson(item)).toList();
+      _fileListCache[path] = _CacheEntry(items);
+      return items;
     } else {
       _log.severe('API Error Detail - Status: ${response.statusCode}, Body: ${response.body}');
       throw Exception('Failed to load files');
@@ -508,4 +526,11 @@ class ApiService with ChangeNotifier {
       client.close();
     }
   }
+}
+
+class _CacheEntry<T> {
+  final T data;
+  final DateTime timestamp;
+  _CacheEntry(this.data) : timestamp = DateTime.now();
+  bool get isExpired => DateTime.now().difference(timestamp) > ApiService._fileListCacheTtl;
 }

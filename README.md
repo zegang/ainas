@@ -29,7 +29,7 @@ AI-NAS is a smart Network Attached Storage (NAS) management solution that integr
 
 ## Demo Records
 
-![Search Images By AI Auto-Generated Tags](./docs/images/searchbyimagetags.gif)
+![Search Images By AI Auto-Generated Tags](./docs/images/aitagspdfview.gif)
 
 ## Quantization Models
 

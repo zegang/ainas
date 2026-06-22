@@ -128,30 +128,58 @@ class _MainShellState extends State<MainShell> {
     return await showLoginDialog(context);
   }
 
-  String _getAiStatusLabel(String status) {
+  String _getAiStatusLabel(String status, AppLocalizations l10n) {
     switch (status) {
       case 'ready':
-        return "AI Ready";
+        return l10n.aiStatusReady;
       case 'initializing':
-        return "AI Initializing";
+        return l10n.aiStatusInitializing;
       case 'disabled':
-        return "AI Disabled";
+        return l10n.aiStatusDisabled;
       default:
-        return "AI Enabled";
+        return l10n.aiStatusEnabled;
     }
   }
 
-  String _getAiStatusTooltip(String status) {
+  String _getAiStatusTooltip(String status, AppLocalizations l10n) {
     switch (status) {
       case 'ready':
-        return "The AI system is fully operational and ready to process your files.";
+        return l10n.aiStatusTooltipReady;
       case 'initializing':
-        return "The AI engine is currently loading neural models. This usually takes 30-60 seconds depending on server hardware.";
+        return l10n.aiStatusTooltipInitializing;
       case 'disabled':
-        return "AI features are currently turned off in the backend configuration or the necessary models are missing.";
+        return l10n.aiStatusTooltipDisabled;
       default:
-        return "The AI system is active but its full capabilities are still being verified.";
+        return l10n.aiStatusTooltipEnabled;
     }
+  }
+
+  String? _getCriticalMessage(AppLocalizations l10n) {
+    final api = ApiService();
+    if (!api.isServerConnected) return null;
+    if (api.aiStatus == 'initializing') return l10n.aiStatusTooltipInitializing;
+    if (api.aiStatus == 'disabled') return l10n.aiStatusTooltipDisabled;
+    return null;
+  }
+
+  Widget? _buildStatusBar(AppLocalizations l10n) {
+    final msg = _getCriticalMessage(l10n);
+    if (msg == null) return null;
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      color: theme.colorScheme.tertiaryContainer,
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 14, color: theme.colorScheme.onTertiaryContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(msg, style: TextStyle(fontSize: 12, color: theme.colorScheme.onTertiaryContainer)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -183,24 +211,21 @@ class _MainShellState extends State<MainShell> {
           actions: [
             // AI Status Widget
             if (api.isServerConnected) ...[
-              Tooltip(
-                message: _getAiStatusTooltip(api.aiStatus),
-                child: Row(
-                  children: [
-                    Icon(
-                      api.aiStatus == 'ready' ? Icons.auto_awesome : Icons.psychology,
-                      size: 16,
-                      color: api.aiStatus == 'ready' 
-                          ? themeExt.successColor 
-                          : (api.aiStatus == 'initializing' ? Colors.orange : Colors.grey),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _getAiStatusLabel(api.aiStatus),
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ],
-                ),
+              Row(
+                children: [
+                  Icon(
+                    api.aiStatus == 'ready' ? Icons.auto_awesome : Icons.psychology,
+                    size: 16,
+                    color: api.aiStatus == 'ready' 
+                        ? themeExt.successColor 
+                        : (api.aiStatus == 'initializing' ? Colors.orange : Colors.grey),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _getAiStatusLabel(api.aiStatus, l10n),
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ],
               ),
               const SizedBox(width: 24),
             ],
@@ -233,7 +258,7 @@ class _MainShellState extends State<MainShell> {
                   color: api.isServerConnected ? themeExt.successColor : Theme.of(context).colorScheme.error,
                 ),
                 const SizedBox(width: 8),
-                Text(api.isServerConnected ? "Connected" : "Offline"),
+                Text(api.isServerConnected ? l10n.connected : l10n.offline),
               ],
             ),
             const SizedBox(width: 16),
@@ -243,6 +268,7 @@ class _MainShellState extends State<MainShell> {
         final offlineBanner = api.isServerConnected
             ? null
             : _PulseBanner(onRetry: () => api.checkStatus());
+        final statusBar = _buildStatusBar(l10n);
 
         if (isMobile) {
           return Scaffold(
@@ -250,6 +276,7 @@ class _MainShellState extends State<MainShell> {
             body: Column(
               children: [
                 if (offlineBanner != null) offlineBanner,
+                if (statusBar != null) statusBar,
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
@@ -267,74 +294,81 @@ class _MainShellState extends State<MainShell> {
                 });
               },
               destinations: [
-            NavigationDestination(
-              icon: const Icon(Icons.home_outlined),
-              selectedIcon: const Icon(Icons.home),
-              label: l10n.homePage,
+                NavigationDestination(
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home),
+                  label: l10n.homePage,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.folder_outlined),
+                  selectedIcon: const Icon(Icons.folder),
+                  label: l10n.navFiles,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.psychology_outlined),
+                  selectedIcon: const Icon(Icons.psychology),
+                  label: l10n.aiAssistant,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.person_outline),
+                  selectedIcon: const Icon(Icons.person),
+                  label: l10n.minePage,
+                ),
+              ],
             ),
-            NavigationDestination(
-              icon: const Icon(Icons.folder_outlined),
-              selectedIcon: const Icon(Icons.folder),
-              label: l10n.navFiles,
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.psychology_outlined),
-              selectedIcon: const Icon(Icons.psychology),
-              label: l10n.aiAssistant,
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.person_outline),
-              selectedIcon: const Icon(Icons.person),
-              label: l10n.minePage,
-            ),
-          ],
-        ),
-        );
+          );
         }
 
         return Scaffold(
           appBar: appBar,
-          body: Row(
+          body: Column(
             children: [
-              NavigationRail(
-                extended: true,
-                minExtendedWidth: 200,
-                selectedIndex: api.currentTabIndex,
-                onDestinationSelected: (int index) {
-                  _ensureLoggedIn(context).then((loggedIn) {
-                    if (loggedIn) api.setTabIndex(index);
-                  });
-                },
-                destinations: [
-                  NavigationRailDestination(
-                    icon: Icon(Icons.home_outlined),
-                    selectedIcon: Icon(Icons.home),
-                    label: Text(l10n.homePage),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.folder_outlined),
-                    selectedIcon: const Icon(Icons.folder),
-                    label: Text(l10n.navFiles),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.psychology_outlined),
-                    selectedIcon: const Icon(Icons.psychology),
-                    label: Text(l10n.aiAssistant),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.person_outline),
-                    selectedIcon: const Icon(Icons.person),
-                    label: Text(l10n.minePage),
-                  ),
-                ],
-              ),
-              const VerticalDivider(thickness: 1, width: 1),
+              if (statusBar != null) statusBar,
               Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  switchInCurve: Curves.easeInOut,
-                  child: _buildBody(),
-                ),
+                child: Row(
+                  children: [
+                    NavigationRail(
+                      extended: true,
+                      minExtendedWidth: 200,
+                      selectedIndex: api.currentTabIndex,
+                      onDestinationSelected: (int index) {
+                        _ensureLoggedIn(context).then((loggedIn) {
+                          if (loggedIn) api.setTabIndex(index);
+                        });
+                      },
+                      destinations: [
+                        NavigationRailDestination(
+                          icon: Icon(Icons.home_outlined),
+                          selectedIcon: Icon(Icons.home),
+                          label: Text(l10n.homePage),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.folder_outlined),
+                          selectedIcon: const Icon(Icons.folder),
+                          label: Text(l10n.navFiles),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.psychology_outlined),
+                          selectedIcon: const Icon(Icons.psychology),
+                          label: Text(l10n.aiAssistant),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.person_outline),
+                          selectedIcon: const Icon(Icons.person),
+                          label: Text(l10n.minePage),
+                        ),
+                      ],
+                    ),
+                    const VerticalDivider(thickness: 1, width: 1),
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        switchInCurve: Curves.easeInOut,
+                        child: _buildBody(),
+                      ),
+                    ),
+                  ],
+                )
               ),
             ],
           ),
@@ -397,6 +431,7 @@ class _PulseBannerState extends State<_PulseBanner> with SingleTickerProviderSta
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return ScaleTransition(
       scale: _scaleAnimation,
       child: FadeTransition(
@@ -405,18 +440,18 @@ class _PulseBannerState extends State<_PulseBanner> with SingleTickerProviderSta
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           leading: Icon(Icons.cloud_off, color: Theme.of(context).colorScheme.onErrorContainer),
           content: Text(
-            "Offline: Unable to connect to NAS server",
+            l10n.offlineBannerMessage,
             style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
           ),
           backgroundColor: Theme.of(context).colorScheme.errorContainer,
           actions: [
             TextButton(
               onPressed: widget.onRetry,
-              child: const Text("RETRY"),
+              child: Text(l10n.retry),
             ),
           ]
-          ),
         ),
-      );
+      )
+    );
   }
 }

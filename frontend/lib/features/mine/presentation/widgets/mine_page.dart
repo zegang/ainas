@@ -8,10 +8,11 @@ class MinePage extends StatelessWidget {
   const MinePage({super.key});
 
   void _onAiScanPressed(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final api = ApiService();
     if (!api.isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please login to use AI scanning.')),
+        SnackBar(content: Text(l10n.aiScanLoginRequired)),
       );
       return;
     }
@@ -22,7 +23,7 @@ class MinePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final api = ApiService();
-    final username = api.username.isNotEmpty ? api.username : 'Guest';
+    final username = api.username.isNotEmpty ? api.username : l10n.guestUser;
     final vipState = api.vipStatus;
 
     return Scaffold(
