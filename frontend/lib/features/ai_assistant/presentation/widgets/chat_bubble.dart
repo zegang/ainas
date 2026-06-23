@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:ainas_frontend/shared/models/chat_message.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class ChatBubble extends StatelessWidget {
   final ChatMessage message;
+  final bool isMarkdown;
 
-  const ChatBubble({super.key, required this.message});
+  const ChatBubble({super.key, required this.message, this.isMarkdown = false});
 
   @override
   Widget build(BuildContext context) {
@@ -40,27 +42,32 @@ class ChatBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            Text(
-              message.text,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: isUser 
-                    ? theme.colorScheme.onPrimaryContainer 
-                    : theme.colorScheme.onSurfaceVariant,
+            if (isMarkdown)
+              MarkdownBody(
+                data: message.text,
+                styleSheet: MarkdownStyleSheet(
+                  p: theme.textTheme.bodyMedium?.copyWith(
+                    color: isUser
+                        ? theme.colorScheme.onPrimaryContainer
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                  strong: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: isUser
+                        ? theme.colorScheme.onPrimaryContainer
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              )
+            else
+              Text(
+                message.text,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: isUser 
+                      ? theme.colorScheme.onPrimaryContainer 
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
-            if (message.files.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                key: ValueKey('files_wrap_${message.timestamp.millisecondsSinceEpoch}'),
-                spacing: 8.0,
-                runSpacing: 4.0,
-                children: message.files.map((file) => Chip(
-                  label: Text(file, style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                )).toList(),
-              ),
-            ],
           ],
         ),
       ),

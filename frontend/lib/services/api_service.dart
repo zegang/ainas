@@ -79,6 +79,7 @@ class ApiService with ChangeNotifier {
   String? currentRequestId;
   StreamSubscription<String>? _activeChatSubscription; // Active subscription kept alive across pages
   final StreamController<String> _chatStreamController = StreamController<String>.broadcast();
+  StringBuffer? _responseBuffer;
 
   // Staging area for AI Assistant attachments
   final List<String> stagedFilesForAi = [];
@@ -98,6 +99,7 @@ class ApiService with ChangeNotifier {
     ));
     isAwaitingResponse = false;
     currentRequestId = null;
+    _responseBuffer = null;
     _activeChatSubscription?.cancel();
     _activeChatSubscription = null;
     notifyListeners();
@@ -106,20 +108,42 @@ class ApiService with ChangeNotifier {
   /// Connects the repository stream to the internal broadcast stream controller.
   /// This keeps the subscription alive across page navigation while allowing
   /// multiple listeners via the broadcast stream.
+  /// Accumulates chunks directly into [chatHistory] so the response text is
+  /// preserved even when no UI listener is attached.
   void setupChatStream(Stream<String> repositoryStream) {
-    // Cancel any existing subscription
     _activeChatSubscription?.cancel();
-    
-    // Subscribe to repository stream and forward to broadcast controller
+    _responseBuffer = null;
+
     _activeChatSubscription = repositoryStream.listen(
-      (chunk) => _chatStreamController.add(chunk),
-      onDone: () => markResponseComplete(),
+      (chunk) {
+        _appendResponseChunk(chunk);
+        _chatStreamController.add(chunk);
+        notifyListeners();
+      },
+      onDone: () {
+        _responseBuffer = null;
+        markResponseComplete();
+      },
       onError: (e) {
         _chatStreamController.addError(e);
+        _responseBuffer = null;
         markResponseComplete();
       },
       cancelOnError: false,
     );
+  }
+
+  void _appendResponseChunk(String chunk) {
+    final buf = _responseBuffer;
+    if (buf == null) {
+      _responseBuffer = StringBuffer(chunk);
+      chatHistory.add(ChatMessage(text: chunk, isUser: false));
+    } else {
+      buf.write(chunk);
+      if (chatHistory.isNotEmpty && !chatHistory.last.isUser) {
+        chatHistory[chatHistory.length - 1] = chatHistory.last.copyWith(text: buf.toString());
+      }
+    }
   }
 
   /// Returns the broadcast stream for UI listeners to connect to.

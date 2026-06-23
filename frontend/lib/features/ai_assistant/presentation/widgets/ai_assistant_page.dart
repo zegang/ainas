@@ -75,43 +75,24 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
 
     _scrollToBottom();
 
-    ChatMessage? assistantMessage;
-    String fullResponse = '';
-
     try {
       final stream = _repository.streamResponse(text, files: currentFiles, requestId: requestId);
-      // Setup the stream in ApiService to keep it alive across page navigation
+      // Setup the stream in ApiService to keep it alive across page navigation.
+      // ApiService now accumulates chunks directly into chatHistory,
+      // so the response is preserved even without a UI listener.
       api.setupChatStream(stream);
       
-      // Listen to the broadcast stream
+      // Listen to the broadcast stream for live UI updates (rebuild + scroll)
       _localSubscription = api.getChatStream().listen((chunk) {
         if (!mounted) {
           _log.warning('!mounted is true. existing streamResponse...');
           return;
         }
-        
-        if (assistantMessage == null) {
-          // First chunk received: create assistant message bubble
-          setState(() {
-            assistantMessage = ChatMessage(text: '', isUser: false);
-            _messages.add(assistantMessage!);
-          });
-        }
-
-        fullResponse += chunk;
-        setState(() {
-          // Update the last message in the list with the accumulated text
-          _messages[_messages.length - 1] = assistantMessage!.copyWith(
-            text: fullResponse,
-            isUser: false,
-            timestamp: assistantMessage!.timestamp,
-          );
-        });
+        setState(() {});
         _scrollToBottom();
       }, onDone: () {
         _borderAnimController.stop();
         if (mounted) {
-          api.markResponseComplete();
           setState(() {});
           _localSubscription = null;
         }
@@ -170,23 +151,19 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
         api.setWelcomeMessage(l10n.aiWelcomeMessage);
       }
       
-      // If there's an ongoing AI response, reconnect to the broadcast stream
-      if (api.isAwaitingResponse && api.currentRequestId != null) {
+      // Reconnect to ongoing or completed AI response
+      if (api.isAwaitingResponse) {
         _borderAnimController.repeat();
         _localSubscription = api.getChatStream().listen((chunk) {
           if (!mounted) return;
-          
-          setState(() {
-            if (_messages.isNotEmpty && !_messages.last.isUser) {
-              // Update the last AI message with incoming chunk
-              _messages[_messages.length - 1] = _messages.last.copyWith(
-                text: _messages.last.text + chunk,
-              );
-            }
-          });
+          setState(() {});
           _scrollToBottom();
         });
         _log.info('Reconnected to ongoing AI response (requestId: ${api.currentRequestId})');
+      } else if (_messages.isNotEmpty && !_messages.last.isUser) {
+        // Response completed while page was away — data is already in chatHistory
+        setState(() {});
+        _log.info('Reconnected to completed AI response');
       }
     });
     // Check for files staged from the File Browser
@@ -365,7 +342,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
       if (textBefore.isNotEmpty) {
         blocks.add(Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
-          child: ChatBubble(message: message.copyWith(text: textBefore)),
+          child: ChatBubble(message: message.copyWith(text: textBefore), isMarkdown: _isMarkdown(textBefore)),
         ));
       }
 
@@ -420,12 +397,12 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
                 ],
               ),
             ),
-            ChatBubble(message: textPart),
+            ChatBubble(message: textPart, isMarkdown: _isMarkdown(remainingText)),
             _buildMessageActions(context, textPart),
           ],
         ));
       } else {
-        blocks.add(ChatBubble(message: textPart));
+        blocks.add(ChatBubble(message: textPart, isMarkdown: _isMarkdown(remainingText)));
       }
     }
 

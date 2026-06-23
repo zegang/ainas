@@ -91,8 +91,10 @@ async def _auto_query_documents(messages: list, filenames: list[str], tools: lis
         return None
 
     user_text = messages[-1].content if messages else ""
-    doc_content = await query_doc_tool.ainvoke({"query": user_text})
-    if doc_content and "Error" not in doc_content:
+    files_hint = " ".join(f'"{f}"' for f in docs)
+    focused_query = f"{user_text} {files_hint}"
+    doc_content = await query_doc_tool.ainvoke({"query": focused_query})
+    if doc_content and "No matching documents" not in doc_content:
         logger.info("Auto-query returned content, injecting as context.")
         messages.insert(-1 if messages else 0, HumanMessage(
             content=f"[Document content from {', '.join(docs)}]:\n{doc_content}"
