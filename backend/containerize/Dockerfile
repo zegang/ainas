@@ -1,0 +1,106 @@
+# syntax=docker/dockerfile:1
+# AI-NAS Backend Dockerfile
+#
+# Build context: monorepo root (the parent of backend/)
+#
+# Examples:
+#   CPU build:    docker build -t ainas-backend:latest -f backend/Dockerfile .
+#   CUDA build:   docker build -t ainas-backend:cuda \
+#                   --build-arg BASE_IMAGE=nvidia/cuda:12.4-runtime-ubuntu22.04 \
+#                   --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124 \
+#                   -f backend/Dockerfile .
+#   ROCm build:   docker build -t ainas-backend:rocm \
+#                   --build-arg BASE_IMAGE=rocm/pytorch:rocm7.2_ubuntu24.04_py3.12 \
+#                   -f backend/Dockerfile .
+#
+# Run:
+#   docker run -p 9026:9026 -v ./storage:/app/storage ainas-backend:latest
+
+ARG BASE_IMAGE=python:3.12-slim
+ARG TORCH_INDEX_URL=
+ARG LLAMA_CPP_CMAKE_ARGS=
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Builder Stage  —  install all Python dependencies via uv
+# ═══════════════════════════════════════════════════════════════════════════════
+FROM ${BASE_IMAGE} AS builder
+
+ARG TORCH_INDEX_URL
+ARG LLAMA_CPP_CMAKE_ARGS
+
+WORKDIR /build
+
+# System build-time dependencies (compilers, cmake for llama-cpp-python, etc.)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    build-essential \
+    cmake \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Copy only dependency metadata for optimal layer caching
+COPY backend/pyproject.toml backend/uv.lock ./backend/
+
+# Install project dependencies (frozen = exact lockfile versions, no dev extras)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    cd backend && \
+    if [ -n "$TORCH_INDEX_URL" ]; then \
+        uv sync --frozen --no-dev --index-url "$TORCH_INDEX_URL"; \
+    else \
+        uv sync --frozen --no-dev; \
+    fi
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Runtime Stage  —  minimal image with the application and its venv
+# ═══════════════════════════════════════════════════════════════════════════════
+FROM ${BASE_IMAGE} AS runtime
+
+ARG LLAMA_CPP_CMAKE_ARGS
+
+WORKDIR /app
+
+# Runtime system dependencies
+#   libgomp1   — OpenMP runtime (required by llama.cpp / PyTorch)
+#   curl       — healthcheck probe
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-privileged user
+RUN groupadd -r app && useradd -r -g app -d /app -s /sbin/nologin app
+
+# Copy the virtual environment from the builder
+COPY --from=builder /build/backend/.venv /app/.venv
+
+# Copy the backend package (needed so that `import backend.main` resolves)
+COPY backend/ /app/backend/
+
+# Copy entrypoint script
+COPY backend/containerize/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+# Runtime data directories
+RUN mkdir -p /app/storage/nasdata /app/storage/nasmetadata/thumbnails /app/logs && \
+    chown -R app:app /app
+
+ENV \
+    PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH="/app" \
+    PYTHONUNBUFFERED=1
+
+USER app
+
+# Health check — uses the status endpoint exposed by the API router
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -sf http://localhost:${AINAS_PORT:-9026}/api/status || exit 1
+
+EXPOSE 9026
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

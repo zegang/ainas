@@ -1,4 +1,5 @@
 import logging
+from typing import List
 from pypdf import PdfReader
 from docx import Document as DocxDocument
 
@@ -42,3 +43,32 @@ def extract_text(file_path: str) -> str:
         except Exception as e:
             logging.getLogger(__name__).warning(f"Could not read text file {file_path}: {e}")
     return ""
+
+
+_CHUNK_SIZE = 2000
+_CHUNK_OVERLAP = 256
+
+
+def chunk_text(text: str, max_chars: int = _CHUNK_SIZE, overlap_chars: int = _CHUNK_OVERLAP) -> List[str]:
+    """Splits text into overlapping chunks of roughly ``max_chars`` characters.
+
+    Each chunk tries to break at a word boundary.  Overlap prevents information
+    loss across chunk boundaries during retrieval.
+    """
+    if not text or len(text) <= max_chars:
+        return [text] if text else []
+
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = min(start + max_chars, len(text))
+        # Retreat to the last space boundary when we aren't at the tail
+        if end < len(text):
+            last_space = text.rfind(' ', start, end)
+            if last_space > start:
+                end = last_space
+        chunks.append(text[start:end].strip())
+        if end == len(text):
+            break
+        start = end - overlap_chars
+    return chunks

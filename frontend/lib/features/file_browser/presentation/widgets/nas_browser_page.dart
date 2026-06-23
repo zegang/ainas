@@ -988,12 +988,31 @@ class _NASBrowserState extends State<NASBrowser> {
         Navigator.pop(context); // Dismiss loading dialog
 
         if (ext.endsWith('.pdf')) {
-          Navigator.push(
+          final navigateTo = await Navigator.push<String>(
             context,
             MaterialPageRoute(
-              builder: (context) => PdfViewerPage(url: downloadUrl, title: item.name),
+              builder: (context) => PdfViewerPage(
+                url: downloadUrl,
+                title: item.name,
+                fileItem: item,
+                onActionSelected: _handleAction,
+              ),
             ),
           );
+          if (!mounted) return;
+          api.invalidateFileListCache();
+          if (navigateTo != null) {
+            final parts = navigateTo.split('/');
+            setState(() {
+              pathStack = [''];
+              for (final part in parts) {
+                if (part.isNotEmpty) {
+                  pathStack.add(pathStack.last.isEmpty ? part : '${pathStack.last}/$part');
+                }
+              }
+            });
+          }
+          _refresh(forceRefresh: true);
         } else if (ext.endsWith('.docx')) {
           Navigator.push(
             context,

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/services/api_service.dart';
-import 'login_widget.dart';
 
 class SettingsWidget extends StatefulWidget {
   const SettingsWidget({super.key});
@@ -86,17 +85,19 @@ class _SettingsWidgetState extends State<SettingsWidget> {
 
   Future<void> _autoSave() async {
     if (!mounted) return;
-    
+
+    final l10n = AppLocalizations.of(context)!;
+
     setState(() {
       _isAutoSaving = true;
       _isChecking = true;
     });
-    
+
     final host = _hostController.text.trim();
     final port = _portController.text.trim();
     final newUrl = "http://$host:$port";
     final bool urlChanged = newUrl != _api.baseUrl;
-    
+
     try {
       // Always persist local preferences immediately
       await _api.persistThemeMode(_selectedThemeMode);
@@ -104,19 +105,35 @@ class _SettingsWidgetState extends State<SettingsWidget> {
       await _api.persistFontScale(_selectedFontScale);
 
       if (urlChanged) {
-        // If the URL changed, verify it before persisting
         final isHealthy = await _api.checkStatus(newUrl);
         if (!mounted) return;
-        
+
         if (isHealthy) {
           await _api.persistBaseUrl(newUrl);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.settingsSaved),
+              backgroundColor: Colors.green,
+            ),
+          );
           setState(() => _isConnected = true);
         } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.connectionFailedLocalSaved(newUrl)),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
           setState(() => _isConnected = false);
         }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.settingsSaved)),
+        );
       }
     } finally {
-      // Small delay to ensure the "Saving..." message is actually visible to the user
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
         setState(() => _isAutoSaving = false);
@@ -151,13 +168,6 @@ class _SettingsWidgetState extends State<SettingsWidget> {
     super.dispose();
   }
 
-  Future<bool> _ensureLoggedIn(BuildContext context) async {
-    if (_api.isLoggedIn) {
-      return true;
-    }
-    return await showLoginDialog(context);
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -170,11 +180,6 @@ class _SettingsWidgetState extends State<SettingsWidget> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                Text(
-                  l10n.settingsTooltip,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -267,56 +272,6 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                       _onSettingChanged();
                     }
                   },
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: (_hostError != null || _portError != null || _isChecking)
-                        ? null
-                        : () async {
-                      if (!await _ensureLoggedIn(context)) {
-                        return;
-                      }
-
-                      final host = _hostController.text.trim();
-                      final port = _portController.text.trim();
-                      final newUrl = "http://$host:$port";
-                      final bool urlChanged = newUrl != _api.baseUrl;
-                      
-                      // Only force a connectivity check if the server address was actually changed.
-                      final isHealthy = urlChanged ? await _api.checkStatus(newUrl) : true;
-                      if (!mounted) return;
-
-                      // Always persist local preferences regardless of server connectivity.
-                      await _api.persistThemeMode(_selectedThemeMode);
-                      await _api.persistLocale(_selectedLocale);
-                      await _api.persistFontScale(_selectedFontScale);
-
-                      if (urlChanged && !isHealthy) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: Theme.of(context).colorScheme.error,
-                            content: Text(l10n.connectionFailedLocalSaved(newUrl)),
-                          ),
-                        );
-                      } else {
-                        if (urlChanged) {
-                          await _api.persistBaseUrl(newUrl);
-                        }
-                        
-                        if (Navigator.canPop(context)) {
-                          Navigator.pop(context, true);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l10n.settingsSaved)),
-                          );
-                        }
-                      }
-                    },
-                    icon: const Icon(Icons.save),
-                    label: Text(l10n.refreshTooltip),
-                  ),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(

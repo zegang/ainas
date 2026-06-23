@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
+import 'package:ainas_frontend/services/api_service.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/settings_widget.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/user_info_widget.dart';
-import 'package:ainas_frontend/services/api_service.dart';
+import 'package:ainas_frontend/features/mine/presentation/widgets/ai_config_page.dart';
 
 class MinePage extends StatelessWidget {
   const MinePage({super.key});
@@ -55,7 +56,34 @@ class MinePage extends StatelessWidget {
           ),
         ],
       ),
-      body: const SettingsWidget(),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: Text(l10n.settingsTooltip),
+            subtitle: Text(l10n.settingsSubtitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => Scaffold(
+                  appBar: AppBar(title: Text(l10n.settingsTooltip)),
+                  body: const SettingsWidget(),
+                ),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.auto_awesome),
+            title: Text(l10n.aiTileTitle),
+            subtitle: Text(l10n.aiTileSubtitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AiConfigPage()),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

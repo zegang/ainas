@@ -1,0 +1,48 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Python (global)
+__pycache__/
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+
+# Backend-specific (exclude from build context for image size)
+backend/.venv/
+backend/dist/
+backend/build/
+backend/*.spec
+backend/__pycache__/
+
+# Large model files (download at runtime or mount as volume)
+**/*.gguf
+
+# Logs
+**/*.log
+/logs/
+
+# Storage (runtime data — mount as volume)
+/storage/
+backend/storage/
+
+# Other projects (not needed for backend build)
+frontend/
+vendor/
+docs/
+
+# Container files
+backend/containerize/
+backend/docker-entrypoint.sh

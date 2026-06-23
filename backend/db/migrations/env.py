@@ -5,7 +5,7 @@ models' metadata for auto-generating migration scripts.
 """
 import sys
 import os
-from logging.config import fileConfig
+import logging
 
 from sqlalchemy import engine_from_config, pool
 from alembic import context
@@ -13,21 +13,26 @@ from alembic import context
 # Make backend package importable from alembic env
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from backend.db.database import Base, SQLALCHEMY_DATABASE_URL
+from backend.db.database import Base, db_manager
 
 # Alembic Config object — gives access to values in alembic.ini
 config = context.config
 
-# Interpret the config file for Python logging
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# Wire up Alembic loggers to propagate to the root logger so they end up
+# in the project log file (set up by core/logger.py::setup_logging).
+# Without this, fileConfig(disable_existing_loggers=True) wipes the root
+# logger's handlers and Alembic output only goes to stderr.
+logging.getLogger("alembic").setLevel(logging.INFO)
+logging.getLogger("alembic").propagate = True
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+logging.getLogger("sqlalchemy.engine").propagate = True
 
 # The metadata object that drives auto-generation
 target_metadata = Base.metadata
 
 # Override sqlalchemy.url from application config so there is a single source
 # of truth — no need to duplicate the URL in alembic.ini
-config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
+config.set_main_option("sqlalchemy.url", db_manager.url)
 
 
 def run_migrations_offline() -> None:

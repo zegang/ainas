@@ -7,9 +7,9 @@
 
 # AI Settings
 # AINAS_ENABLE_AI: true
-# AINAS_AI_CHAT_MODEL: "services/ai/models/Qwen3-0.6B-Q8_0.gguf"
+# AINAS_AI_CHAT_MODEL: "unknown/Qwen3-0.6B-Q8_0"
 # AINAS_AI_VISION_MODEL: "Salesforce/blip-image-captioning-base"
-# AINAS_AI_IMAGE_GEN_MODEL: "dall-e-3"
+# AINAS_AI_IMAGE_GEN_MODEL: "unknown/dall-e-3"
 # AINAS_EMBEDDING_MODEL: "sentence-transformers/all-mpnet-base-v2"
 # AI_GPU_LAYERS: 32
 

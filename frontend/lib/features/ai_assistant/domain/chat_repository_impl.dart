@@ -33,15 +33,16 @@ class HttpChatRepository implements ChatRepository {
 
   @override
   Stream<String> streamResponse(String text, {List<String>? files, String? requestId}) async* {
-    final queryParams = {
-      'text': text,
-      if (files != null && files.isNotEmpty) 'files': files.join(','),
-      if (requestId != null) 'request_id': requestId,
-    };
     final request = http.Request(
-      'GET',
-      Uri.parse('$baseUrl/api/ai/chat/stream').replace(queryParameters: queryParams),
+      'POST',
+      Uri.parse('$baseUrl/api/ai/chat/stream'),
     );
+    request.headers['Content-Type'] = 'application/json';
+    request.body = jsonEncode({
+      'text': text,
+      'files': files ?? [],
+      if (requestId != null) 'request_id': requestId,
+    });
 
     final response = await _client.send(request);
     if (response.statusCode == 200) {

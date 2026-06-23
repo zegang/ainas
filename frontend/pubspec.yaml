@@ -20,6 +20,7 @@ dependencies:
   multicast_dns: ^0.3.2+6
   url_launcher: ^6.3.0
   cached_network_image: ^3.4.1
+  flutter_tts: ^4.2.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

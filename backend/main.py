@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 import asyncio
 import uvicorn
@@ -13,42 +14,67 @@ from backend.core import config
 from backend.net.discovery import NASDiscovery
 from backend.api.api import router as api_router
 from backend.services.ai.ai_engine import AIEngine
+from backend.services.ai.models.ai_status import AIStatus
 from backend.services.elasticsearch_service import ElasticsearchService
 from backend.db.database import run_migrations
+
+# Initialize configuration explicitly with the backend directory
+config.initialize(Path(__file__).resolve().parent)
+logger = logging.getLogger(__name__)
+logger.info("Configuration initialized. Backend directory: %s", config.AINAS_BACKEND_DIR)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     discovery = NASDiscovery(host=config.AINAS_ADVERTISE_ADDR, port=config.AINAS_PORT)
 
-    startup_logger = logging.getLogger(__name__)
-    startup_logger.info("AI-NAS starting... AI Features: %s", "Enabled" if config.AINAS_ENABLE_AI else "Disabled")
+    logger.info("AI-NAS starting...")
+    logger.info("AI: %s, AI RAG: %s", "Enabled" if config.AINAS_ENABLE_AI else "Disabled", "Enabled" if config.AINAS_ENABLE_AI_RAG else "Disabled")
 
     # Apply any pending database schema migrations before accepting requests
     await asyncio.to_thread(run_migrations)
+    sys.stdout.flush()
+    sys.stderr.flush()
 
-    await discovery.register()
+    try:
+        await asyncio.wait_for(discovery.register(), timeout=5)
+    except asyncio.TimeoutError:
+        logger.warning("mDNS service registration timed out (multicast may be unavailable)")
 
     if config.AINAS_ENABLE_AI:
+        ai_status = AIStatus()
+        app.state.ai_status = ai_status
+        app.state.ai = None
+
         async def _load_ai_engine():
             try:
                 # Move heavy model loading/downloading to a separate thread 
                 # to keep the application responsive during startup.
-                app.state.ai = await asyncio.to_thread(AIEngine)
-                startup_logger.info("AI Engine background initialization (pre-warming) complete.")
+                engine = await asyncio.to_thread(AIEngine, status=ai_status)
+                app.state.ai = engine
+                ai_status.status = "ready"
+                logger.info("AI Engine background initialization (pre-warming) complete.")
             except Exception as e:
-                startup_logger.error(f"AI Engine background initialization failed: {e}")
+                ai_status.status = "error"
+                ai_status.error = str(e)
+                logger.error(f"AI Engine background initialization failed: {e}")
 
         # Start loading AI models without blocking the server startup
-        startup_logger.info("AI Engine background initialization starting...")
+        logger.info("AI Engine background initialization starting...")
         asyncio.create_task(_load_ai_engine())
+        logger.info("AI Engine background initialization started. Models will be available once loaded.")
     
-    # Initialize and verify Elasticsearch
-    es_service = ElasticsearchService()
-    await es_service.create_index()
-    app.state.es = es_service
+    # Initialize and verify Elasticsearch (RAG backend)
+    if config.AINAS_ENABLE_AI_RAG:
+        logger.info("Initializing Elasticsearch service for RAG...")
+        es_service = ElasticsearchService()
+        await es_service.create_index()
+        app.state.es = es_service
+        logger.info("Elasticsearch service initialized and index verified.")
+    else:
+        logger.info("RAG disabled — skipping Elasticsearch initialization")
 
     yield
-    if hasattr(app.state, "es"):
+    if hasattr(app.state, "es") and config.AINAS_ENABLE_AI_RAG:
         await app.state.es.close()
     await discovery.unregister()
 
@@ -78,9 +104,6 @@ def create_app() -> FastAPI:
     Instrumentator().instrument(app).expose(app)
     return app
 
-# Initialize configuration explicitly with the backend directory
-config.initialize(Path(__file__).resolve().parent)
-logger = logging.getLogger(__name__)
 app = create_app()
 
 if __name__ == "__main__":

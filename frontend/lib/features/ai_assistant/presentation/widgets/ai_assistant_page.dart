@@ -11,6 +11,8 @@ import './nas_file_picker.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/features/ai_assistant/domain/chat_repository.dart';
 import 'package:ainas_frontend/features/ai_assistant/presentation/widgets/chat_bubble.dart';
+import 'package:ainas_frontend/shared/widgets/viewers/pdf_viewer_page.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class AIAssistantPage extends StatefulWidget {
   const AIAssistantPage({super.key});
@@ -29,6 +31,8 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
   late Animation<double> _borderAnimation;
   late FocusNode _textFocusNode;
   StreamSubscription<String>? _localSubscription;
+  final FlutterTts _flutterTts = FlutterTts();
+  String? _speakingMessageId;
 
   late final ChatRepository _repository = HttpChatRepository(
     baseUrl: api.baseUrl,
@@ -196,6 +200,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
 
   @override
   void dispose() {
+    _flutterTts.stop();
     _textFocusNode.dispose();
     _borderAnimController.dispose();
     _localSubscription = null;
@@ -203,6 +208,21 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
     _scrollController.dispose();
     super.dispose();
   }
+
+  void _toggleSpeech(String messageId, String text) {
+    if (_speakingMessageId == messageId) {
+      _flutterTts.stop();
+      _speakingMessageId = null;
+    } else {
+      _flutterTts.stop();
+      _flutterTts.setLanguage("en-US");
+      _flutterTts.speak(text);
+      _speakingMessageId = messageId;
+    }
+    setState(() {});
+  }
+
+  String _messageId(ChatMessage msg) => msg.timestamp.millisecondsSinceEpoch.toString();
 
   void _handleClearHistory() async {
     final l10n = AppLocalizations.of(context)!;
@@ -261,15 +281,6 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
                 return _buildMessage(context, _messages[index]);
               },
             ),
-          ),
-          // Display selected files as chips
-          _buildFileThumbnails(
-            _selectedFiles,
-            isRemovable: true,
-            onRemove: (file) {
-              setState(() => _selectedFiles.remove(file));
-            },
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           ),
           _buildQuickActions(),
           _buildInputArea(),
@@ -452,6 +463,14 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
             },
             tooltip: l10n.copyText,
           ),
+          IconButton(
+            icon: Icon(
+              _speakingMessageId == _messageId(message) ? Icons.volume_up : Icons.volume_up_outlined,
+              size: 16,
+            ),
+            onPressed: () => _toggleSpeech(_messageId(message), message.text),
+            tooltip: _speakingMessageId == _messageId(message) ? l10n.stopSpeaking : l10n.readAloud,
+          ),
         ],
       ),
     );
@@ -498,6 +517,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
     bool isRemovable = false,
     Function(String)? onRemove,
     EdgeInsets padding = EdgeInsets.zero,
+    WrapAlignment alignment = WrapAlignment.end,
   }) {
     if (files.isEmpty) return const SizedBox.shrink();
 
@@ -506,29 +526,45 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
       child: Wrap(
         spacing: 8.0,
         runSpacing: 8.0,
-        alignment: WrapAlignment.end,
+        alignment: alignment,
         children: files.map((f) {
           final bool isImg = _isImage(f);
+          final bool isPdf = f.toLowerCase().endsWith('.pdf');
           return Stack(
             clipBehavior: Clip.none,
             children: [
               GestureDetector(
-                onTap: isImg ? () => _showFullScreenGallery(context, files, f) : null,
+                onTap: isImg
+                    ? () => _showFullScreenGallery(context, files, f)
+                    : isPdf
+                        ? () {
+                            final url = _getFileUrl(f);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PdfViewerPage(
+                                  url: url,
+                                  title: f.split('/').last,
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    width: 60,
-                    height: 60,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       border: Border.all(color: Theme.of(context).dividerColor),
                     ),
-                    child: isImg
+                    child: isImg || isPdf
                         ? CachedNetworkImage(
                             imageUrl: _getFileUrl(f, thumbnail: true),
                             fit: BoxFit.cover,
                             width: double.infinity,
-                            height: 60,
+                            height: 40,
                             placeholder: (context, url) => Center(
                               child: SizedBox(
                                 width: 16,
@@ -537,12 +573,12 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
                               ),
                             ),
                             errorWidget: (context, url, error) => Icon(
-                              Icons.insert_drive_file,
-                              size: 28,
+                              isPdf ? Icons.picture_as_pdf : Icons.insert_drive_file,
+                              size: 20,
                               color: Theme.of(context).colorScheme.primary,
                             ),
                           )
-                        : const Center(child: Icon(Icons.insert_drive_file, size: 24, color: Colors.grey)),
+                        : const Center(child: Icon(Icons.insert_drive_file, size: 18, color: Colors.grey)),
                   ),
                 ),
               ),
@@ -765,11 +801,23 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (_selectedFiles.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                child: _buildFileThumbnails(
+                  _selectedFiles,
+                  isRemovable: true,
+                  alignment: WrapAlignment.start,
+                  onRemove: (file) {
+                    setState(() => _selectedFiles.remove(file));
+                  },
+                ),
+              ),
             TextField(
               controller: _controller,
               focusNode: _textFocusNode,
               minLines: 1,
-              maxLines: 6,
+              maxLines: 8,
               decoration: InputDecoration(
                 hintText: l10n.askAiHint,
                 border: InputBorder.none,

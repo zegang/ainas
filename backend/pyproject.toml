@@ -24,6 +24,7 @@ dependencies = [
     "python-docx>=1.2.0",
     "pypdfium2>=5.10.1",
     "alembic>=1.18.4",
+    "gguf>=0.19.0",
 ]
 
 [tool.uv]
@@ -35,3 +36,8 @@ default = true
 
 [[tool.uv.index]]
 url = "https://pypi.org/simple"
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.21.0",
+]

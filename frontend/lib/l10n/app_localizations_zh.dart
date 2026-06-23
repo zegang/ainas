@@ -487,4 +487,338 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get retry => '重试';
+
+  @override
+  String get readAloud => '朗读';
+
+  @override
+  String get stopSpeaking => '停止朗读';
+
+  @override
+  String get settingsSubtitle => '服务器、主题、语言';
+
+  @override
+  String get aiTileTitle => 'AI';
+
+  @override
+  String get aiTileSubtitle => '模型、RAG、HuggingFace';
+
+  @override
+  String get aiConfigTitle => 'AI 配置';
+
+  @override
+  String setModelTitle(Object model) {
+    return '设置 $model';
+  }
+
+  @override
+  String get modelPathHint => '模型路径 / 仓库 ID';
+
+  @override
+  String get saveButton => '保存';
+
+  @override
+  String modelUpdated(Object model) {
+    return '$model 已更新';
+  }
+
+  @override
+  String failedMessage(Object error) {
+    return '失败：$error';
+  }
+
+  @override
+  String checkingModel(Object model) {
+    return '正在检查 $model...';
+  }
+
+  @override
+  String get modelExists => '模型已存在于磁盘';
+
+  @override
+  String get modelNotFound => '本地未找到模型';
+
+  @override
+  String checkFailed(Object error) {
+    return '检查失败：$error';
+  }
+
+  @override
+  String downloadingModel(Object model) {
+    return '正在下载 $model...';
+  }
+
+  @override
+  String downloadSuccess(Object model) {
+    return '$model 下载成功';
+  }
+
+  @override
+  String downloadFailed(Object error) {
+    return '下载失败：$error';
+  }
+
+  @override
+  String get localModels => '本地模型';
+
+  @override
+  String get noLocalModels => '未找到本地模型。';
+
+  @override
+  String errorLabel(Object error) {
+    return '错误：$error';
+  }
+
+  @override
+  String get activeAiModels => 'AI 功能';
+
+  @override
+  String get ragSearchEngine => 'RAG 与搜索引擎';
+
+  @override
+  String get modelChat => '对话';
+
+  @override
+  String get modelVision => '视觉';
+
+  @override
+  String get modelEmbedding => '嵌入';
+
+  @override
+  String get loadingLabel => '加载中...';
+
+  @override
+  String get setAction => '设置';
+
+  @override
+  String get checkAction => '检查';
+
+  @override
+  String elasticsearchStatus(Object status) {
+    return 'Elasticsearch：$status';
+  }
+
+  @override
+  String get unknownLabel => '未知';
+
+  @override
+  String get naLabel => '无';
+
+  @override
+  String get addressLabel => '地址';
+
+  @override
+  String get indexLabel => '索引';
+
+  @override
+  String get usageLabel => '用量';
+
+  @override
+  String indexedDocuments(int count) {
+    return '$count 个已索引文档';
+  }
+
+  @override
+  String get aiEngineLoading => 'AI 引擎初始化中';
+
+  @override
+  String get aiEngineError => 'AI 引擎初始化失败';
+
+  @override
+  String get modelDetailTitle => '模型详情';
+
+  @override
+  String get modelNameLabel => '名称';
+
+  @override
+  String get modelProviderLabel => '提供商';
+
+  @override
+  String get modelTypeLabel => '类型';
+
+  @override
+  String get modelPathLabel => '路径';
+
+  @override
+  String get modelStatusLabel => '状态';
+
+  @override
+  String get activeLabel => '活跃';
+
+  @override
+  String get inactiveLabel => '非活跃';
+
+  @override
+  String get createdLabel => '创建时间';
+
+  @override
+  String get updatedLabel => '更新时间';
+
+  @override
+  String get modelIsReadyLabel => '就绪状态';
+
+  @override
+  String get isLocalLabel => '本地';
+
+  @override
+  String get readyLabel => '就绪';
+
+  @override
+  String get notReadyLabel => '未就绪';
+
+  @override
+  String get downloadStartLabel => '下载开始时间';
+
+  @override
+  String get downloadedAtLabel => '下载完成时间';
+
+  @override
+  String get featureDetailTitle => '功能详情';
+
+  @override
+  String get changeModelLabel => '更换模型';
+
+  @override
+  String get notSetLabel => '未设置';
+
+  @override
+  String get indexedDocumentsTitle => '已索引文档';
+
+  @override
+  String get documentNameLabel => '文档';
+
+  @override
+  String get documentPathLabel => '路径';
+
+  @override
+  String get noDocumentsLabel => '暂无已索引文档';
+
+  @override
+  String get modelConfigLabel => '超参数';
+
+  @override
+  String get clearAllButton => '全部清空';
+
+  @override
+  String get ragDeleteDocTitle => '删除文档';
+
+  @override
+  String ragDeleteDocConfirm(Object filename) {
+    return '从索引中删除“$filename”？';
+  }
+
+  @override
+  String ragDeleteDocSuccess(Object filename) {
+    return '“$filename”已从索引中删除。';
+  }
+
+  @override
+  String ragDeleteDocFailed(Object error) {
+    return '删除文档失败：$error';
+  }
+
+  @override
+  String get ragClearIndexTitle => '清空 RAG 索引';
+
+  @override
+  String get ragClearIndexConfirm => '确定要删除所有已索引的文档吗？此操作不可撤销。';
+
+  @override
+  String get ragClearIndexSuccess => 'RAG 索引已成功清空。';
+
+  @override
+  String ragClearIndexFailed(Object error) {
+    return '清空 RAG 索引失败：$error';
+  }
+
+  @override
+  String get ragClearIndexTooltip => '清空所有已索引文档';
+
+  @override
+  String get downloadModelTitle => '下载模型';
+
+  @override
+  String get repoIdLabel => '仓库 ID';
+
+  @override
+  String get repoIdHint => '例如 Qwen/Qwen2.5-7B-Instruct-GGUF';
+
+  @override
+  String get fileNameLabel => '文件名';
+
+  @override
+  String get fileNameHint => '例如 qwen2.5-7b-instruct-q4_k_m.gguf';
+
+  @override
+  String get providerLabel => '提供者';
+
+  @override
+  String downloadQueued(Object name) {
+    return '下载已排队：$name';
+  }
+
+  @override
+  String get modelDownloadingStatus => '下载中...';
+
+  @override
+  String get deleteModelLabel => '删除模型';
+
+  @override
+  String get reDownloadLabel => '重新下载';
+
+  @override
+  String deleteModelConfirm(Object name) {
+    return '确认删除“$name”？';
+  }
+
+  @override
+  String get modelDeleted => '模型已删除';
+
+  @override
+  String modelFilesLabel(int count) {
+    return '文件 ($count)';
+  }
+
+  @override
+  String get modelTotalSizeLabel => '总大小';
+
+  @override
+  String get splitToImages => '拆分 PDF 为图片';
+
+  @override
+  String get outputDirLabel => '输出目录';
+
+  @override
+  String get outputDirHint => '相对于 NAS 数据根目录';
+
+  @override
+  String get selectFolder => '浏览';
+
+  @override
+  String get startButton => '开始';
+
+  @override
+  String get convertingPdf => '正在将 PDF 页转换为图片...';
+
+  @override
+  String pagesConverted(int count) {
+    return '已转换 $count 页。';
+  }
+
+  @override
+  String get generatedFilesTitle => '生成的文件：';
+
+  @override
+  String andMore(int count) {
+    return '... 以及其他 $count 个';
+  }
+
+  @override
+  String get okButton => '确定';
+
+  @override
+  String get selectFolderTitle => '选择文件夹';
+
+  @override
+  String get openFolder => '打开文件夹';
 }

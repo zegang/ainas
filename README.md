@@ -29,7 +29,17 @@ AI-NAS is a smart Network Attached Storage (NAS) management solution that integr
 
 ## Demo Records
 
-![Search Images By AI Auto-Generated Tags](./docs/images/aitagspdfview.gif)
+### Configurable Local AI Models: Easily download, configure and manage local AI models for your specific needs.
+![Manage AI Models and Configure Download](./docs/images/ailargemodels.gif)
+
+### Async AI Tags on Images: Automatically AI tags on image for easy search and organization.
+![Search Images By AI Auto-Generated Tags](./docs/images/aitagsimage.gif)
+
+### RAG PDF Embedding: Convert PDF documents to embeddings for retrieval-augmented generation.
+![RAG indexing on PDF](./docs/images/ragpdfembedding.gif)
+
+### Split PDF Pages to Images: Convert every page of a PDF document to individual PNG images.
+![Split PDF Pages to Images](./docs/images/pdftoimages.gif)
 
 ## Quantization Models
 

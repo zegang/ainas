@@ -8,12 +8,11 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Backgro
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from backend.services.image_service import create_thumbnail, create_pdf_thumbnail
+from backend.services.image_service import create_thumbnail, create_pdf_thumbnail, pdf_to_images
 from backend.services.system_service import check_disk_and_alert
-from backend.services.document_service import extract_text
 from backend.services.ai.ai_engine import AIEngine
 from backend.services.elasticsearch_service import ElasticsearchService
-from backend.db.database import SessionLocal, FileRecord, TagRecord
+from backend.db.database import db_manager, FileRecord, TagRecord
 from backend.core import config
 
 router = APIRouter(prefix="/api/files", tags=["Files"])
@@ -29,7 +28,7 @@ def _get_task_semaphore() -> asyncio.Semaphore:
 
 # Dependency to get DB session
 def get_db():
-    db = SessionLocal()
+    db = db_manager.SessionLocal()
     try:
         yield db
     finally:
@@ -54,6 +53,13 @@ class MoveRequest(BaseModel):
 
 class CreateFolderRequest(BaseModel):
     path: str
+
+class DeleteRequest(BaseModel):
+    path: str
+
+class PdfToImagesRequest(BaseModel):
+    path: str
+    output_dir: str
 
 # --- Endpoints ---
 
@@ -132,27 +138,34 @@ async def create_folder(request: CreateFolderRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("")
-async def delete_item(path: str, db: Session = Depends(get_db)):
-    """Deletes a file or directory and cleans up associated database records (including tags via cascade)."""
+async def delete_item(body: DeleteRequest, request: Request, db: Session = Depends(get_db)):
+    """Deletes a file or directory and cleans up associated database records
+    (including tags via cascade) and Elasticsearch index entries."""
     logger = logging.getLogger(__name__)
-    full_path = os.path.join(config.AINAS_DATA_PATH, path)
+    es: ElasticsearchService | None = getattr(request.app.state, "es", None)
+    full_path = os.path.join(config.AINAS_DATA_PATH, body.path)
     if not os.path.exists(full_path):
         raise HTTPException(status_code=404, detail="Item not found")
 
     if os.path.isdir(full_path):
         shutil.rmtree(full_path)
-        # Load all child FileRecords (and the dir itself if recorded) and delete via ORM
-        # so the cascade="all, delete-orphan" on TagRecord fires correctly.
+        if es:
+            removed = await es.delete_files_by_prefix(full_path)
+            if removed:
+                logger.info("Removed %d ES document(s) for directory %s", removed, body.path)
         records = db.query(FileRecord).filter(
-            (FileRecord.path == path) | FileRecord.path.like(f"{path}/%")
+            (FileRecord.path == body.path) | FileRecord.path.like(f"{body.path}/%")
         ).all()
         for rec in records:
             db.delete(rec)
     else:
         os.remove(full_path)
-        # Also remove thumbnail if it exists (image or PDF)
+        if es:
+            removed = await es.delete_file(full_path)
+            if removed:
+                logger.info("Removed %d ES document(s) for file %s", removed, body.path)
         for thumb_suffix in ["", ".jpg"]:
-            thumb_path = os.path.join(config.AINAS_THUMBNAIL_DIR, path.lstrip("/") + thumb_suffix)
+            thumb_path = os.path.join(config.AINAS_THUMBNAIL_DIR, body.path.lstrip("/") + thumb_suffix)
             if os.path.exists(thumb_path):
                 try:
                     os.remove(thumb_path)
@@ -160,12 +173,12 @@ async def delete_item(path: str, db: Session = Depends(get_db)):
                 except OSError as e:
                     logger.warning("Could not remove thumbnail %s: %s", thumb_path, e)
 
-        rec = db.query(FileRecord).filter(FileRecord.path == path).first()
+        rec = db.query(FileRecord).filter(FileRecord.path == body.path).first()
         if rec:
             db.delete(rec)
 
     db.commit()
-    return {"message": f"Successfully deleted {path}"}
+    return {"message": f"Successfully deleted {body.path}"}
 
 @router.patch("/rename")
 async def rename_item(request: RenameRequest, db: Session = Depends(get_db)):
@@ -264,7 +277,7 @@ async def process_upload_task(file_rel_path: str, file_path: str,
     logger = logging.getLogger(__name__)
     sem = _get_task_semaphore()
     async with sem:
-        db = SessionLocal()
+        db = db_manager.SessionLocal()
         try:
             # 1. AI Tagging (Images only) — run in thread pool to avoid blocking the event loop
             is_image = safe_filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'))
@@ -279,37 +292,14 @@ async def process_upload_task(file_rel_path: str, file_path: str,
                             db.add(TagRecord(name=tag_name, file_id=file_rec.id))
                     db.commit()
 
-            # 2. Text extraction and Elasticsearch Indexing
+            # 2. Document indexing into Elasticsearch (extract, chunk, embed, index)
             if es:
-                is_doc = safe_filename.lower().endswith(('.pdf', '.docx', '.txt', '.md', '.log'))
-                file_content = await asyncio.to_thread(extract_text, file_path)
-                if file_content and (is_doc or is_image):
-                    st = os.stat(file_path)
-                    created_at = datetime.fromtimestamp(st.st_ctime).isoformat()
-                    updated_at = datetime.fromtimestamp(st.st_mtime).isoformat()
-
-                    max_retries = 3
-                    initial_delay = 2
-                    current_delay = initial_delay
-                    file_embedding = await ai.embeddings.aembed_query(file_content) if ai else None
-                    for attempt in range(max_retries):
-                        try:
-                            logger.info("Attempting Elasticsearch indexing for %s (Attempt %d/%d)", file_rel_path, attempt + 1, max_retries)
-                            await es.index_file(
-                                filename=safe_filename, path=file_rel_path,
-                                tags=tags, content=file_content,
-                                embedding=file_embedding,
-                                created_at=created_at, updated_at=updated_at
-                            )
-                            logger.info("Elasticsearch successfully indexed file: %s, %s", safe_filename, file_rel_path)
-                            break
-                        except Exception as e:
-                            logger.warning(f"Elasticsearch indexing failed for {file_rel_path} (Attempt {attempt + 1}/{max_retries}): {e}")
-                            if attempt < max_retries - 1:
-                                await asyncio.sleep(current_delay)
-                                current_delay *= 2
-                            else:
-                                logger.error(f"Elasticsearch indexing failed permanently for {file_rel_path} after {max_retries} attempts.")
+                embeddings = ai.embeddings if ai else None
+                await es.index_file(
+                    file_path=file_path, rel_path=file_path,
+                    filename=safe_filename, tags=tags,
+                    embeddings=embeddings,
+                )
         except Exception as e:
             logger.error(f"Error in background processing for {file_rel_path}: {e}")
         finally:
@@ -334,21 +324,25 @@ async def run_reindex(ai: Optional[AIEngine], es: ElasticsearchService):
     logger = logging.getLogger(__name__)
     sem = _get_task_semaphore()
     async with sem:
-        db = SessionLocal()
+        db = db_manager.SessionLocal()
         try:
+            embeddings = ai.embeddings if ai and config.AINAS_ENABLE_AI else None
             for root, _, files in os.walk(config.AINAS_DATA_PATH):
                 for name in files:
-                    if name.lower().endswith(('.pdf', '.docx', '.txt', '.md', '.log')):
-                        file_path = os.path.join(root, name)
-                        rel_path = os.path.relpath(file_path, config.AINAS_DATA_PATH).replace("\\", "/")
-                        try:
-                            content = await asyncio.to_thread(extract_text, file_path)
-                            if not content: continue
-                            file_rec = db.query(FileRecord).filter(FileRecord.path == rel_path).first()
-                            tags = [t.name for t in file_rec.tags] if file_rec else []
-                            file_embedding = await ai.embeddings.aembed_query(content) if ai and config.AINAS_ENABLE_AI else None
-                            await es.index_file(filename=name, path=rel_path, tags=tags, content=content, embedding=file_embedding)
-                        except Exception as e: logger.error(f"Error re-indexing {rel_path}: {e}")
+                    if not name.lower().endswith(('.pdf', '.docx', '.txt', '.md', '.log')):
+                        continue
+                    file_path = os.path.join(root, name)
+                    rel_path = os.path.relpath(file_path, config.AINAS_DATA_PATH).replace("\\", "/")
+                    try:
+                        file_rec = db.query(FileRecord).filter(FileRecord.path == rel_path).first()
+                        tags = [t.name for t in file_rec.tags] if file_rec else []
+                        await es.index_file(
+                            file_path=file_path, rel_path=file_path,
+                            filename=name, tags=tags,
+                            embeddings=embeddings,
+                        )
+                    except Exception as e:
+                        logger.error(f"Error re-indexing {rel_path}: {e}")
         finally: db.close()
 
 @router.post("/reindex")
@@ -358,3 +352,25 @@ async def trigger_reindex(background_tasks: BackgroundTasks, request: Request, a
     if not es: raise HTTPException(status_code=400, detail="Elasticsearch service not enabled.")
     background_tasks.add_task(run_reindex, ai, es)
     return {"message": "Re-indexing started in background."}
+
+
+@router.post("/pdf-to-images")
+async def pdf_to_images_endpoint(body: PdfToImagesRequest, request: Request):
+    """Render every page of a PDF to PNG images in the specified output directory."""
+    logger = logging.getLogger(__name__)
+    source = os.path.join(config.AINAS_DATA_PATH, body.path.lstrip("/"))
+    if not os.path.isfile(source):
+        raise HTTPException(status_code=404, detail="PDF file not found")
+
+    output_dir = os.path.join(config.AINAS_DATA_PATH, body.output_dir.lstrip("/"))
+    os.makedirs(output_dir, exist_ok=True)
+
+    try:
+        images = pdf_to_images(source, output_dir)
+        # Return paths relative to data dir so frontend can construct download URLs
+        rel_base = body.output_dir.lstrip("/")
+        for img in images:
+            img["path"] = f"{rel_base}/{img['filename']}"
+        return {"total_pages": len(images), "images": images}
+    except (RuntimeError, OSError) as e:
+        raise HTTPException(status_code=500, detail=str(e))

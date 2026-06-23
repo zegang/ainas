@@ -14,6 +14,7 @@ Thumbs.db
 
 # Project Specific Data
 storage/*
+backend/aimodelscache/*
 logs/
 *.db
 *.db-journal
@@ -24,7 +25,8 @@ __pycache__/
 *$py.class
 .venv/
 backend/.venv/
-backend/services/ai/models/
+backend/dist/*
+backend/build/*
 .python-version
 .pytest_cache/
 .mypy_cache/

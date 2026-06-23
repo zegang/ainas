@@ -17,6 +17,34 @@ def create_thumbnail(source_path: str, dest_path: str, size=(200, 200)):
         logger.error(f"Failed to create thumbnail for {source_path}: {e}")
         raise e
 
+def pdf_to_images(source_path: str, output_dir: str, quality: int = 95) -> list[dict]:
+    """Render every page of a PDF as a PNG image saved to output_dir.
+    Returns a list of {page, filename, path} dicts."""
+    logger = logging.getLogger(__name__)
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:
+        raise RuntimeError("pypdfium2 is required for PDF-to-image conversion")
+
+    os.makedirs(output_dir, exist_ok=True)
+    pdf = pdfium.PdfDocument(source_path)
+    pages = len(pdf)
+    results = []
+    base = os.path.splitext(os.path.basename(source_path))[0]
+
+    for i in range(pages):
+        page = pdf[i]
+        bitmap = page.render(scale=2.0)
+        pil_image = bitmap.to_pil()
+        fname = f"{base}_page_{i + 1:03d}.png"
+        dest = os.path.join(output_dir, fname)
+        pil_image.convert("RGB").save(dest, quality=quality)
+        results.append({"page": i + 1, "filename": fname, "path": dest})
+        logger.info("Rendered page %d/%d -> %s", i + 1, pages, dest)
+
+    return results
+
+
 def create_pdf_thumbnail(source_path: str, dest_path: str, size=(200, 200)):
     """
     Generates a thumbnail from the first page of a PDF file.

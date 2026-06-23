@@ -160,6 +160,7 @@ class FileActionBar extends StatelessWidget {
   final Color iconColor;
   final double iconSize;
   final MainAxisAlignment mainAxisAlignment;
+  final List<ActionItem>? extraActions;
 
   const FileActionBar({
     super.key,
@@ -168,13 +169,14 @@ class FileActionBar extends StatelessWidget {
     this.iconColor = Colors.white,
     this.iconSize = 36,
     this.mainAxisAlignment = MainAxisAlignment.start,
+    this.extraActions,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final actions = _buildActions(l10n);
+    final actions = [..._buildActions(l10n), ...?extraActions];
     return LayoutBuilder(
       builder: (context, constraints) {
         final content = Row(

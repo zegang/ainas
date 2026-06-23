@@ -1,88 +1,36 @@
 import logging
 import os
-import re
-import base64
 import requests
 from typing import List
 from PIL import Image
 from openai import OpenAI
 from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage, SystemMessage # type: ignore
 from backend.core import config
 
 
-def get_image_tools(storage_path: str, api_key: str, vision_model=None, chat_llm=None, projector_path=None, **kwargs):
+def get_image_tools(storage_path: str, api_key: str, vision_feature=None, **kwargs):
     logger = logging.getLogger(__name__)
 
     @tool
     def tag_image(file_name: str) -> str:
         """Generates descriptive labels/tags for an image file using computer vision.
         Pass the FULL and EXACT filename (e.g., 'Screenshot from 2024-01-01.png')."""
-        try:
-            file_name = file_name.strip().strip("'\"").strip()
-            full_path = os.path.join(storage_path, file_name)
-            logger.info("Tagging image: %s", full_path)
-            if not os.path.exists(full_path):
-                return f"File '{file_name}' not found."
-
-            processor = kwargs.get('blip_processor')
-            blip_model = kwargs.get('blip_model')
-            if not processor or not blip_model:
-                return "BLIP model not available for tagging."
-
-            inputs = processor(Image.open(full_path).convert("RGB"), return_tensors="pt")
-            out = blip_model.generate(**inputs, max_new_tokens=50)
-            caption = processor.decode(out[0], skip_special_tokens=True)
-            logger.info("BLIP caption: %s", caption)
-
-            if chat_llm:
-                msg = chat_llm.invoke([
-                    SystemMessage(content="You are a helpful assistant that extracts descriptive tags from image captions."),
-                    HumanMessage(content=f"Based on this image caption: \"{caption}\"\nSelect 2 to 10 descriptive words from it as tags. Only output the comma separated tags wrapped by <tags></tags>. Do not include any other text.")
-                ])
-                logger.info("Tags generated via LLM: %s", msg.content)
-                m = re.search(r"<tags>(.*?)</tags>", msg.content, re.DOTALL)
-                if m:
-                    return m.group(1).strip()
-                return msg.content.strip()
-
-            return caption
-
-        except Exception as e:
-            return f"Failed to tag image: {str(e)}"
+        if not vision_feature:
+            return "Vision feature not available."
+        file_name = file_name.strip().strip("'\"").strip()
+        full_path = os.path.join(storage_path, file_name)
+        return vision_feature.tag_image(full_path)
 
     @tool
     def explain_image(file_name: str) -> str:
         """Explains or describes the content of an existing image file stored on the NAS.
         Use this when asked to describe, analyze, or 'generate content' describing what is in a specific image.
         Pass the FULL and EXACT filename (e.g., 'Screenshot from 2024-01-01.png')."""
-        try:
-            file_name = file_name.strip().strip("'\"").strip()
-            full_path = os.path.join(storage_path, file_name)
-            logger.info("Explaining image: %s", full_path)
-            
-            if not vision_model and kwargs.get('blip_processor') and kwargs.get('blip_model'):
-                processor = kwargs['blip_processor']
-                model = kwargs['blip_model']
-                inputs = processor(Image.open(full_path).convert("RGB"), return_tensors="pt") # type: ignore
-                out = model.generate(**inputs, max_new_tokens=50) # type: ignore
-                return processor.decode(out[0], skip_special_tokens=True) # type: ignore
-
-            with open(full_path, "rb") as f:
-                encoded = base64.b64encode(f.read()).decode("utf-8")
-            
-            llm = vision_model
-
-            msg = llm.invoke([
-                HumanMessage(content=[
-                    {"type": "text", "text": "Describe this image in detail."},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded}"}}
-                ])
-            ])
-            logger.info("Explanation generated: %s", msg.content)
-            return msg.content
-        except Exception as e:
-            return f"Failed to process image: {str(e)}"
+        if not vision_feature:
+            return "Vision feature not available."
+        file_name = file_name.strip().strip("'\"").strip()
+        full_path = os.path.join(storage_path, file_name)
+        return vision_feature.explain_image(full_path)
 
     @tool
     def generate_image(prompt: str, output_name: str = "generated_ai.png") -> str:
@@ -107,7 +55,6 @@ def get_image_tools(storage_path: str, api_key: str, vision_model=None, chat_llm
             imgs = [Image.open(os.path.join(storage_path, f.strip().strip("'\"").strip())) for f in files]
             logger.info("Creating dashboard with %d images", len(imgs))
             if not imgs: return "No images found."
-            # Simple 2-column grid
             w, h = imgs[0].size
             canvas = Image.new('RGB', (w * 2, h * ((len(imgs) + 1) // 2)))
             for i, img in enumerate(imgs):

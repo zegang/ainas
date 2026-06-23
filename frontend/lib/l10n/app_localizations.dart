@@ -1015,6 +1015,594 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'RETRY'**
   String get retry;
+
+  /// No description provided for @readAloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Read aloud'**
+  String get readAloud;
+
+  /// No description provided for @stopSpeaking.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop speaking'**
+  String get stopSpeaking;
+
+  /// No description provided for @settingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Server, theme, language'**
+  String get settingsSubtitle;
+
+  /// No description provided for @aiTileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI'**
+  String get aiTileTitle;
+
+  /// No description provided for @aiTileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Models, RAG, HuggingFace'**
+  String get aiTileSubtitle;
+
+  /// No description provided for @aiConfigTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Configuration'**
+  String get aiConfigTitle;
+
+  /// No description provided for @setModelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set {model}'**
+  String setModelTitle(Object model);
+
+  /// No description provided for @modelPathHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Model path / repo ID'**
+  String get modelPathHint;
+
+  /// No description provided for @saveButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get saveButton;
+
+  /// No description provided for @modelUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'{model} updated'**
+  String modelUpdated(Object model);
+
+  /// No description provided for @failedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed: {error}'**
+  String failedMessage(Object error);
+
+  /// No description provided for @checkingModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking {model}...'**
+  String checkingModel(Object model);
+
+  /// No description provided for @modelExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Model exists on disk'**
+  String get modelExists;
+
+  /// No description provided for @modelNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Model not found locally'**
+  String get modelNotFound;
+
+  /// No description provided for @checkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Check failed: {error}'**
+  String checkFailed(Object error);
+
+  /// No description provided for @downloadingModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading {model}...'**
+  String downloadingModel(Object model);
+
+  /// No description provided for @downloadSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'{model} downloaded successfully'**
+  String downloadSuccess(Object model);
+
+  /// No description provided for @downloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed: {error}'**
+  String downloadFailed(Object error);
+
+  /// No description provided for @localModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Models'**
+  String get localModels;
+
+  /// No description provided for @noLocalModels.
+  ///
+  /// In en, this message translates to:
+  /// **'No local models found.'**
+  String get noLocalModels;
+
+  /// No description provided for @errorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String errorLabel(Object error);
+
+  /// No description provided for @activeAiModels.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Features'**
+  String get activeAiModels;
+
+  /// No description provided for @ragSearchEngine.
+  ///
+  /// In en, this message translates to:
+  /// **'RAG & Search Engine'**
+  String get ragSearchEngine;
+
+  /// No description provided for @modelChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get modelChat;
+
+  /// No description provided for @modelVision.
+  ///
+  /// In en, this message translates to:
+  /// **'Vision'**
+  String get modelVision;
+
+  /// No description provided for @modelEmbedding.
+  ///
+  /// In en, this message translates to:
+  /// **'Embedding'**
+  String get modelEmbedding;
+
+  /// No description provided for @loadingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get loadingLabel;
+
+  /// No description provided for @setAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Set'**
+  String get setAction;
+
+  /// No description provided for @checkAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Check'**
+  String get checkAction;
+
+  /// No description provided for @elasticsearchStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Elasticsearch: {status}'**
+  String elasticsearchStatus(Object status);
+
+  /// No description provided for @unknownLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get unknownLabel;
+
+  /// No description provided for @naLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'N/A'**
+  String get naLabel;
+
+  /// No description provided for @addressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get addressLabel;
+
+  /// No description provided for @indexLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Index'**
+  String get indexLabel;
+
+  /// No description provided for @usageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage'**
+  String get usageLabel;
+
+  /// No description provided for @indexedDocuments.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} indexed documents'**
+  String indexedDocuments(int count);
+
+  /// No description provided for @aiEngineLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Engine initializing'**
+  String get aiEngineLoading;
+
+  /// No description provided for @aiEngineError.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Engine failed to initialize'**
+  String get aiEngineError;
+
+  /// No description provided for @modelDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Model Details'**
+  String get modelDetailTitle;
+
+  /// No description provided for @modelNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get modelNameLabel;
+
+  /// No description provided for @modelProviderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get modelProviderLabel;
+
+  /// No description provided for @modelTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get modelTypeLabel;
+
+  /// No description provided for @modelPathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Path'**
+  String get modelPathLabel;
+
+  /// No description provided for @modelStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get modelStatusLabel;
+
+  /// No description provided for @activeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get activeLabel;
+
+  /// No description provided for @inactiveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get inactiveLabel;
+
+  /// No description provided for @createdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Created'**
+  String get createdLabel;
+
+  /// No description provided for @updatedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated'**
+  String get updatedLabel;
+
+  /// No description provided for @modelIsReadyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get modelIsReadyLabel;
+
+  /// No description provided for @isLocalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Local'**
+  String get isLocalLabel;
+
+  /// No description provided for @readyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get readyLabel;
+
+  /// No description provided for @notReadyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Not ready'**
+  String get notReadyLabel;
+
+  /// No description provided for @downloadStartLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Download start'**
+  String get downloadStartLabel;
+
+  /// No description provided for @downloadedAtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded at'**
+  String get downloadedAtLabel;
+
+  /// No description provided for @featureDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Feature Detail'**
+  String get featureDetailTitle;
+
+  /// No description provided for @changeModelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Model'**
+  String get changeModelLabel;
+
+  /// No description provided for @notSetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get notSetLabel;
+
+  /// No description provided for @indexedDocumentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Indexed Documents'**
+  String get indexedDocumentsTitle;
+
+  /// No description provided for @documentNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Document'**
+  String get documentNameLabel;
+
+  /// No description provided for @documentPathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Path'**
+  String get documentPathLabel;
+
+  /// No description provided for @noDocumentsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'No indexed documents'**
+  String get noDocumentsLabel;
+
+  /// No description provided for @modelConfigLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Super Parameters'**
+  String get modelConfigLabel;
+
+  /// No description provided for @clearAllButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear All'**
+  String get clearAllButton;
+
+  /// No description provided for @ragDeleteDocTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Document'**
+  String get ragDeleteDocTitle;
+
+  /// No description provided for @ragDeleteDocConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove \"{filename}\" from the index?'**
+  String ragDeleteDocConfirm(Object filename);
+
+  /// No description provided for @ragDeleteDocSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{filename}\" deleted from index.'**
+  String ragDeleteDocSuccess(Object filename);
+
+  /// No description provided for @ragDeleteDocFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete document: {error}'**
+  String ragDeleteDocFailed(Object error);
+
+  /// No description provided for @ragClearIndexTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear RAG Index'**
+  String get ragClearIndexTitle;
+
+  /// No description provided for @ragClearIndexConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete all indexed documents? This action cannot be undone.'**
+  String get ragClearIndexConfirm;
+
+  /// No description provided for @ragClearIndexSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'RAG index cleared successfully.'**
+  String get ragClearIndexSuccess;
+
+  /// No description provided for @ragClearIndexFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to clear RAG index: {error}'**
+  String ragClearIndexFailed(Object error);
+
+  /// No description provided for @ragClearIndexTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all indexed documents'**
+  String get ragClearIndexTooltip;
+
+  /// No description provided for @downloadModelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Model'**
+  String get downloadModelTitle;
+
+  /// No description provided for @repoIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository ID'**
+  String get repoIdLabel;
+
+  /// No description provided for @repoIdHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Qwen/Qwen2.5-7B-Instruct-GGUF'**
+  String get repoIdHint;
+
+  /// No description provided for @fileNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'File Name'**
+  String get fileNameLabel;
+
+  /// No description provided for @fileNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. qwen2.5-7b-instruct-q4_k_m.gguf'**
+  String get fileNameHint;
+
+  /// No description provided for @providerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get providerLabel;
+
+  /// No description provided for @downloadQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Download queued: {name}'**
+  String downloadQueued(Object name);
+
+  /// No description provided for @modelDownloadingStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading...'**
+  String get modelDownloadingStatus;
+
+  /// No description provided for @deleteModelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Model'**
+  String get deleteModelLabel;
+
+  /// No description provided for @reDownloadLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-download'**
+  String get reDownloadLabel;
+
+  /// No description provided for @deleteModelConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\"?'**
+  String deleteModelConfirm(Object name);
+
+  /// No description provided for @modelDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Model deleted'**
+  String get modelDeleted;
+
+  /// No description provided for @modelFilesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Files ({count})'**
+  String modelFilesLabel(int count);
+
+  /// No description provided for @modelTotalSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Size'**
+  String get modelTotalSizeLabel;
+
+  /// No description provided for @splitToImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Split to Images'**
+  String get splitToImages;
+
+  /// No description provided for @outputDirLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Output directory'**
+  String get outputDirLabel;
+
+  /// No description provided for @outputDirHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Relative to the NAS data root'**
+  String get outputDirHint;
+
+  /// No description provided for @selectFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse'**
+  String get selectFolder;
+
+  /// No description provided for @startButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get startButton;
+
+  /// No description provided for @convertingPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Converting PDF pages to images...'**
+  String get convertingPdf;
+
+  /// No description provided for @pagesConverted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} page(s) converted.'**
+  String pagesConverted(int count);
+
+  /// No description provided for @generatedFilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated files:'**
+  String get generatedFilesTitle;
+
+  /// No description provided for @andMore.
+  ///
+  /// In en, this message translates to:
+  /// **'... and {count} more'**
+  String andMore(int count);
+
+  /// No description provided for @okButton.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get okButton;
+
+  /// No description provided for @selectFolderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Folder'**
+  String get selectFolderTitle;
+
+  /// No description provided for @openFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Folder'**
+  String get openFolder;
 }
 
 class _AppLocalizationsDelegate

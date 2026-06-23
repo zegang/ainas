@@ -167,6 +167,212 @@
   "connected": "Connected",
   "offline": "Offline",
   "offlineBannerMessage": "Offline: Unable to connect to NAS server",
-  "retry": "RETRY"
+  "retry": "RETRY",
+  "readAloud": "Read aloud",
+  "stopSpeaking": "Stop speaking",
+  "settingsSubtitle": "Server, theme, language",
+  "aiTileTitle": "AI",
+  "aiTileSubtitle": "Models, RAG, HuggingFace",
+  "aiConfigTitle": "AI Configuration",
+  "setModelTitle": "Set {model}",
+  "@setModelTitle": {
+    "placeholders": {
+      "model": {}
+    }
+  },
+  "modelPathHint": "Model path / repo ID",
+  "saveButton": "Save",
+  "modelUpdated": "{model} updated",
+  "@modelUpdated": {
+    "placeholders": {
+      "model": {}
+    }
+  },
+  "failedMessage": "Failed: {error}",
+  "@failedMessage": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "checkingModel": "Checking {model}...",
+  "@checkingModel": {
+    "placeholders": {
+      "model": {}
+    }
+  },
+  "modelExists": "Model exists on disk",
+  "modelNotFound": "Model not found locally",
+  "checkFailed": "Check failed: {error}",
+  "@checkFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "downloadingModel": "Downloading {model}...",
+  "@downloadingModel": {
+    "placeholders": {
+      "model": {}
+    }
+  },
+  "downloadSuccess": "{model} downloaded successfully",
+  "@downloadSuccess": {
+    "placeholders": {
+      "model": {}
+    }
+  },
+  "downloadFailed": "Download failed: {error}",
+  "@downloadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "localModels": "Local Models",
+  "noLocalModels": "No local models found.",
+  "errorLabel": "Error: {error}",
+  "@errorLabel": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "activeAiModels": "AI Features",
+  "ragSearchEngine": "RAG & Search Engine",
+  "modelChat": "Chat",
+  "modelVision": "Vision",
+  "modelEmbedding": "Embedding",
+  "loadingLabel": "Loading...",
+  "setAction": "Set",
+  "checkAction": "Check",
+  "elasticsearchStatus": "Elasticsearch: {status}",
+  "@elasticsearchStatus": {
+    "placeholders": {
+      "status": {}
+    }
+  },
+  "unknownLabel": "Unknown",
+  "naLabel": "N/A",
+  "addressLabel": "Address",
+  "indexLabel": "Index",
+  "usageLabel": "Usage",
+  "indexedDocuments": "{count} indexed documents",
+  "@indexedDocuments": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiEngineLoading": "AI Engine initializing",
+  "aiEngineError": "AI Engine failed to initialize",
+  "modelDetailTitle": "Model Details",
+  "modelNameLabel": "Name",
+  "modelProviderLabel": "Provider",
+  "modelTypeLabel": "Type",
+  "modelPathLabel": "Path",
+  "modelStatusLabel": "Status",
+  "activeLabel": "Active",
+  "inactiveLabel": "Inactive",
+  "createdLabel": "Created",
+  "updatedLabel": "Updated",
+  "modelIsReadyLabel": "Ready",
+  "isLocalLabel": "Local",
+  "readyLabel": "Ready",
+  "notReadyLabel": "Not ready",
+  "downloadStartLabel": "Download start",
+  "downloadedAtLabel": "Downloaded at",
+  "featureDetailTitle": "Feature Detail",
+  "changeModelLabel": "Change Model",
+  "notSetLabel": "Not set",
+  "indexedDocumentsTitle": "Indexed Documents",
+  "documentNameLabel": "Document",
+  "documentPathLabel": "Path",
+  "noDocumentsLabel": "No indexed documents",
+  "modelConfigLabel": "Super Parameters",
+  "clearAllButton": "Clear All",
+  "ragDeleteDocTitle": "Delete Document",
+  "ragDeleteDocConfirm": "Remove \"{filename}\" from the index?",
+  "@ragDeleteDocConfirm": {
+    "placeholders": {
+      "filename": {}
+    }
+  },
+  "ragDeleteDocSuccess": "\"{filename}\" deleted from index.",
+  "@ragDeleteDocSuccess": {
+    "placeholders": {
+      "filename": {}
+    }
+  },
+  "ragDeleteDocFailed": "Failed to delete document: {error}",
+  "@ragDeleteDocFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "ragClearIndexTitle": "Clear RAG Index",
+  "ragClearIndexConfirm": "Are you sure you want to delete all indexed documents? This action cannot be undone.",
+  "ragClearIndexSuccess": "RAG index cleared successfully.",
+  "ragClearIndexFailed": "Failed to clear RAG index: {error}",
+  "@ragClearIndexFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "ragClearIndexTooltip": "Clear all indexed documents",
+  "downloadModelTitle": "Download Model",
+  "repoIdLabel": "Repository ID",
+  "repoIdHint": "e.g. Qwen/Qwen2.5-7B-Instruct-GGUF",
+  "fileNameLabel": "File Name",
+  "fileNameHint": "e.g. qwen2.5-7b-instruct-q4_k_m.gguf",
+  "providerLabel": "Provider",
+  "downloadQueued": "Download queued: {name}",
+  "@downloadQueued": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "modelDownloadingStatus": "Downloading...",
+  "deleteModelLabel": "Delete Model",
+  "reDownloadLabel": "Re-download",
+  "deleteModelConfirm": "Delete \"{name}\"?",
+  "@deleteModelConfirm": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "modelDeleted": "Model deleted",
+  "modelFilesLabel": "Files ({count})",
+  "@modelFilesLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "modelTotalSizeLabel": "Total Size",
+  "splitToImages": "Split to Images",
+  "outputDirLabel": "Output directory",
+  "outputDirHint": "Relative to the NAS data root",
+  "selectFolder": "Browse",
+  "startButton": "Start",
+  "convertingPdf": "Converting PDF pages to images...",
+  "pagesConverted": "{count} page(s) converted.",
+  "@pagesConverted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "generatedFilesTitle": "Generated files:",
+  "andMore": "... and {count} more",
+  "@andMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "okButton": "OK",
+  "selectFolderTitle": "Select Folder",
+  "openFolder": "Open Folder"
 }
 

@@ -4,14 +4,40 @@ from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 import logging
 import os
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./storage/nas_metadata.db"
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+def get_db_dir() -> Path:
+    try:
+        from platformdirs import user_data_dir
+        db_dir = Path(user_data_dir("ainas", ensure_exists=True))
+    except ImportError:
+        import sys as _sys
+        if _sys.platform == "win32":
+            _base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+        elif _sys.platform == "darwin":
+            _base = Path.home() / "Library" / "Application Support"
+        else:
+            _base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+        db_dir = _base / "ainas"
+        db_dir.mkdir(parents=True, exist_ok=True)
+    return db_dir
+
+
 Base = declarative_base()
+
+
+class DatabaseManager:
+    def __init__(self, db_dir: Path | None = None):
+        self.db_dir = db_dir or get_db_dir()
+        self.url = f"sqlite:///{self.db_dir / 'nas_metadata.db'}"
+        self.engine = create_engine(self.url, connect_args={"check_same_thread": False})
+        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+
+
+db_manager = DatabaseManager()
 
 
 class FileRecord(Base):
@@ -41,6 +67,25 @@ class AiModelRecord(Base):
     api_base = Column(String, nullable=True)
     config = Column(Text, nullable=True)
     is_active = Column(Boolean, default=False)
+    is_local = Column(Boolean, default=False)
+    is_ready = Column(Boolean, default=False)
+    download_start_at = Column(DateTime, nullable=True)
+    downloaded_at = Column(DateTime, nullable=True)
+    all_model_files = Column(Text, nullable=True)
+    current_model_files = Column(Text, nullable=True)
+    total_size = Column(Integer, nullable=True)
+    current_total_size = Column(Integer, nullable=True)
+    created_at = Column(DateTime, nullable=True, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class FeatureModelRecord(Base):
+    __tablename__ = "function_models"
+    id = Column(Integer, primary_key=True, index=True)
+    functionality = Column(String, unique=True, index=True, nullable=False)
+    model_name = Column(String, nullable=False)
+    feature_title = Column(String, nullable=True)
+    feature_description = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=True, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -84,4 +129,4 @@ def run_migrations() -> None:
         # Never crash the whole server just because of a migration error —
         # log loudly and fall back to create_all so development still works.
         logger.error("Alembic migration failed: %s — falling back to create_all", exc)
-        Base.metadata.create_all(bind=engine)
+        Base.metadata.create_all(bind=db_manager.engine)

@@ -152,5 +152,211 @@
   "connected": "已连接",
   "offline": "离线",
   "offlineBannerMessage": "离线：无法连接到 NAS 服务器",
-  "retry": "重试"
+  "retry": "重试",
+  "readAloud": "朗读",
+  "stopSpeaking": "停止朗读",
+  "settingsSubtitle": "服务器、主题、语言",
+  "aiTileTitle": "AI",
+  "aiTileSubtitle": "模型、RAG、HuggingFace",
+  "aiConfigTitle": "AI 配置",
+  "setModelTitle": "设置 {model}",
+  "@setModelTitle": {
+    "placeholders": {
+      "model": {}
+    }
+  },
+  "modelPathHint": "模型路径 / 仓库 ID",
+  "saveButton": "保存",
+  "modelUpdated": "{model} 已更新",
+  "@modelUpdated": {
+    "placeholders": {
+      "model": {}
+    }
+  },
+  "failedMessage": "失败：{error}",
+  "@failedMessage": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "checkingModel": "正在检查 {model}...",
+  "@checkingModel": {
+    "placeholders": {
+      "model": {}
+    }
+  },
+  "modelExists": "模型已存在于磁盘",
+  "modelNotFound": "本地未找到模型",
+  "checkFailed": "检查失败：{error}",
+  "@checkFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "downloadingModel": "正在下载 {model}...",
+  "@downloadingModel": {
+    "placeholders": {
+      "model": {}
+    }
+  },
+  "downloadSuccess": "{model} 下载成功",
+  "@downloadSuccess": {
+    "placeholders": {
+      "model": {}
+    }
+  },
+  "downloadFailed": "下载失败：{error}",
+  "@downloadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "localModels": "本地模型",
+  "noLocalModels": "未找到本地模型。",
+  "errorLabel": "错误：{error}",
+  "@errorLabel": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "activeAiModels": "AI 功能",
+  "ragSearchEngine": "RAG 与搜索引擎",
+  "modelChat": "对话",
+  "modelVision": "视觉",
+  "modelEmbedding": "嵌入",
+  "loadingLabel": "加载中...",
+  "setAction": "设置",
+  "checkAction": "检查",
+  "elasticsearchStatus": "Elasticsearch：{status}",
+  "@elasticsearchStatus": {
+    "placeholders": {
+      "status": {}
+    }
+  },
+  "unknownLabel": "未知",
+  "naLabel": "无",
+  "addressLabel": "地址",
+  "indexLabel": "索引",
+  "usageLabel": "用量",
+  "indexedDocuments": "{count} 个已索引文档",
+  "@indexedDocuments": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiEngineLoading": "AI 引擎初始化中",
+  "aiEngineError": "AI 引擎初始化失败",
+  "modelDetailTitle": "模型详情",
+  "modelNameLabel": "名称",
+  "modelProviderLabel": "提供商",
+  "modelTypeLabel": "类型",
+  "modelPathLabel": "路径",
+  "modelStatusLabel": "状态",
+  "activeLabel": "活跃",
+  "inactiveLabel": "非活跃",
+  "createdLabel": "创建时间",
+  "updatedLabel": "更新时间",
+  "modelIsReadyLabel": "就绪状态",
+  "isLocalLabel": "本地",
+  "readyLabel": "就绪",
+  "notReadyLabel": "未就绪",
+  "downloadStartLabel": "下载开始时间",
+  "downloadedAtLabel": "下载完成时间",
+  "featureDetailTitle": "功能详情",
+  "changeModelLabel": "更换模型",
+  "notSetLabel": "未设置",
+  "indexedDocumentsTitle": "已索引文档",
+  "documentNameLabel": "文档",
+  "documentPathLabel": "路径",
+  "noDocumentsLabel": "暂无已索引文档",
+  "modelConfigLabel": "超参数",
+  "clearAllButton": "全部清空",
+  "ragDeleteDocTitle": "删除文档",
+  "ragDeleteDocConfirm": "从索引中删除“{filename}”？",
+  "@ragDeleteDocConfirm": {
+    "placeholders": {
+      "filename": {}
+    }
+  },
+  "ragDeleteDocSuccess": "“{filename}”已从索引中删除。",
+  "@ragDeleteDocSuccess": {
+    "placeholders": {
+      "filename": {}
+    }
+  },
+  "ragDeleteDocFailed": "删除文档失败：{error}",
+  "@ragDeleteDocFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "ragClearIndexTitle": "清空 RAG 索引",
+  "ragClearIndexConfirm": "确定要删除所有已索引的文档吗？此操作不可撤销。",
+  "ragClearIndexSuccess": "RAG 索引已成功清空。",
+  "ragClearIndexFailed": "清空 RAG 索引失败：{error}",
+  "@ragClearIndexFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "ragClearIndexTooltip": "清空所有已索引文档",
+  "downloadModelTitle": "下载模型",
+  "repoIdLabel": "仓库 ID",
+  "repoIdHint": "例如 Qwen/Qwen2.5-7B-Instruct-GGUF",
+  "fileNameLabel": "文件名",
+  "fileNameHint": "例如 qwen2.5-7b-instruct-q4_k_m.gguf",
+  "providerLabel": "提供者",
+  "downloadQueued": "下载已排队：{name}",
+  "@downloadQueued": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "modelDownloadingStatus": "下载中...",
+  "deleteModelLabel": "删除模型",
+  "reDownloadLabel": "重新下载",
+  "deleteModelConfirm": "确认删除“{name}”？",
+  "@deleteModelConfirm": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "modelDeleted": "模型已删除",
+  "modelFilesLabel": "文件 ({count})",
+  "@modelFilesLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "modelTotalSizeLabel": "总大小",
+  "splitToImages": "拆分 PDF 为图片",
+  "outputDirLabel": "输出目录",
+  "outputDirHint": "相对于 NAS 数据根目录",
+  "selectFolder": "浏览",
+  "startButton": "开始",
+  "convertingPdf": "正在将 PDF 页转换为图片...",
+  "pagesConverted": "已转换 {count} 页。",
+  "@pagesConverted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "generatedFilesTitle": "生成的文件：",
+  "andMore": "... 以及其他 {count} 个",
+  "@andMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "okButton": "确定",
+  "selectFolderTitle": "选择文件夹",
+  "openFolder": "打开文件夹"
 }

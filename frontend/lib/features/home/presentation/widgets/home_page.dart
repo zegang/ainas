@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ainas_frontend/features/home/presentation/widgets/mdns_discovery_widget.dart';
 import 'package:ainas_frontend/features/home/presentation/widgets/storage_dashboard_widget.dart';
-import 'package:ainas_frontend/features/home/presentation/widgets/ai_config_widget.dart';
+import 'package:ainas_frontend/shared/widgets/ai_config_widget.dart';
 import 'package:ainas_frontend/services/api_service.dart';
 
 class HomePage extends StatefulWidget {
@@ -16,8 +16,8 @@ class _HomePageState extends State<HomePage> {
   bool _isScanning = false;
   List<String> _discoveredServers = [];
   Map<String, dynamic>? _storageUsage;
-  Map<String, dynamic>? _aiConfig;
   Map<String, dynamic>? _ragStatus;
+  Map<String, dynamic>? _aiStatus;
 
   @override
   void initState() {
@@ -29,17 +29,16 @@ class _HomePageState extends State<HomePage> {
     setState(() => _isScanning = true);
     
     try {
-      // Execute backend fetches in parallel for better performance
       final results = await Future.wait([
         _api.getSystemUsage(),
-        _api.getAiConfig(),
         _api.getRagStatus(),
+        _api.getAiStatus(),
       ]);
 
       setState(() {
-        _storageUsage = results[0];
-        _aiConfig = results[1];
-        _ragStatus = results[2];
+        _storageUsage = results[0] as Map<String, dynamic>?;
+        _ragStatus = results[1] as Map<String, dynamic>?;
+        _aiStatus = results[2] as Map<String, dynamic>;
         _discoveredServers = [_api.baseUrl.replaceAll(RegExp(r'https?://'), '')];
       });
     } catch (e) {
@@ -69,9 +68,12 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 16),
           AiConfigWidget(
-            modelConfig: _aiConfig,
             ragStatus: _ragStatus,
+            aiStatus: _aiStatus,
             onRefresh: _refreshAll,
+            showLocalModelCard: false,
+            showFeatureIcons: false,
+            showRagDetails: false,
           ),
         ],
       ),

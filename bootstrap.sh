@@ -47,6 +47,7 @@ show_usage() {
     echo "  --web        Run the Flutter frontend as a web application"
     echo "  --linux      Run the Flutter frontend as a native Linux app"
     echo "  --android    Build the Android APK (Release)"
+    echo "  --pyinstaller Build a standalone binary with PyInstaller"
     echo "  --all        Setup and run both backend and frontend (default)"
     echo "  --help, -h   Show this help message"
     echo ""
@@ -379,6 +380,15 @@ build_android() {
     cd "$PROJECT_ROOT"
 }
 
+build_pyinstaller() {
+    echo "Step: Building standalone binary with PyInstaller..."
+    setup_python
+    cd "$PROJECT_ROOT/backend"
+    uv run pyinstaller ainas-backend.spec
+    echo "Build Complete. Binary located at: $PROJECT_ROOT/backend/dist/ainas-backend"
+    cd "$PROJECT_ROOT"
+}
+
 case "$COMMAND" in
     --upgrade)
         upgrade_deps
@@ -428,6 +438,9 @@ case "$COMMAND" in
         ;;
     --android)
         build_android
+        ;;
+    --pyinstaller)
+        build_pyinstaller
         ;;
     --build-web)
         build_web

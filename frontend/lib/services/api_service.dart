@@ -283,17 +283,6 @@ class ApiService with ChangeNotifier {
     }
   }
 
-  /// Fetches the active AI model configuration.
-  Future<Map<String, dynamic>> getAiConfig() async {
-    final url = '$baseUrl/api/ai/config/models';
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception('Failed to load AI config');
-    }
-  }
-
   /// Fetches the RAG/Elasticsearch status.
   Future<Map<String, dynamic>> getRagStatus() async {
     final url = '$baseUrl/api/ai/rag';
@@ -302,6 +291,153 @@ class ApiService with ChangeNotifier {
       return json.decode(response.body);
     } else {
       throw Exception('Failed to load RAG status');
+    }
+  }
+
+  /// Fetches the list of indexed RAG documents.
+  Future<Map<String, dynamic>> getRagDocuments() async {
+    final url = '$baseUrl/api/ai/rag/documents';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load RAG documents');
+    }
+  }
+
+  Future<Map<String, dynamic>> clearRagIndex() async {
+    final url = '$baseUrl/api/ai/rag';
+    final response = await http.delete(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      final detail = json.decode(response.body)['detail'] ?? 'Unknown error';
+      throw Exception('Failed to clear RAG index: $detail');
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteRagDocument(String path) async {
+    final url = '$baseUrl/api/ai/rag/documents?path=${Uri.encodeComponent(path)}';
+    final response = await http.delete(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      final detail = json.decode(response.body)['detail'] ?? 'Unknown error';
+      throw Exception('Failed to delete RAG document: $detail');
+    }
+  }
+
+  /// Lists all model records from the database.
+  Future<List<Map<String, dynamic>>> getLocalModels() async {
+    final url = '$baseUrl/api/ai/models';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(json.decode(response.body)['models']);
+    } else {
+      throw Exception('Failed to list models');
+    }
+  }
+
+  /// Searches HuggingFace Hub for GGUF models.
+  Future<List<dynamic>> searchHfModels(String query) async {
+    final url = '$baseUrl/api/ai/models/hf';
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'query': query}),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to search HF models');
+    }
+  }
+
+  /// Checks if a model file is already downloaded.
+  Future<Map<String, dynamic>> checkModelDownloaded(String repoId, {String? filename}) async {
+    final url = '$baseUrl/api/ai/models/check';
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'repo_id': repoId, 'filename': filename}),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to check model status');
+    }
+  }
+
+  /// Downloads a model from HuggingFace. If [filename] is null, downloads the full repo snapshot.
+  Future<void> downloadHfModel(String repoId, String? filename) async {
+    final url = '$baseUrl/api/ai/models/download';
+    final body = <String, dynamic>{'repo_id': repoId};
+    if (filename != null && filename.isNotEmpty) {
+      body['filename'] = filename;
+    }
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(body),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to download model');
+    }
+  }
+
+  /// Deletes a local model by its name (repo_id like 'org/modelname').
+  Future<void> deleteModel(String name) async {
+    final url = '$baseUrl/api/ai/models';
+    final response = await http.delete(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'name': name}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete model');
+    }
+  }
+
+  /// Returns the current AI Engine initialization status.
+  Future<Map<String, dynamic>> getAiStatus() async {
+    final url = '$baseUrl/api/ai/status';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load AI status');
+    }
+  }
+
+  /// Fetches all registered AI features with their assigned models.
+  /// Returns a map: `{"features": [...], "status": "loading"|"ready"}`.
+  Future<Map<String, dynamic>> getFeatures() async {
+    final url = '$baseUrl/api/ai/features';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final body = json.decode(response.body);
+      return {
+        'features': List<Map<String, dynamic>>.from(body['features'] ?? []),
+        'status': body['status'] ?? 'ready',
+      };
+    } else if (response.statusCode == 503) {
+      return {'features': <Map<String, dynamic>>[], 'status': 'loading'};
+    } else {
+      throw Exception('Failed to load features');
+    }
+  }
+
+  /// Sets the model for a registered feature.
+  Future<void> setFeatureModel(String name, String modelName) async {
+    final url = '$baseUrl/api/ai/features/$name/model';
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'model_name': modelName}),
+    );
+    if (response.statusCode != 200 && response.statusCode != 202) {
+      final detail = json.decode(response.body)['detail'] ?? 'Unknown error';
+      throw Exception('Failed to set feature model: $detail');
     }
   }
 
@@ -347,9 +483,13 @@ class ApiService with ChangeNotifier {
   }
 
   Future<void> deleteItem(String path) async {
-    final url = '$baseUrl/api/files?path=$path';
+    final url = '$baseUrl/api/files';
     _log.info('--> DELETE $url');
-    final response = await http.delete(Uri.parse(url));
+    final response = await http.delete(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'path': path}),
+    );
     if (response.statusCode != 200) {
       throw Exception('Failed to delete item');
     }
@@ -402,6 +542,19 @@ class ApiService with ChangeNotifier {
     notifyListeners();
 
     await _performUpload(task);
+  }
+
+  Future<Map<String, dynamic>> pdfToImages(String path, String outputDir) async {
+    final url = Uri.parse('$baseUrl/api/files/pdf-to-images');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'path': path, 'output_dir': outputDir}),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('PDF-to-images failed: ${response.body}');
   }
 
   Future<void> uploadFile(String fileName, Uint8List bytes, {String? parentPath}) async {
@@ -464,68 +617,7 @@ class ApiService with ChangeNotifier {
     }
   }
 
-  /// Sends a prompt to the AI Assistant and processes the streaming response.
-  /// It parses tool results to extract document references for citations.
-  Future<void> sendStreamingChat(String text) async {
-    final userMsg = ChatMessage(text: text, isUser: true);
-    chatHistory.add(userMsg);
-    
-    final aiMsg = ChatMessage(text: '...', isUser: false);
-    chatHistory.add(aiMsg);
-    
-    final files = stagedFilesForAi.join(',');
-    stagedFilesForAi.clear();
-    notifyListeners();
 
-    final requestId = DateTime.now().millisecondsSinceEpoch.toString();
-    final url = '$baseUrl/api/ai/chat/stream?text=${Uri.encodeComponent(text)}&files=${Uri.encodeComponent(files)}&request_id=$requestId';
-    
-    final client = http.Client();
-    final request = http.Request('GET', Uri.parse(url));
-    
-    try {
-      final response = await client.send(request);
-      final Map<String, String> references = {};
-      String fullContent = '';
-
-      await for (final chunk in response.stream.transform(utf8.decoder)) {
-        fullContent += chunk;
-        
-        // Extract citations from tool results (e.g., "- filename.pdf (path/to/file):")
-        final citationRegex = RegExp(r"- ([^(\n]+) \(([^)]+)\):");
-        final matches = citationRegex.allMatches(fullContent);
-        for (final m in matches) {
-          final filename = m.group(1)?.trim();
-          final path = m.group(2)?.trim();
-          if (filename != null && path != null) {
-            references[filename] = path;
-          }
-        }
-
-        // Clean up the text for display by removing the raw tool result blocks
-        // and appending the unique references as a "Sources" footer.
-        String displayContent = fullContent
-            .replaceAll(RegExp(r"<tool_result>[\s\S]*?</tool_result>"), "")
-            .trim();
-            
-        if (references.isNotEmpty) {
-          final links = references.entries.map((e) {
-            final downloadUrl = '$baseUrl/api/files/download?path=${Uri.encodeComponent(e.value)}';
-            return "[${e.key}]($downloadUrl)";
-          }).join(', ');
-          displayContent += "\n\n**Sources:** $links";
-        }
-        
-        aiMsg.text = displayContent;
-        notifyListeners();
-      }
-    } catch (e) {
-      aiMsg.text = "Connection lost: $e";
-      notifyListeners();
-    } finally {
-      client.close();
-    }
-  }
 }
 
 class _CacheEntry<T> {

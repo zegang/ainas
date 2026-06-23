@@ -494,4 +494,339 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get retry => 'RETRY';
+
+  @override
+  String get readAloud => 'Read aloud';
+
+  @override
+  String get stopSpeaking => 'Stop speaking';
+
+  @override
+  String get settingsSubtitle => 'Server, theme, language';
+
+  @override
+  String get aiTileTitle => 'AI';
+
+  @override
+  String get aiTileSubtitle => 'Models, RAG, HuggingFace';
+
+  @override
+  String get aiConfigTitle => 'AI Configuration';
+
+  @override
+  String setModelTitle(Object model) {
+    return 'Set $model';
+  }
+
+  @override
+  String get modelPathHint => 'Model path / repo ID';
+
+  @override
+  String get saveButton => 'Save';
+
+  @override
+  String modelUpdated(Object model) {
+    return '$model updated';
+  }
+
+  @override
+  String failedMessage(Object error) {
+    return 'Failed: $error';
+  }
+
+  @override
+  String checkingModel(Object model) {
+    return 'Checking $model...';
+  }
+
+  @override
+  String get modelExists => 'Model exists on disk';
+
+  @override
+  String get modelNotFound => 'Model not found locally';
+
+  @override
+  String checkFailed(Object error) {
+    return 'Check failed: $error';
+  }
+
+  @override
+  String downloadingModel(Object model) {
+    return 'Downloading $model...';
+  }
+
+  @override
+  String downloadSuccess(Object model) {
+    return '$model downloaded successfully';
+  }
+
+  @override
+  String downloadFailed(Object error) {
+    return 'Download failed: $error';
+  }
+
+  @override
+  String get localModels => 'Local Models';
+
+  @override
+  String get noLocalModels => 'No local models found.';
+
+  @override
+  String errorLabel(Object error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String get activeAiModels => 'AI Features';
+
+  @override
+  String get ragSearchEngine => 'RAG & Search Engine';
+
+  @override
+  String get modelChat => 'Chat';
+
+  @override
+  String get modelVision => 'Vision';
+
+  @override
+  String get modelEmbedding => 'Embedding';
+
+  @override
+  String get loadingLabel => 'Loading...';
+
+  @override
+  String get setAction => 'Set';
+
+  @override
+  String get checkAction => 'Check';
+
+  @override
+  String elasticsearchStatus(Object status) {
+    return 'Elasticsearch: $status';
+  }
+
+  @override
+  String get unknownLabel => 'Unknown';
+
+  @override
+  String get naLabel => 'N/A';
+
+  @override
+  String get addressLabel => 'Address';
+
+  @override
+  String get indexLabel => 'Index';
+
+  @override
+  String get usageLabel => 'Usage';
+
+  @override
+  String indexedDocuments(int count) {
+    return '$count indexed documents';
+  }
+
+  @override
+  String get aiEngineLoading => 'AI Engine initializing';
+
+  @override
+  String get aiEngineError => 'AI Engine failed to initialize';
+
+  @override
+  String get modelDetailTitle => 'Model Details';
+
+  @override
+  String get modelNameLabel => 'Name';
+
+  @override
+  String get modelProviderLabel => 'Provider';
+
+  @override
+  String get modelTypeLabel => 'Type';
+
+  @override
+  String get modelPathLabel => 'Path';
+
+  @override
+  String get modelStatusLabel => 'Status';
+
+  @override
+  String get activeLabel => 'Active';
+
+  @override
+  String get inactiveLabel => 'Inactive';
+
+  @override
+  String get createdLabel => 'Created';
+
+  @override
+  String get updatedLabel => 'Updated';
+
+  @override
+  String get modelIsReadyLabel => 'Ready';
+
+  @override
+  String get isLocalLabel => 'Local';
+
+  @override
+  String get readyLabel => 'Ready';
+
+  @override
+  String get notReadyLabel => 'Not ready';
+
+  @override
+  String get downloadStartLabel => 'Download start';
+
+  @override
+  String get downloadedAtLabel => 'Downloaded at';
+
+  @override
+  String get featureDetailTitle => 'Feature Detail';
+
+  @override
+  String get changeModelLabel => 'Change Model';
+
+  @override
+  String get notSetLabel => 'Not set';
+
+  @override
+  String get indexedDocumentsTitle => 'Indexed Documents';
+
+  @override
+  String get documentNameLabel => 'Document';
+
+  @override
+  String get documentPathLabel => 'Path';
+
+  @override
+  String get noDocumentsLabel => 'No indexed documents';
+
+  @override
+  String get modelConfigLabel => 'Super Parameters';
+
+  @override
+  String get clearAllButton => 'Clear All';
+
+  @override
+  String get ragDeleteDocTitle => 'Delete Document';
+
+  @override
+  String ragDeleteDocConfirm(Object filename) {
+    return 'Remove \"$filename\" from the index?';
+  }
+
+  @override
+  String ragDeleteDocSuccess(Object filename) {
+    return '\"$filename\" deleted from index.';
+  }
+
+  @override
+  String ragDeleteDocFailed(Object error) {
+    return 'Failed to delete document: $error';
+  }
+
+  @override
+  String get ragClearIndexTitle => 'Clear RAG Index';
+
+  @override
+  String get ragClearIndexConfirm =>
+      'Are you sure you want to delete all indexed documents? This action cannot be undone.';
+
+  @override
+  String get ragClearIndexSuccess => 'RAG index cleared successfully.';
+
+  @override
+  String ragClearIndexFailed(Object error) {
+    return 'Failed to clear RAG index: $error';
+  }
+
+  @override
+  String get ragClearIndexTooltip => 'Clear all indexed documents';
+
+  @override
+  String get downloadModelTitle => 'Download Model';
+
+  @override
+  String get repoIdLabel => 'Repository ID';
+
+  @override
+  String get repoIdHint => 'e.g. Qwen/Qwen2.5-7B-Instruct-GGUF';
+
+  @override
+  String get fileNameLabel => 'File Name';
+
+  @override
+  String get fileNameHint => 'e.g. qwen2.5-7b-instruct-q4_k_m.gguf';
+
+  @override
+  String get providerLabel => 'Provider';
+
+  @override
+  String downloadQueued(Object name) {
+    return 'Download queued: $name';
+  }
+
+  @override
+  String get modelDownloadingStatus => 'Downloading...';
+
+  @override
+  String get deleteModelLabel => 'Delete Model';
+
+  @override
+  String get reDownloadLabel => 'Re-download';
+
+  @override
+  String deleteModelConfirm(Object name) {
+    return 'Delete \"$name\"?';
+  }
+
+  @override
+  String get modelDeleted => 'Model deleted';
+
+  @override
+  String modelFilesLabel(int count) {
+    return 'Files ($count)';
+  }
+
+  @override
+  String get modelTotalSizeLabel => 'Total Size';
+
+  @override
+  String get splitToImages => 'Split to Images';
+
+  @override
+  String get outputDirLabel => 'Output directory';
+
+  @override
+  String get outputDirHint => 'Relative to the NAS data root';
+
+  @override
+  String get selectFolder => 'Browse';
+
+  @override
+  String get startButton => 'Start';
+
+  @override
+  String get convertingPdf => 'Converting PDF pages to images...';
+
+  @override
+  String pagesConverted(int count) {
+    return '$count page(s) converted.';
+  }
+
+  @override
+  String get generatedFilesTitle => 'Generated files:';
+
+  @override
+  String andMore(int count) {
+    return '... and $count more';
+  }
+
+  @override
+  String get okButton => 'OK';
+
+  @override
+  String get selectFolderTitle => 'Select Folder';
+
+  @override
+  String get openFolder => 'Open Folder';
 }

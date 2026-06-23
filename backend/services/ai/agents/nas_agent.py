@@ -77,12 +77,38 @@ def _parse_manual_tool_calls(response_message: AIMessage, history: list) -> None
         response_message.content = re.sub(r"<tool_call>.*?(?:</tool_call>|$)", "", response_message.content, flags=re.DOTALL).strip()
         logger.info("Recovered %d tool calls from tags.", len(manual_calls))
 
-def create_nas_agent(llm, tools):
-    llm_with_tools = llm.bind_tools(tools)
+async def _auto_query_documents(messages: list, filenames: list[str], tools: list) -> str | None:
+    """Pre-queries the document index for attached files and injects content into the message context.
+    Returns the document content string if found, or None."""
+    logger = logging.getLogger(__name__)
+    docs = [f for f in filenames if f.lower().endswith(('.pdf', '.docx', '.txt', '.md', '.log'))]
+    if not docs:
+        return None
+
+    logger.info("Auto-querying documents: %s", ', '.join(docs))
+    query_doc_tool = next((t for t in tools if t.name == "query_documents"), None)
+    if not query_doc_tool:
+        return None
+
+    user_text = messages[-1].content if messages else ""
+    doc_content = await query_doc_tool.ainvoke({"query": user_text})
+    if doc_content and "Error" not in doc_content:
+        logger.info("Auto-query returned content, injecting as context.")
+        messages.insert(-1 if messages else 0, HumanMessage(
+            content=f"[Document content from {', '.join(docs)}]:\n{doc_content}"
+        ))
+        return doc_content
+    return None
+
+def create_nas_agent(chat_feature, tools):
 
     async def call_agent(state: dict):
         logger = logging.getLogger(__name__)
         with TrackNodeTime("agent"):
+            llm = chat_feature.llm
+            if llm is None:
+                raise RuntimeError("Chat model is not set. Please configure a chat model first.")
+            llm_with_tools = llm.bind_tools(tools)
             logger.info("--- Entering Node: 'agent' ---")
             
             if state.get('cancellation_event') and state['cancellation_event'].is_set():
@@ -100,24 +126,14 @@ def create_nas_agent(llm, tools):
             if not has_system_msg:
                 logger.info("First entry: Preparing SystemMessage.")
                 
-                # Nudge the agent if files are attached but no tool has been called yet
-                if state.get('filenames'):
-                    logger.info("Files attached. Determining specific tool instructions.")
-                    filenames = state['filenames']
-                    images = [f for f in filenames if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'))]
-                    docs = [f for f in filenames if f.lower().endswith(('.pdf', '.docx', '.txt', '.md', '.log'))]
-                    
-                    nudges = []
-                    if images:
-                        logger.info("To use 'explain_iamge' to analyze visual content of: %s", ', '.join(images))
-                        nudges.append(f"Use 'explain_image' to analyze visual content of: {', '.join(images)}.")
-                    if docs:
-                        logger.info("To use 'query_documents' to retrieve text from: %s", ', '.join(docs))
-                        nudges.append(f"Use 'query_documents' to retrieve text from: {', '.join(docs)}.")
-                    
-                    if nudges:
-                        messages[-1].content += f"\n\n[MANDATORY] You only have filenames. {' '.join(nudges)}"
+                images = [f for f in state.get('filenames', []) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'))]
                 
+                # Nudge the agent if image files are attached
+                if images:
+                    logger.info("Images attached. Adding tool instruction nudges.")
+                    nudges = [f"Use 'explain_image' to analyze visual content of: {', '.join(images)}."]
+                    messages[-1].content += f"\n\n{' '.join(nudges)}"
+
                 messages = [_get_system_message(tools)] + messages
             else:
                 logger.info("Re-entry: SystemMessage already present in history.")

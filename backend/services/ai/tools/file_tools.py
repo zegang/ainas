@@ -1,9 +1,10 @@
 import os
+from collections import OrderedDict
 from pathlib import Path
 from langchain_core.tools import tool
 from backend.services.system_service import get_disk_usage
 
-def get_file_tools(storage_path: str, es_service=None, embeddings=None):
+def get_file_tools(storage_path: str, es_service=None, embedding_feature=None):
     """
     Returns a list of tools for file system operations on the NAS.
     """
@@ -107,26 +108,38 @@ def get_file_tools(storage_path: str, es_service=None, embeddings=None):
             return "Error: Document search is not enabled (Elasticsearch missing)."
 
         try:
-            # Generate embedding for vector search if the embedding model is provided
             query_vector = None
-            if embeddings:
-                # Use aembed_query for async execution
-                query_vector = await embeddings.aembed_query(query)
+            if embedding_feature:
+                query_vector = await embedding_feature.embed_query(query)
 
-            # Perform hybrid search (BM25 + kNN) via the Elasticsearch service
-            hits = await es_service.hybrid_search(query_text=query, query_vector=query_vector, top_k=5)
+            # Retrieve more candidates to account for multiple chunks per file
+            hits = await es_service.hybrid_search(query_text=query, query_vector=query_vector, top_k=15)
 
             if not hits:
                 return "No matching documents or relevant content found in the index."
 
-            response_parts = ["Found relevant content in the following documents:"]
+            # Group related chunks by file path for a consolidated view
+            files = OrderedDict()
             for hit in hits:
-                filename = hit.get("filename", "unknown")
                 path = hit.get("path", "unknown")
-                content = hit.get("content", "")
-                # Truncate content for the LLM context window to save tokens
-                snippet = content[:800].replace("\n", " ") + "..." if len(content) > 800 else content
-                response_parts.append(f"- {filename} ({path}): \"{snippet}\"")
+                files.setdefault(path, []).append(hit)
+
+            response_parts = ["Found relevant content in the following documents:"]
+            for file_path, chunks in files.items():
+                filename = chunks[0].get("filename", "unknown")
+                n_chunks = len(chunks)
+
+                # Merge content from consecutive chunks for a readable excerpt
+                merged = " ".join(
+                    c.get("content", "") for c in chunks
+                )
+                snippet = merged[:1200].replace("\n", " ")
+                if len(merged) > 1200:
+                    snippet += "..."
+
+                response_parts.append(
+                    f"- {filename} ({file_path}) [{n_chunks} passage(s)]: \"{snippet}\""
+                )
 
             return "\n\n".join(response_parts)
         except Exception as e:
@@ -169,13 +182,13 @@ def get_file_tools(storage_path: str, es_service=None, embeddings=None):
         """
         Removes a specific document from the AI's search index (Elasticsearch).
         Use this when a file is physically deleted or should be forgotten by the RAG system.
-        The path must be the exact relative path as stored in the index (e.g., 'folder/report.pdf').
+        The path must match the ``path`` field stored in the index (absolute path).
         """
         if not es_service:
             return "Error: Document search service (Elasticsearch) is not available."
 
         try:
-            deleted_count = await es_service.delete_document(path)
+            deleted_count = await es_service.delete_file(path)
             if deleted_count > 0:
                 return f"Successfully deleted '{path}' from the search index ({deleted_count} entries removed)."
             else:

@@ -43,27 +43,28 @@ class AppConfig:
 
         # AI Settings
         self.AINAS_ENABLE_AI = str(self.get_setting("AINAS_ENABLE_AI", "false")).lower() == "true"
-        self.AINAS_AI_SVC_DIR = os.path.join(self.AINAS_BACKEND_DIR, "services", "ai")
-        self.AINAS_AI_MODELS_DIR = os.path.join(self.AINAS_AI_SVC_DIR, "models")
+        self.AINAS_ENABLE_AI_RAG = str(self.get_setting("AINAS_ENABLE_AI_RAG", "true")).lower() == "true"
+        self.AINAS_AI_MODELS_CACHE_DIR = os.path.join(self.AINAS_BACKEND_DIR, "aimodelscache")
         self.AINAS_HF_API_TOKEN = self.get_setting("AINAS_HF_API_TOKEN", "")
-        self.AINAS_HF_CACHE_DIR = self.get_setting("AINAS_HF_CACHE_DIR", os.path.join(self.AINAS_AI_MODELS_DIR, "hfcache"))
+        self.AINAS_HF_CACHE_DIR = self.get_setting("AINAS_HF_CACHE_DIR", os.path.join(self.AINAS_AI_MODELS_CACHE_DIR, "hfcache"))
         
         # Task-specific Model Settings
-        self.AINAS_AI_CHAT_MODEL = self.get_setting("AINAS_AI_CHAT_MODEL", "services/ai/models/Qwen3-0.6B-Q8_0.gguf")
+        self.AINAS_AI_CHAT_MODEL = self.get_setting("AINAS_AI_CHAT_MODEL", "unknown/Qwen3-0.6B-Q8_0")
         self.AINAS_AI_VISION_MODEL = self.get_setting("AINAS_AI_VISION_MODEL", "Salesforce/blip-image-captioning-base")
         self.AINAS_AI_IMAGE_GEN_MODEL = self.get_setting("AINAS_AI_IMAGE_GEN_MODEL", "dall-e-3")
-        self.AINAS_EMBEDDING_MODEL = self.get_setting("AINAS_EMBEDDING_MODEL", "sentence-transformers/all-mpnet-base-v2")
+        self.AINAS_EMBEDDING_MODEL = self.get_setting("AINAS_EMBEDDING_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
 
         self.AINAS_AI_API_URL = self.get_setting("AINAS_AI_API_URL", "https://api.openai.com/v1")
         self.AINAS_AI_API_KEY = self.get_setting("AINAS_AI_API_KEY", "")
-        self.AINAS_AI_VISION_PROJECTOR = self.get_setting("AINAS_AI_VISION_PROJECTOR", "services/ai/models/mmproj-model-f16.gguf")
+        self.AINAS_MAX_CONCURRENT_DOWNLOADS = int(self.get_setting("AINAS_MAX_CONCURRENT_DOWNLOADS", "1"))
+        self.AINAS_AI_VISION_PROJECTOR = self.get_setting("AINAS_AI_VISION_PROJECTOR", "unknown/mmproj-model-f16")
         self.AINAS_AI_GPU_LAYERS = int(self.get_setting("AI_GPU_LAYERS", "32"))
         self.AINAS_DISK_USAGE_THRESHOLD_PCT = float(self.get_setting("AINAS_DISK_USAGE_THRESHOLD_PCT", "90.0"))
 
         # Elasticsearch Settings
         self.AINAS_ES_URL = self.get_setting("AINAS_ES_URL", "http://localhost:9200")
         self.AINAS_ES_INDEX = self.get_setting("AINAS_ES_INDEX", "ainas")
-        self.AINAS_ES_EMBEDDING_DIMS = int(self.get_setting("AINAS_ES_EMBEDDING_DIMS", "768"))
+        self.AINAS_ES_EMBEDDING_DIMS = int(self.get_setting("AINAS_ES_EMBEDDING_DIMS", "384"))
 
         # Concurrency Limits (post-upload AI tagging, indexing, thumbnail generation)
         self.AINAS_MAX_CONCURRENT_TASKS = int(self.get_setting("AINAS_MAX_CONCURRENT_TASKS", "1"))
