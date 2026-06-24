@@ -17,5 +17,5 @@
 # AINAS_STORAGE_PATH: "/path/to/your/storage"
 
 # Logging
-# AINAS_LOG_FILE: "../logs/backend.log"
+# AINAS_LOG_FILE: "logs/backend.log"
 # AINAS_LOG_LEVEL: "INFO"

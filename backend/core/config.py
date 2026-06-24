@@ -71,7 +71,7 @@ class AppConfig:
 
         # Logging
         self.AINAS_LOG_LEVEL = self.get_setting("AINAS_LOG_LEVEL", "INFO").upper()
-        self.AINAS_LOG_FILE = self.get_setting("AINAS_LOG_FILE", "../logs/backend.log")
+        self.AINAS_LOG_FILE = self.get_setting("AINAS_LOG_FILE", "logs/backend.log")
         self.AINAS_LOG_FILE = os.path.expanduser(self.AINAS_LOG_FILE)
         # Resolve relative log path against storage path
         if not os.path.isabs(self.AINAS_LOG_FILE):

@@ -37,6 +37,7 @@ show_usage() {
     echo "  --container-tool Tool for services (podman, docker; default: podman)"
     echo "  --frontend   Setup and run only the Flutter frontend"
     echo "  --build-web  Compile the Flutter Web GUI for production"
+    echo "  --build-backend-image [cpu|cuda|rocm] Build frontend web + backend Docker image (default: cpu)"
     echo "  --rag        Start RAG services (Elasticsearch/Kibana)"
     echo "  --check-rag-health Check RAG services health (Elasticsearch)"
     echo "  --logs-rag   View RAG service logs"
@@ -73,6 +74,14 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             export CONTAINER_TOOL="$2"; shift 2 ;;
+        --build-backend-image)
+            COMMAND="$1"; shift
+            # Optional: cpu, cuda, rocm (default: cpu)
+            if [[ $# -gt 0 && "$1" != --* ]]; then
+                export BACKEND_IMAGE_VARIANT="$1"; shift
+            else
+                export BACKEND_IMAGE_VARIANT="cpu"
+            fi ;;
         --help|-h)
             show_usage; exit 0 ;;
         --*)
@@ -375,7 +384,7 @@ build_android() {
     echo "Step: Building Android APK..."
     setup_flutter
     cd "$PROJECT_ROOT/frontend"
-    flutter build apk --release
+    flutter build apk --release --android-skip-build-dependency-validation
     echo "Build Complete. APK located at: $PROJECT_ROOT/frontend/build/app/outputs/flutter-apk/app-release.apk"
     cd "$PROJECT_ROOT"
 }
@@ -387,6 +396,75 @@ build_pyinstaller() {
     uv run pyinstaller ainas-backend.spec
     echo "Build Complete. Binary located at: $PROJECT_ROOT/backend/dist/ainas-backend"
     cd "$PROJECT_ROOT"
+}
+
+build_backend_image() {
+    local variant="${BACKEND_IMAGE_VARIANT:-cpu}"
+
+    # Derive version from git tag, or use commit hash as dev version
+    local version
+    if git describe --exact-match --tags HEAD &>/dev/null; then
+        version="$(git describe --exact-match --tags HEAD)"
+    else
+        version="dev-$(git rev-parse --short HEAD)"
+    fi
+
+    echo "Step: Building Flutter Web (release)..."
+    build_web
+
+    echo "Step: Building backend Docker image (variant: $variant, version: $version)..."
+
+    local tool
+    if [[ "$CONTAINER_TOOL" == "podman" ]]; then
+        tool="podman"
+    else
+        tool="docker"
+    fi
+
+    if ! command -v "$tool" &>/dev/null; then
+        echo "Error: $tool not found. Install it or set --container-tool."
+        exit 1
+    fi
+
+    local base_image torch_index cmake_args
+
+    case "$variant" in
+        cpu)
+            base_image="python:3.12-slim"
+            torch_index=""
+            cmake_args=""
+            ;;
+        cuda)
+            base_image="nvidia/cuda:12.4.1-runtime-ubuntu22.04"
+            torch_index="https://download.pytorch.org/whl/cu124"
+            cmake_args="-DGGML_CUDA=ON"
+            ;;
+        rocm)
+            base_image="rocm/pytorch:rocm7.2.4_ubuntu24.04_py3.12_pytorch_release_2.10.0"
+            torch_index="https://download.pytorch.org/whl/rocm7.2"
+            cmake_args="-DGGML_HIPBLAS=ON"
+            ;;
+        *)
+            echo "Error: Unknown variant '$variant'. Supported: cpu, cuda, rocm"
+            exit 1
+            ;;
+    esac
+
+    cd "$PROJECT_ROOT"
+    $tool build \
+        -t "ainas-backend:${version}-${variant}" \
+        -t "ainas-backend:${variant}" \
+        -f backend/containerize/Dockerfile \
+        --build-arg "BASE_IMAGE=$base_image" \
+        --build-arg "TORCH_INDEX_URL=$torch_index" \
+        --build-arg "LLAMA_CPP_CMAKE_ARGS=$cmake_args" \
+        .
+    echo "Build Complete."
+    echo "  ainas-backend:${version}-${variant}"
+    echo "  ainas-backend:${variant}  (alias)"
+    echo ""
+    echo "Run with:"
+    echo "  $tool run -p 9026:9026 -v ./storage:/app/storage ainas-backend:${variant}"
 }
 
 case "$COMMAND" in
@@ -444,6 +522,9 @@ case "$COMMAND" in
         ;;
     --build-web)
         build_web
+        ;;
+    --build-backend-image)
+        build_backend_image
         ;;
     --openapi)
         setup_python

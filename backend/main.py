@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from backend.core import config
@@ -100,6 +101,24 @@ def create_app() -> FastAPI:
         return RedirectResponse(url="/docs")
 
     app.include_router(api_router)
+
+    # ── Serve Flutter Web build as static files ──────────────────────
+    # In Docker: /app/frontend/web/  (copied by Dockerfile)
+    # In dev:    frontend/build/web/ relative to repo root
+    web_dir = os.environ.get(
+        "AINAS_FRONTEND_WEB_DIR",
+        str(config.AINAS_BACKEND_DIR.parent / "frontend" / "build" / "web"),
+    )
+    if os.path.isdir(web_dir):
+        logger.info("Mounting Flutter web build from: %s", web_dir)
+        app.mount("/", StaticFiles(directory=web_dir, html=True), name="frontend")
+    else:
+        logger.warning(
+            "Web build directory not found at %s. "
+            "Run `flutter build web --release` in the frontend/ directory.",
+            web_dir,
+        )
+
     # Initialize Prometheus instrumentation
     Instrumentator().instrument(app).expose(app)
     return app

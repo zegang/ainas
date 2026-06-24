@@ -60,6 +60,8 @@ AI-NAS is a smart Network Attached Storage (NAS) management solution that integr
 
 ## 🚦 Getting Started
 
+### Local Development
+
 1.  **Prerequisites**: Ensure you have the Flutter SDK installed.
 2.  **Installation**:
     ```bash
@@ -73,3 +75,56 @@ AI-NAS is a smart Network Attached Storage (NAS) management solution that integr
     ```bash
     bash bootstrap.sh --frontend
     ```
+
+### Docker (Recommended for Production)
+
+Pre-built images are available on [GitHub Container Registry](https://github.com/anomalyco/ainas/pkgs/container/ainas-backend):
+
+| Variant | Image |
+|---------|-------|
+| CPU     | `ghcr.io/anomalyco/ainas-backend:cpu` |
+| NVIDIA GPU | `ghcr.io/anomalyco/ainas-backend:cuda` |
+| AMD GPU | `ghcr.io/anomalyco/ainas-backend:rocm` |
+
+Run the CPU variant:
+
+```bash
+docker run -d \
+  --name ainas \
+  -p 9026:9026 \
+  -v ./storage:/app/storage \
+  ghcr.io/anomalyco/ainas-backend:cpu
+```
+
+For NVIDIA GPU:
+
+```bash
+docker run -d \
+  --name ainas \
+  --gpus all \
+  -p 9026:9026 \
+  -v ./storage:/app/storage \
+  ghcr.io/anomalyco/ainas-backend:cuda
+```
+
+For AMD GPU:
+
+```bash
+docker run -d \
+  --name ainas \
+  --device=/dev/kfd --device=/dev/dri \
+  --group-add video \
+  -p 9026:9026 \
+  -v ./storage:/app/storage \
+  ghcr.io/anomalyco/ainas-backend:rocm
+```
+
+The container serves both the backend API and the Flutter web frontend (at `http://localhost:9026`).
+
+### Build Docker Image Locally
+
+```bash
+bash bootstrap.sh --build-backend-image cpu     # CPU (default)
+bash bootstrap.sh --build-backend-image cuda    # NVIDIA GPU
+bash bootstrap.sh --build-backend-image rocm    # AMD GPU
+```

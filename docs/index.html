@@ -384,8 +384,13 @@
 <section class="section">
   <span class="section-label" data-i18n="startedLabel">Getting Started</span>
   <h2 data-i18n="startedTitle">Up and running in minutes</h2>
-  <p data-i18n="startedDesc">Clone the repository, run the bootstrap script, and you're ready to go.</p>
-  <div class="steps">
+  <p data-i18n="startedDesc">Clone the repository, run the bootstrap script, or use the pre-built Docker image.</p>
+  <div style="display:flex;gap:.75rem;margin-bottom:2rem">
+    <button class="btn btn-primary" style="font-size:.85rem;padding:.5rem 1.25rem" onclick="showTab('dev')" id="tab-dev" data-i18n="localDevTab">Local Development</button>
+    <button class="btn btn-outline" style="font-size:.85rem;padding:.5rem 1.25rem" onclick="showTab('docker')" id="tab-docker" data-i18n="dockerTab">Docker (Recommended)</button>
+  </div>
+
+  <div id="tab-dev-content" class="steps">
     <div class="step">
       <div class="step-num">1</div>
       <div class="step-content">
@@ -415,6 +420,36 @@
       </div>
     </div>
   </div>
+
+  <div id="tab-docker-content" style="display:none">
+    <p style="color:#9aa0a6;margin-bottom:1.5rem" data-i18n="dockerDesc">Pre-built images for CPU, NVIDIA GPU, and AMD GPU are available on GitHub Container Registry. The container serves both the backend API and the Flutter web frontend on port 9026.</p>
+
+    <div class="step" style="margin-bottom:1.25rem">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4 data-i18n="dockerStep1Title">Pull and run (CPU)</h4>
+        <pre>docker run -d --name ainas -p 9026:9026 -v ./storage:/app/storage ghcr.io/anomalyco/ainas-backend:cpu</pre>
+      </div>
+    </div>
+
+    <div class="step" style="margin-bottom:1.25rem">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4 data-i18n="dockerStep2Title">NVIDIA GPU variant</h4>
+        <pre>docker run -d --name ainas --gpus all -p 9026:9026 -v ./storage:/app/storage ghcr.io/anomalyco/ainas-backend:cuda</pre>
+      </div>
+    </div>
+
+    <div class="step" style="margin-bottom:1.25rem">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4 data-i18n="dockerStep3Title">AMD GPU variant</h4>
+        <pre>docker run -d --name ainas --device=/dev/kfd --device=/dev/dri --group-add video -p 9026:9026 -v ./storage:/app/storage ghcr.io/anomalyco/ainas-backend:rocm</pre>
+      </div>
+    </div>
+
+    <p style="color:#9aa0a6;margin-top:1.5rem" data-i18n="dockerBuildDesc">Or build locally: <code style="background:rgba(232,234,237,.08);padding:.2rem .5rem;border-radius:4px;font-size:.85rem">bash bootstrap.sh --build-backend-image [cpu|cuda|rocm]</code></p>
+  </div>
 </section>
 
 <footer>
@@ -425,6 +460,12 @@
 </footer>
 
 <script>
+function showTab(tab) {
+  document.getElementById('tab-dev-content').style.display = tab === 'dev' ? '' : 'none';
+  document.getElementById('tab-docker-content').style.display = tab === 'docker' ? '' : 'none';
+  document.getElementById('tab-dev').className = tab === 'dev' ? 'btn btn-primary' : 'btn btn-outline';
+  document.getElementById('tab-docker').className = tab === 'docker' ? 'btn btn-primary' : 'btn btn-outline';
+}
 const i18n = {
   en: {
     title: "AI-NAS — Intelligent Storage Management",
@@ -463,7 +504,14 @@ const i18n = {
     techDesc: "Built with state-of-the-art open source technologies for performance, scalability, and developer experience.",
     startedLabel: "Getting Started",
     startedTitle: "Up and running in minutes",
-    startedDesc: "Clone the repository, run the bootstrap script, and you're ready to go.",
+    startedDesc: "Clone the repository, run the bootstrap script, or use the pre-built Docker image.",
+    localDevTab: "Local Development",
+    dockerTab: "Docker (Recommended)",
+    dockerDesc: "Pre-built images for CPU, NVIDIA GPU, and AMD GPU are available on GitHub Container Registry. The container serves both the backend API and the Flutter web frontend on port 9026.",
+    dockerStep1Title: "Pull and run (CPU)",
+    dockerStep2Title: "NVIDIA GPU variant",
+    dockerStep3Title: "AMD GPU variant",
+    dockerBuildDesc: "Or build locally: bash bootstrap.sh --build-backend-image [cpu|cuda|rocm]",
     step1Title: "Clone the repository",
     step2Title: "Run the setup script",
     step3Title: "Start the backend",
@@ -508,7 +556,14 @@ const i18n = {
     techDesc: "采用业界领先的开源技术构建，兼具高性能、可扩展性和卓越的开发体验。",
     startedLabel: "快速开始",
     startedTitle: "几分钟内即可运行",
-    startedDesc: "克隆仓库，运行启动脚本，一切准备就绪。",
+    startedDesc: "克隆仓库，运行启动脚本，或使用预构建的 Docker 镜像。",
+    localDevTab: "本地开发",
+    dockerTab: "Docker（推荐）",
+    dockerDesc: "预构建的 CPU、NVIDIA GPU 和 AMD GPU 镜像已发布至 GitHub Container Registry。容器同时提供后端 API 和 Flutter Web 前端服务（端口 9026）。",
+    dockerStep1Title: "拉取并运行（CPU）",
+    dockerStep2Title: "NVIDIA GPU 版本",
+    dockerStep3Title: "AMD GPU 版本",
+    dockerBuildDesc: "或本地构建：bash bootstrap.sh --build-backend-image [cpu|cuda|rocm]",
     step1Title: "克隆仓库",
     step2Title: "运行安装脚本",
     step3Title: "启动后端",

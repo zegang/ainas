@@ -6,24 +6,26 @@
 # Examples:
 #   CPU build:    docker build -t ainas-backend:latest -f backend/Dockerfile .
 #   CUDA build:   docker build -t ainas-backend:cuda \
-#                   --build-arg BASE_IMAGE=nvidia/cuda:12.4-runtime-ubuntu22.04 \
+#                   --build-arg BASE_IMAGE=nvidia/cuda:12.4.1-runtime-ubuntu22.04 \
+#                   --build-arg BUILDER_BASE_IMAGE=nvidia/cuda:12.4.1-devel-ubuntu22.04 \
 #                   --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124 \
 #                   -f backend/Dockerfile .
 #   ROCm build:   docker build -t ainas-backend:rocm \
-#                   --build-arg BASE_IMAGE=rocm/pytorch:rocm7.2_ubuntu24.04_py3.12 \
+#                   --build-arg BASE_IMAGE=rocm/pytorch:rocm7.2.4_ubuntu24.04_py3.12_pytorch_release_2.10.0 \
 #                   -f backend/Dockerfile .
 #
 # Run:
 #   docker run -p 9026:9026 -v ./storage:/app/storage ainas-backend:latest
 
 ARG BASE_IMAGE=python:3.12-slim
+ARG BUILDER_BASE_IMAGE=${BASE_IMAGE}
 ARG TORCH_INDEX_URL=
 ARG LLAMA_CPP_CMAKE_ARGS=
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  Builder Stage  —  install all Python dependencies via uv
 # ═══════════════════════════════════════════════════════════════════════════════
-FROM ${BASE_IMAGE} AS builder
+FROM ${BUILDER_BASE_IMAGE} AS builder
 
 ARG TORCH_INDEX_URL
 ARG LLAMA_CPP_CMAKE_ARGS
@@ -47,12 +49,16 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY backend/pyproject.toml backend/uv.lock ./backend/
 
 # Install project dependencies (frozen = exact lockfile versions, no dev extras)
+# CMAKE_ARGS is forwarded to llama-cpp-python for GPU backend support
+# For ROCm/HIP builds, ensure the HIP compiler is discoverable
 RUN --mount=type=cache,target=/root/.cache/uv \
     cd backend && \
-    if [ -n "$TORCH_INDEX_URL" ]; then \
-        uv sync --frozen --no-dev --index-url "$TORCH_INDEX_URL"; \
+    if [ -n "$LLAMA_CPP_CMAKE_ARGS" ]; then \
+        export PATH="/opt/rocm/bin:$PATH" && \
+        export CMAKE_PREFIX_PATH="/opt/rocm:$CMAKE_PREFIX_PATH" && \
+        CMAKE_ARGS="$LLAMA_CPP_CMAKE_ARGS" uv sync --frozen --no-dev ${TORCH_INDEX_URL:+--index-url "$TORCH_INDEX_URL"}; \
     else \
-        uv sync --frozen --no-dev; \
+        uv sync --frozen --no-dev ${TORCH_INDEX_URL:+--index-url "$TORCH_INDEX_URL"}; \
     fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -81,6 +87,10 @@ COPY --from=builder /build/backend/.venv /app/.venv
 
 # Copy the backend package (needed so that `import backend.main` resolves)
 COPY backend/ /app/backend/
+
+# Copy the Flutter web build (served by FastAPI as static files)
+# The path matches main.py's default: backend/../frontend/build/web/
+COPY frontend/build/web/ /app/frontend/build/web/
 
 # Copy entrypoint script
 COPY backend/containerize/docker-entrypoint.sh /app/docker-entrypoint.sh

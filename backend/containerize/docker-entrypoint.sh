@@ -16,7 +16,7 @@ CONFIG_FILE="${APP_DIR}/config.yaml"
 # controlled at runtime via environment variables — see core/config.py.
 
 # ── 2. Ensure storage directories exist ─────────────────────────────────────
-mkdir -p /app/storage/nasdata /app/storage/nasmetadata/thumbnails /app/logs
+mkdir -p /app/storage/nasdata /app/storage/nasmetadata/thumbnails ${APP_DIR}/logs
 
 # ── 3. Run database migrations ──────────────────────────────────────────────
 echo "Running database migrations..."

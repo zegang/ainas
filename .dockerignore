@@ -39,10 +39,5 @@ backend/__pycache__/
 backend/storage/
 
 # Other projects (not needed for backend build)
-frontend/
 vendor/
 docs/
-
-# Container files
-backend/containerize/
-backend/docker-entrypoint.sh

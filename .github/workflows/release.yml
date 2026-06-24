@@ -1,4 +1,4 @@
-name: Build & Release
+name: Release
 
 on:
   push:
@@ -6,41 +6,296 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: backend
+  # ─── Flutter Web build (shared by all backend Docker variants) ─────
+  web:
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-uv@v5
+      - uses: subosito/flutter-action@v2
         with:
-          python-version: "3.12"
+          flutter-version: "3.44.3"
+          channel: stable
 
-      - name: Install dependencies
-        run: uv sync --frozen
+      - working-directory: frontend
+        run: |
+          if [[ ! -d "web" ]]; then
+            flutter create --platforms web .
+          fi
+          flutter pub get
 
-      - name: Build with PyInstaller
-        run: uv run pyinstaller ainas-backend.spec
+      - name: Build web (release)
+        working-directory: frontend
+        run: flutter build web --release
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: ainas-backend-${{ matrix.os }}
-          path: backend/dist/ainas-backend${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          name: frontend-web
+          path: frontend/build/web
 
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+  # ─── Backend Docker images (CPU / CUDA / ROCm) ────────────────────
+  backend:
+    needs: web
+    strategy:
+      matrix:
+        variant:
+          - tag_suffix: ""
+            base_image: "python:3.12-slim"
+            torch_index: ""
+            cmake_args: ""
+          - tag_suffix: "-cuda"
+            base_image: "nvidia/cuda:12.4.1-runtime-ubuntu22.04"
+            builder_base_image: "nvidia/cuda:12.4.1-devel-ubuntu22.04"
+            torch_index: "https://download.pytorch.org/whl/cu124"
+            cmake_args: "-DGGML_CUDA=ON"
+          - tag_suffix: "-rocm"
+            base_image: "rocm/pytorch:rocm7.2.4_ubuntu24.04_py3.12_pytorch_release_2.10.0"
+            torch_index: "https://download.pytorch.org/whl/rocm7.2"
+            cmake_args: "-DGGML_HIPBLAS=ON"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-web
+          path: frontend/build/web
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate tags
+        id: tags
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/backend
+          tags: |
+            type=semver,pattern={{version}}${{ matrix.variant.tag_suffix }}
+            type=semver,pattern={{major}}.{{minor}}${{ matrix.variant.tag_suffix }}
+            type=raw,value=latest${{ matrix.variant.tag_suffix }},enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/containerize/Dockerfile
+          push: true
+          build-args: |
+            BASE_IMAGE=${{ matrix.variant.base_image }}
+            BUILDER_BASE_IMAGE=${{ matrix.variant.builder_base_image || matrix.variant.base_image }}
+            TORCH_INDEX_URL=${{ matrix.variant.torch_index }}
+            LLAMA_CPP_CMAKE_ARGS=${{ matrix.variant.cmake_args }}
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: ${{ steps.tags.outputs.labels }}
+
+  # ─── Android APK ───────────────────────────────────────────────────
+  android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.3"
+          channel: stable
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - uses: android-actions/setup-android@v3
+
+      - working-directory: frontend
+        run: |
+          if [[ ! -d "android" ]]; then
+            flutter create --platforms android .
+          fi
+          flutter pub get
+
+      - name: Build APK
+        working-directory: frontend
+        run: flutter build apk --release --android-skip-build-dependency-validation
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ainas-android
+          path: frontend/build/app/outputs/flutter-apk/app-release.apk
+
+  # ─── iOS (unsigned archive) ────────────────────────────────────────
+  ios:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.3"
+          channel: stable
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest
+
+      - working-directory: frontend
+        run: |
+          if [[ ! -d "ios" ]]; then
+            flutter create --platforms ios .
+          fi
+          flutter pub get
+
+      - name: Build iOS (no codesign)
+        working-directory: frontend
+        run: flutter build ios --release --no-codesign
+
+      - name: Archive .app
+        run: ditto -c -k --keepParent frontend/build/ios/iphoneos/Runner.app ainas-ios.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ainas-ios
+          path: ainas-ios.zip
+
+  # ─── macOS ─────────────────────────────────────────────────────────
+  macos:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.3"
+          channel: stable
+
+      - working-directory: frontend
+        run: |
+          if [[ ! -d "macos" ]]; then
+            flutter create --platforms macos .
+          fi
+          flutter pub get
+
+      - name: Build macOS
+        working-directory: frontend
+        run: flutter build macos --release
+
+      - name: Archive .app
+        run: ditto -c -k --keepParent frontend/build/macos/Build/Products/Release/Runner.app ainas-macos.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ainas-macos
+          path: ainas-macos.zip
+
+  # ─── Linux ─────────────────────────────────────────────────────────
+  linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.3"
+          channel: stable
+
+      - name: Install Linux build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - working-directory: frontend
+        run: |
+          if [[ ! -d "linux" ]]; then
+            flutter create --platforms linux .
+          fi
+          flutter pub get
+
+      - name: Build Linux
+        working-directory: frontend
+        run: flutter build linux --release
+
+      - name: Create tar.gz
+        run: tar czf ainas-linux.tar.gz -C frontend/build/linux/x64/release/bundle .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ainas-linux
+          path: ainas-linux.tar.gz
+
+  # ─── Windows ───────────────────────────────────────────────────────
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.3"
+          channel: stable
+
+      - working-directory: frontend
+        shell: bash
+        run: |
+          if [[ ! -d "windows" ]]; then
+            flutter create --platforms windows .
+          fi
+          flutter pub get
+
+      - name: Build Windows
+        working-directory: frontend
+        run: flutter build windows --release
+
+      - name: Create zip
+        working-directory: frontend\build\windows\x64\runner\Release
+        run: |
+          Compress-Archive -Path * -DestinationPath ${{ github.workspace }}/ainas-windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ainas-windows
+          path: ainas-windows.zip
+
+  # ─── Publish single release with whatever artifacts succeeded ──────
+  publish:
+    if: always()
+    needs:
+      - backend
+      - web
+      - android
+      - ios
+      - macos
+      - linux
+      - windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/download-artifact@v4
+        continue-on-error: true
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ainas-backend-*/*
+          generate_release_notes: true
+          fail_on_unmatched_files: false
+          files: |
+            ainas-android/app-release.apk
+            ainas-ios/*
+            ainas-macos/*
+            ainas-linux/*
+            ainas-windows/*
