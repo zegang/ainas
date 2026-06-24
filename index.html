@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="title">AI-NAS — Intelligent Storage Management</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+    background: #0b0d11;
+    color: #e8eaed;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  a { color: #8ab4f8; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Lang Toggle */
+  .lang-bar {
+    position: fixed;
+    top: 1rem;
+    right: 1.5rem;
+    z-index: 100;
+    display: flex;
+    gap: .25rem;
+  }
+  .lang-btn {
+    padding: .3rem .65rem;
+    border-radius: 6px;
+    border: 1px solid rgba(232,234,237,.15);
+    background: rgba(11,13,17,.75);
+    backdrop-filter: blur(6px);
+    color: #9aa0a6;
+    font-size: .8rem;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .lang-btn:hover { border-color: rgba(138,180,248,.4); color: #e8eaed; }
+  .lang-btn.active {
+    background: rgba(138,180,248,.15);
+    border-color: #8ab4f8;
+    color: #8ab4f8;
+  }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(26,115,232,.25) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 50% at 80% 80%, rgba(138,180,248,.10) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block;
+    padding: .35rem 1rem;
+    border-radius: 999px;
+    background: rgba(138,180,248,.12);
+    border: 1px solid rgba(138,180,248,.25);
+    font-size: .8rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: #8ab4f8;
+    margin-bottom: 1.5rem;
+  }
+  .hero h1 {
+    font-size: clamp(2.8rem, 8vw, 5.5rem);
+    font-weight: 700;
+    letter-spacing: -.03em;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #8ab4f8 0%, #a8c7fa 40%, #81c995 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1rem;
+  }
+  .hero p {
+    font-size: clamp(1rem, 2.5vw, 1.3rem);
+    color: #9aa0a6;
+    max-width: 600px;
+    margin-bottom: 2rem;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .75rem 1.75rem;
+    border-radius: 999px;
+    font-size: .95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+    border: none;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #1a73e8, #4285f4);
+    color: #fff;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(26,115,232,.35); text-decoration: none; }
+  .btn-outline {
+    background: transparent;
+    color: #e8eaed;
+    border: 1px solid rgba(232,234,237,.25);
+  }
+  .btn-outline:hover { background: rgba(232,234,237,.08); transform: translateY(-2px); text-decoration: none; }
+
+  /* Section */
+  .section {
+    padding: 5rem 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .section-label {
+    display: inline-block;
+    font-size: .75rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #8ab4f8;
+    margin-bottom: .75rem;
+  }
+  .section h2 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 600;
+    letter-spacing: -.02em;
+    margin-bottom: .75rem;
+  }
+  .section > p {
+    color: #9aa0a6;
+    max-width: 560px;
+    margin-bottom: 3rem;
+  }
+
+  /* Feature Grid */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+  .feature-card {
+    background: rgba(232,234,237,.04);
+    border: 1px solid rgba(232,234,237,.08);
+    border-radius: 16px;
+    padding: 1.75rem;
+    transition: all .25s;
+  }
+  .feature-card:hover {
+    background: rgba(232,234,237,.07);
+    border-color: rgba(138,180,248,.25);
+    transform: translateY(-4px);
+  }
+  .feature-card .icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+  .feature-card h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: .5rem;
+  }
+  .feature-card p {
+    color: #9aa0a6;
+    font-size: .9rem;
+  }
+
+  /* Demo */
+  .demo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1.5rem;
+  }
+  .demo-card {
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(232,234,237,.04);
+    border: 1px solid rgba(232,234,237,.08);
+    transition: all .25s;
+  }
+  .demo-card:hover {
+    border-color: rgba(138,180,248,.3);
+    transform: translateY(-4px);
+  }
+  .demo-card img, .demo-card video {
+    width: 100%;
+    display: block;
+  }
+  .demo-card-body {
+    padding: 1.25rem;
+  }
+  .demo-card-body h3 { font-size: 1rem; font-weight: 600; margin-bottom: .3rem; }
+  .demo-card-body p { font-size: .85rem; color: #9aa0a6; }
+
+  /* Tech */
+  .tech-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+  }
+  .tech-tag {
+    padding: .4rem 1rem;
+    border-radius: 999px;
+    background: rgba(138,180,248,.1);
+    border: 1px solid rgba(138,180,248,.15);
+    font-size: .85rem;
+    color: #c4d7f5;
+  }
+
+  /* Download Grid */
+  .download-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+  .download-card {
+    background: rgba(232,234,237,.04);
+    border: 1px solid rgba(232,234,237,.08);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all .25s;
+  }
+  .download-card:hover {
+    border-color: rgba(138,180,248,.3);
+    transform: translateY(-3px);
+  }
+  .download-card .dl-icon {
+    font-size: 2.2rem;
+    margin-bottom: .75rem;
+  }
+  .download-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: .3rem;
+  }
+  .download-card p {
+    font-size: .8rem;
+    color: #9aa0a6;
+    margin-bottom: 1rem;
+  }
+  .download-card .dl-btn {
+    display: inline-block;
+    padding: .45rem 1.25rem;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 500;
+    background: rgba(138,180,248,.12);
+    border: 1px solid rgba(138,180,248,.25);
+    color: #8ab4f8;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .download-card .dl-btn:hover {
+    background: rgba(138,180,248,.2);
+    text-decoration: none;
+  }
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+  .step-num {
+    flex-shrink: 0;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1a73e8, #4285f4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: .9rem;
+  }
+  .step-content h4 { font-weight: 600; margin-bottom: .25rem; }
+  .step-content pre {
+    background: rgba(232,234,237,.06);
+    border: 1px solid rgba(232,234,237,.1);
+    border-radius: 8px;
+    padding: .75rem 1rem;
+    font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: .85rem;
+    overflow-x: auto;
+    color: #c4d7f5;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 3rem 2rem;
+    border-top: 1px solid rgba(232,234,237,.08);
+    color: #9aa0a6;
+    font-size: .85rem;
+  }
+  footer a { color: #8ab4f8; }
+</style>
+</head>
+<body>
+
+<div class="lang-bar">
+  <button class="lang-btn active" data-lang="en">EN</button>
+  <button class="lang-btn" data-lang="zh">中文</button>
+</div>
+
+<header class="hero">
+  <span class="hero-badge" data-i18n="badge">Now Available</span>
+  <h1>AI-NAS</h1>
+  <p data-i18n="heroDesc">Intelligent storage management with a conversational AI assistant. Manage your NAS using natural language, analyze files, and automate workflows.</p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="https://github.com/anomalyco/ainas" target="_blank">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      <span data-i18n="viewOnGitHub">View on GitHub</span>
+    </a>
+    <a class="btn btn-outline" href="#downloads" data-i18n="exploreFeatures">Download</a>
+  </div>
+</header>
+
+<section class="section" id="downloads">
+  <span class="section-label" data-i18n="downloadsLabel">Downloads</span>
+  <h2 data-i18n="downloadsTitle">Download AI-NAS</h2>
+  <p data-i18n="downloadsDesc">Pre-built binaries for all major platforms. Docker images are available on GitHub Container Registry.</p>
+
+  <div class="download-grid">
+    <div class="download-card">
+      <div class="dl-icon">🐧</div>
+      <h3 data-i18n="dlLinux">Linux</h3>
+      <p data-i18n="dlLinuxDesc">App bundle (tar.gz)</p>
+      <a class="dl-btn" id="dl-linux" href="https://github.com/anomalyco/ainas/releases/latest" target="_blank" data-i18n="dlDownload">Download</a>
+    </div>
+    <div class="download-card">
+      <div class="dl-icon">🍎</div>
+      <h3 data-i18n="dlMacos">macOS</h3>
+      <p data-i18n="dlMacosDesc">Apple app (zip)</p>
+      <a class="dl-btn" id="dl-macos" href="https://github.com/anomalyco/ainas/releases/latest" target="_blank" data-i18n="dlDownload">Download</a>
+    </div>
+    <div class="download-card">
+      <div class="dl-icon">🪟</div>
+      <h3 data-i18n="dlWindows">Windows</h3>
+      <p data-i18n="dlWindowsDesc">Portable app (zip)</p>
+      <a class="dl-btn" id="dl-windows" href="https://github.com/anomalyco/ainas/releases/latest" target="_blank" data-i18n="dlDownload">Download</a>
+    </div>
+    <div class="download-card">
+      <div class="dl-icon">🤖</div>
+      <h3 data-i18n="dlAndroid">Android</h3>
+      <p data-i18n="dlAndroidDesc">APK (arm64)</p>
+      <a class="dl-btn" id="dl-android" href="https://github.com/anomalyco/ainas/releases/latest" target="_blank" data-i18n="dlDownload">Download</a>
+    </div>
+    <div class="download-card">
+      <div class="dl-icon">📱</div>
+      <h3 data-i18n="dlIos">iOS</h3>
+      <p data-i18n="dlIosDesc">Unsigned .app (zip)</p>
+      <a class="dl-btn" id="dl-ios" href="https://github.com/anomalyco/ainas/releases/latest" target="_blank" data-i18n="dlDownload">Download</a>
+    </div>
+    <div class="download-card">
+      <div class="dl-icon">🌐</div>
+      <h3 data-i18n="dlWeb">Web</h3>
+      <p data-i18n="dlWebDesc">Static web build (tar.gz)</p>
+      <a class="dl-btn" id="dl-web" href="https://github.com/anomalyco/ainas/releases/latest" target="_blank" data-i18n="dlDownload">Download</a>
+    </div>
+  </div>
+
+  <p data-i18n="dlDockerText">🐳 Docker images: <code style="background:rgba(232,234,237,.08);padding:.2rem .5rem;border-radius:4px;font-size:.85rem">ghcr.io/anomalyco/ainas-backend:latest</code> (CPU), <code>:cuda</code> (NVIDIA), <code>:rocm</code> (AMD) — <a href="https://github.com/anomalyco/ainas/pkgs/container/ainas-backend" target="_blank" data-i18n="dlDockerLink">view packages</a></p>
+</section>
+
+<section class="section" id="features">
+  <span class="section-label" data-i18n="featuresLabel">Features</span>
+  <h2 data-i18n="featuresTitle">Built for the agent-first&nbsp;era</h2>
+  <p data-i18n="featuresDesc">AI-NAS brings the power of large language models to your storage infrastructure. Manage files, analyze content, and monitor your system — all through natural language.</p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="icon">💬</div>
+      <h3 data-i18n="f1Title">Conversational AI Assistant</h3>
+      <p data-i18n="f1Desc">Manage your NAS using natural language commands. Ask questions, request file operations, and get instant insights.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🖼️</div>
+      <h3 data-i18n="f2Title">Image Understanding</h3>
+      <p data-i18n="f2Desc">Analyze images with AI auto-tagging and visual explanations. Search your photo library using generated tags.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📄</div>
+      <h3 data-i18n="f3Title">Document RAG</h3>
+      <p data-i18n="f3Desc">Retrieve and search across documents (PDF, DOCX, TXT) using hybrid semantic + keyword retrieval powered by Elasticsearch.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">⚡</div>
+      <h3 data-i18n="f4Title">Real-Time Streaming</h3>
+      <p data-i18n="f4Desc">Instant streaming responses from the AI assistant with server-sent events — no waiting for full generation.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📊</div>
+      <h3 data-i18n="f5Title">System Monitoring</h3>
+      <p data-i18n="f5Desc">Track storage usage, AI model status, and system health at a glance. One-tap quick actions for common tasks.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🖥️</div>
+      <h3 data-i18n="f6Title">Cross-Platform GUI</h3>
+      <p data-i18n="f6Desc">Responsive Flutter-based frontend that runs on desktop and mobile platforms with a consistent experience.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="demo">
+  <span class="section-label" data-i18n="showcaseLabel">Showcase</span>
+  <h2 data-i18n="showcaseTitle">See it in action</h2>
+  <p data-i18n="showcaseDesc">AI-NAS automatically generates descriptive tags for your images, making it easy to search and organize your visual content.</p>
+  <div class="demo-grid">
+    <div class="demo-card">
+      <img src="./images/ailargemodels.gif" alt="Configurable Local AI Models" loading="lazy">
+      <div class="demo-card-body">
+        <h3 data-i18n="demoCard1Title">Configurable Local AI Models</h3>
+        <p data-i18n="demoCard1Desc">Easily download, configure and manage local AI models for your specific needs.</p>
+      </div>
+    </div>
+    <div class="demo-card">
+      <img src="./images/aitagsimage.gif" alt="Async AI Tags on Images" loading="lazy">
+      <div class="demo-card-body">
+        <h3 data-i18n="demoCard2Title">Async AI Tags on Images</h3>
+        <p data-i18n="demoCard2Desc">Automatically AI tags on image for easy search and organization.</p>
+      </div>
+    </div>
+    <div class="demo-card">
+      <img src="./images/ragpdfembedding.gif" alt="RAG PDF Embedding" loading="lazy">
+      <div class="demo-card-body">
+        <h3 data-i18n="demoCard5Title">RAG PDF Embedding</h3>
+        <p data-i18n="demoCard5Desc">Convert PDF documents to embeddings for retrieval-augmented generation.</p>
+      </div>
+    </div>
+    <div class="demo-card">
+      <img src="./images/pdftoimages.gif" alt="Split PDF to Images" loading="lazy">
+      <div class="demo-card-body">
+        <h3 data-i18n="demoCard4Title">Split PDF Pages to Images</h3>
+        <p data-i18n="demoCard4Desc">Convert every page of a PDF document to individual PNG images.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <span class="section-label" data-i18n="techLabel">Tech Stack</span>
+  <h2 data-i18n="techTitle">Modern tools, modern&nbsp;stack</h2>
+  <p data-i18n="techDesc">Built with state-of-the-art open source technologies for performance, scalability, and developer experience.</p>
+  <div class="tech-list">
+    <span class="tech-tag">Flutter / Dart</span>
+    <span class="tech-tag">Python</span>
+    <span class="tech-tag">LangChain</span>
+    <span class="tech-tag">LangGraph</span>
+    <span class="tech-tag">Elasticsearch</span>
+    <span class="tech-tag">SQLAlchemy</span>
+    <span class="tech-tag">REST API</span>
+    <span class="tech-tag">Server-Sent Events</span>
+    <span class="tech-tag">llama.cpp</span>
+    <span class="tech-tag">Hugging Face</span>
+    <span class="tech-tag">Prometheus</span>
+    <span class="tech-tag">SharedPreferences</span>
+  </div>
+</section>
+
+<section class="section">
+  <span class="section-label" data-i18n="startedLabel">Getting Started</span>
+  <h2 data-i18n="startedTitle">Up and running in minutes</h2>
+  <p data-i18n="startedDesc">Clone the repository, run the bootstrap script, or use the pre-built Docker image.</p>
+  <div style="display:flex;gap:.75rem;margin-bottom:2rem">
+    <button class="btn btn-primary" style="font-size:.85rem;padding:.5rem 1.25rem" onclick="showTab('dev')" id="tab-dev" data-i18n="localDevTab">Local Development</button>
+    <button class="btn btn-outline" style="font-size:.85rem;padding:.5rem 1.25rem" onclick="showTab('docker')" id="tab-docker" data-i18n="dockerTab">Docker (Recommended)</button>
+  </div>
+
+  <div id="tab-dev-content" class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4 data-i18n="step1Title">Clone the repository</h4>
+        <pre>git clone https://github.com/anomalyco/ainas.git</pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4 data-i18n="step2Title">Run the setup script</h4>
+        <pre>bash bootstrap.sh --setup</pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4 data-i18n="step3Title">Start the backend</h4>
+        <pre>bash bootstrap.sh --backend</pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <h4 data-i18n="step4Title">Launch the frontend</h4>
+        <pre>bash bootstrap.sh --frontend</pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-docker-content" style="display:none">
+    <p style="color:#9aa0a6;margin-bottom:1.5rem" data-i18n="dockerDesc">Pre-built images for CPU, NVIDIA GPU, and AMD GPU are available on GitHub Container Registry. The container serves both the backend API and the Flutter web frontend on port 9026.</p>
+
+    <div class="step" style="margin-bottom:1.25rem">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4 data-i18n="dockerStep1Title">Pull and run (CPU)</h4>
+        <pre>docker run -d --name ainas -p 9026:9026 -v ./storage:/app/storage ghcr.io/anomalyco/ainas-backend:cpu</pre>
+      </div>
+    </div>
+
+    <div class="step" style="margin-bottom:1.25rem">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4 data-i18n="dockerStep2Title">NVIDIA GPU variant</h4>
+        <pre>docker run -d --name ainas --gpus all -p 9026:9026 -v ./storage:/app/storage ghcr.io/anomalyco/ainas-backend:cuda</pre>
+      </div>
+    </div>
+
+    <div class="step" style="margin-bottom:1.25rem">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4 data-i18n="dockerStep3Title">AMD GPU variant</h4>
+        <pre>docker run -d --name ainas --device=/dev/kfd --device=/dev/dri --group-add video -p 9026:9026 -v ./storage:/app/storage ghcr.io/anomalyco/ainas-backend:rocm</pre>
+      </div>
+    </div>
+
+    <p style="color:#9aa0a6;margin-top:1.5rem" data-i18n="dockerBuildDesc">Or build locally: <code style="background:rgba(232,234,237,.08);padding:.2rem .5rem;border-radius:4px;font-size:.85rem">bash bootstrap.sh --build-backend-image [cpu|cuda|rocm]</code></p>
+  </div>
+</section>
+
+<footer>
+  <p data-i18n="footerText">AI-NAS &mdash; Intelligent Storage Management</p>
+  <p style="margin-top: .5rem;">
+    <a href="https://github.com/anomalyco/ainas" target="_blank" data-i18n="footerGitHub">GitHub</a>
+  </p>
+</footer>
+
+<script>
+function showTab(tab) {
+  document.getElementById('tab-dev-content').style.display = tab === 'dev' ? '' : 'none';
+  document.getElementById('tab-docker-content').style.display = tab === 'docker' ? '' : 'none';
+  document.getElementById('tab-dev').className = tab === 'dev' ? 'btn btn-primary' : 'btn btn-outline';
+  document.getElementById('tab-docker').className = tab === 'docker' ? 'btn btn-primary' : 'btn btn-outline';
+}
+const i18n = {
+  en: {
+    title: "AI-NAS — Intelligent Storage Management",
+    badge: "Now Available",
+    heroDesc: "Intelligent storage management with a conversational AI assistant. Manage your NAS using natural language, analyze files, and automate workflows.",
+    viewOnGitHub: "View on GitHub",
+    exploreFeatures: "Download",
+    featuresLabel: "Features",
+    featuresTitle: "Built for the agent-first\u00a0era",
+    featuresDesc: "AI-NAS brings the power of large language models to your storage infrastructure. Manage files, analyze content, and monitor your system — all through natural language.",
+    f1Title: "Conversational AI Assistant",
+    f1Desc: "Manage your NAS using natural language commands. Ask questions, request file operations, and get instant insights.",
+    f2Title: "Image Understanding",
+    f2Desc: "Analyze images with AI auto-tagging and visual explanations. Search your photo library using generated tags.",
+    f3Title: "Document RAG",
+    f3Desc: "Retrieve and search across documents (PDF, DOCX, TXT) using hybrid semantic + keyword retrieval powered by Elasticsearch.",
+    f4Title: "Real-Time Streaming",
+    f4Desc: "Instant streaming responses from the AI assistant with server-sent events — no waiting for full generation.",
+    f5Title: "System Monitoring",
+    f5Desc: "Track storage usage, AI model status, and system health at a glance. One-tap quick actions for common tasks.",
+    f6Title: "Cross-Platform GUI",
+    f6Desc: "Responsive Flutter-based frontend that runs on desktop and mobile platforms with a consistent experience.",
+    showcaseLabel: "Showcase",
+    showcaseTitle: "See it in action",
+    showcaseDesc: "AI-NAS automatically generates descriptive tags for your images, making it easy to search and organize your visual content.",
+    demoCard1Title: "Async AI Tags on Images",
+    demoCard1Desc: "Images are automatically tagged by the AI model.",
+    demoCard2Title: "Search Images by Language or Tags",
+    demoCard2Desc: "Use natural language or AI-generated tags to find images instantly.",
+    demoCard3Title: "Split PDF Pages to Images",
+    demoCard3Desc: "Convert every page of a PDF document to individual PNG images.",
+    demoCard4Title: "AI Model Management",
+    demoCard4Desc: "Browse, download, and configure large language models from Hugging Face.",
+    techLabel: "Tech Stack",
+    techTitle: "Modern tools, modern\u00a0stack",
+    techDesc: "Built with state-of-the-art open source technologies for performance, scalability, and developer experience.",
+    startedLabel: "Getting Started",
+    startedTitle: "Up and running in minutes",
+    startedDesc: "Clone the repository, run the bootstrap script, or use the pre-built Docker image.",
+    localDevTab: "Local Development",
+    dockerTab: "Docker (Recommended)",
+    dockerDesc: "Pre-built images for CPU, NVIDIA GPU, and AMD GPU are available on GitHub Container Registry. The container serves both the backend API and the Flutter web frontend on port 9026.",
+    dockerStep1Title: "Pull and run (CPU)",
+    dockerStep2Title: "NVIDIA GPU variant",
+    dockerStep3Title: "AMD GPU variant",
+    dockerBuildDesc: "Or build locally: bash bootstrap.sh --build-backend-image [cpu|cuda|rocm]",
+    step1Title: "Clone the repository",
+    step2Title: "Run the setup script",
+    step3Title: "Start the backend",
+    step4Title: "Launch the frontend",
+    footerText: "AI-NAS \u2014 Intelligent Storage Management",
+    footerGitHub: "GitHub",
+    downloadsLabel: "Downloads",
+    downloadsTitle: "Download AI-NAS",
+    downloadsDesc: "Pre-built binaries for all major platforms. Docker images are available on GitHub Container Registry.",
+    dlLinux: "Linux",
+    dlLinuxDesc: "App bundle (tar.gz)",
+    dlMacos: "macOS",
+    dlMacosDesc: "Apple app (zip)",
+    dlWindows: "Windows",
+    dlWindowsDesc: "Portable app (zip)",
+    dlAndroid: "Android",
+    dlAndroidDesc: "APK (arm64)",
+    dlIos: "iOS",
+    dlIosDesc: "Unsigned .app (zip)",
+    dlWeb: "Web",
+    dlWebDesc: "Static web build (tar.gz)",
+    dlDownload: "Download",
+    dlDockerText: "Docker images: ghcr.io/anomalyco/ainas-backend:latest (CPU), :cuda (NVIDIA), :rocm (AMD) \u2014",
+    dlDockerLink: "view packages",
+  },
+  zh: {
+    title: "AI-NAS — 智能存储管理",
+    badge: "现已发布",
+    heroDesc: "智能存储管理，配备对话式 AI 助手。通过自然语言管理您的 NAS、分析文件并自动化工作流程。",
+    viewOnGitHub: "查看 GitHub",
+    exploreFeatures: "下载",
+    featuresLabel: "功能特性",
+    featuresTitle: "为智能体优先的时代\u00a0而生",
+    featuresDesc: "AI-NAS 将大语言模型的能力引入您的存储基础设施。通过自然语言管理文件、分析内容并监控系统状态。",
+    f1Title: "对话式 AI 助手",
+    f1Desc: "使用自然语言命令管理您的 NAS。提出问题、请求文件操作，并即时获取洞察。",
+    f2Title: "图像理解",
+    f2Desc: "通过 AI 自动标签和视觉说明分析图像。使用生成的标签搜索您的照片库。",
+    f3Title: "文档 RAG",
+    f3Desc: "使用基于 Elasticsearch 的混合语义 + 关键词检索，跨文档（PDF、DOCX、TXT）进行检索和搜索。",
+    f4Title: "实时流式响应",
+    f4Desc: "通过服务器推送事件实时获取 AI 助手的流式响应——无需等待完整生成。",
+    f5Title: "系统监控",
+    f5Desc: "一目了然地跟踪存储使用量、AI 模型状态和系统健康度。一键执行常见任务的快捷操作。",
+    f6Title: "跨平台界面",
+    f6Desc: "基于 Flutter 的响应式前端，在桌面和移动平台上提供一致的体验。",
+    showcaseLabel: "演示",
+    showcaseTitle: "实际效果展示",
+    showcaseDesc: "AI-NAS 自动为您的图像生成描述性标签，让搜索和组织视觉内容变得轻松简单。",
+    demoCard1Title: "AI 自动图像标签",
+    demoCard1Desc: "图像由 AI 模型自动标注。",
+    demoCard2Title: "通过语言或标签搜索图片",
+    demoCard2Desc: "使用自然语言或 AI 生成的标签快速找到图片。",
+    demoCard3Title: "拆分 PDF 为图片",
+    demoCard3Desc: "将 PDF 文档的每一页转换为独立的 PNG 图片。",
+    demoCard4Title: "AI 模型管理",
+    demoCard4Desc: "从 Hugging Face 浏览、下载和配置大语言模型。",
+    techLabel: "技术栈",
+    techTitle: "现代工具，现代化\u00a0技术栈",
+    techDesc: "采用业界领先的开源技术构建，兼具高性能、可扩展性和卓越的开发体验。",
+    startedLabel: "快速开始",
+    startedTitle: "几分钟内即可运行",
+    startedDesc: "克隆仓库，运行启动脚本，或使用预构建的 Docker 镜像。",
+    localDevTab: "本地开发",
+    dockerTab: "Docker（推荐）",
+    dockerDesc: "预构建的 CPU、NVIDIA GPU 和 AMD GPU 镜像已发布至 GitHub Container Registry。容器同时提供后端 API 和 Flutter Web 前端服务（端口 9026）。",
+    dockerStep1Title: "拉取并运行（CPU）",
+    dockerStep2Title: "NVIDIA GPU 版本",
+    dockerStep3Title: "AMD GPU 版本",
+    dockerBuildDesc: "或本地构建：bash bootstrap.sh --build-backend-image [cpu|cuda|rocm]",
+    step1Title: "克隆仓库",
+    step2Title: "运行安装脚本",
+    step3Title: "启动后端",
+    step4Title: "启动前端",
+    footerText: "AI-NAS \u2014 智能存储管理",
+    footerGitHub: "GitHub",
+    downloadsLabel: "下载",
+    downloadsTitle: "下载 AI-NAS",
+    downloadsDesc: "所有主流平台的预构建二进制文件。Docker 镜像可在 GitHub Container Registry 获取。",
+    dlLinux: "Linux",
+    dlLinuxDesc: "应用包 (tar.gz)",
+    dlMacos: "macOS",
+    dlMacosDesc: "苹果应用 (zip)",
+    dlWindows: "Windows",
+    dlWindowsDesc: "便携应用 (zip)",
+    dlAndroid: "Android",
+    dlAndroidDesc: "APK (arm64)",
+    dlIos: "iOS",
+    dlIosDesc: "未签名 .app (zip)",
+    dlWeb: "Web",
+    dlWebDesc: "静态 Web 构建 (tar.gz)",
+    dlDownload: "下载",
+    dlDockerText: "Docker 镜像：ghcr.io/anomalyco/ainas-backend:latest (CPU)、:cuda (NVIDIA)、:rocm (AMD) \u2014",
+    dlDockerLink: "查看包列表",
+  }
+};
+
+function setLang(lang) {
+  const texts = i18n[lang] || i18n.en;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (texts[key] !== undefined) {
+      el.textContent = texts[key];
+    }
+  });
+  document.documentElement.lang = lang;
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
+  localStorage.setItem('ainas_lang', lang);
+}
+
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => setLang(btn.dataset.lang));
+});
+
+const saved = localStorage.getItem('ainas_lang');
+if (saved && i18n[saved]) {
+  setLang(saved);
+}
+
+// Populate download links from the latest GitHub Release
+(async () => {
+  try {
+    const resp = await fetch('https://api.github.com/repos/anomalyco/ainas/releases/latest');
+    const release = await resp.json();
+    const tag = release.tag_name;
+    // Map asset name patterns to element IDs
+    const dlMap = {
+      'dl-linux':   ['ainas-linux.tar.gz'],
+      'dl-macos':   ['ainas-macos.zip'],
+      'dl-windows': ['ainas-windows.zip'],
+      'dl-android': ['app-release.apk'],
+      'dl-ios':     ['ainas-ios.zip'],
+      'dl-web':     ['ainas-web.tar.gz'],
+    };
+    for (const asset of release.assets) {
+      for (const [id, names] of Object.entries(dlMap)) {
+        if (names.some(n => asset.name === n)) {
+          const el = document.getElementById(id);
+          if (el) el.href = asset.browser_download_url;
+        }
+      }
+    }
+  } catch (e) {
+    // fallback: links already point to /releases/latest
+  }
+})();
+</script>
+
+</body>
+</html>
