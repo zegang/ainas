@@ -833,4 +833,76 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingServiceTitle => '设置与服务';
+
+  @override
+  String get mdnsPageTitle => 'mDNS 服务';
+
+  @override
+  String get mdnsWebUnsupported => '网页端不支持 mDNS。';
+
+  @override
+  String get mdnsNoServicesFound => '未找到 mDNS 服务';
+
+  @override
+  String get mdnsScanAgain => '重新扫描';
+
+  @override
+  String get mdnsScanningServers => '正在扫描服务器...';
+
+  @override
+  String get mdnsAvailableServers => '可用 AI NAS 服务器';
+
+  @override
+  String get mdnsBrowseAll => '浏览所有 mDNS 服务';
+
+  @override
+  String get mdnsNoServers => '本地网络未找到服务器';
+
+  @override
+  String get mdnsWebLimitationTitle => '浏览器限制';
+
+  @override
+  String get mdnsWebLimitationDesc =>
+      '由于安全限制，网页浏览器不支持 mDNS 服务发现。请确保在应用设置中正确配置了 NAS 地址。';
+
+  @override
+  String get mdnsNameLabel => '名称';
+
+  @override
+  String get mdnsHostnameLabel => '主机名';
+
+  @override
+  String get mdnsPriorityLabel => '优先级';
+
+  @override
+  String get mdnsWeightLabel => '权重';
+
+  @override
+  String get mdnsIpv4Label => 'IPv4';
+
+  @override
+  String get mdnsIpv6Label => 'IPv6';
+
+  @override
+  String get mdnsAdditionalIpv4 => '其他 IPv4 地址';
+
+  @override
+  String get mdnsAdditionalIpv6 => '其他 IPv6 地址';
+
+  @override
+  String get mdnsTxtRecords => '属性';
+
+  @override
+  String get mdnsSetAsTarget => '设为目标';
+
+  @override
+  String get mdnsSetAsTargetButton => '设为目标 AI NAS';
+
+  @override
+  String get mdnsServiceTypeLabel => '服务类型';
+
+  @override
+  String mdnsTargetSet(Object url) {
+    return '目标 AI NAS 已设为 $url';
+  }
 }

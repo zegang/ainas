@@ -1627,6 +1627,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Setting & Service'**
   String get settingServiceTitle;
+
+  /// No description provided for @mdnsPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'mDNS Services'**
+  String get mdnsPageTitle;
+
+  /// No description provided for @mdnsWebUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'mDNS is not supported on web.'**
+  String get mdnsWebUnsupported;
+
+  /// No description provided for @mdnsNoServicesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No mDNS services found'**
+  String get mdnsNoServicesFound;
+
+  /// No description provided for @mdnsScanAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan Again'**
+  String get mdnsScanAgain;
+
+  /// No description provided for @mdnsScanningServers.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning for servers...'**
+  String get mdnsScanningServers;
+
+  /// No description provided for @mdnsAvailableServers.
+  ///
+  /// In en, this message translates to:
+  /// **'Available AI NAS Servers'**
+  String get mdnsAvailableServers;
+
+  /// No description provided for @mdnsBrowseAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse all mDNS services'**
+  String get mdnsBrowseAll;
+
+  /// No description provided for @mdnsNoServers.
+  ///
+  /// In en, this message translates to:
+  /// **'No servers found on local network'**
+  String get mdnsNoServers;
+
+  /// No description provided for @mdnsWebLimitationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Web Browser Limitation'**
+  String get mdnsWebLimitationTitle;
+
+  /// No description provided for @mdnsWebLimitationDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'mDNS Service Discovery is not supported in web browsers due to security restrictions. Please ensure your NAS address is correctly configured in the app settings.'**
+  String get mdnsWebLimitationDesc;
+
+  /// No description provided for @mdnsNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get mdnsNameLabel;
+
+  /// No description provided for @mdnsHostnameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Hostname'**
+  String get mdnsHostnameLabel;
+
+  /// No description provided for @mdnsPriorityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get mdnsPriorityLabel;
+
+  /// No description provided for @mdnsWeightLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight'**
+  String get mdnsWeightLabel;
+
+  /// No description provided for @mdnsIpv4Label.
+  ///
+  /// In en, this message translates to:
+  /// **'IPv4'**
+  String get mdnsIpv4Label;
+
+  /// No description provided for @mdnsIpv6Label.
+  ///
+  /// In en, this message translates to:
+  /// **'IPv6'**
+  String get mdnsIpv6Label;
+
+  /// No description provided for @mdnsAdditionalIpv4.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional IPv4 Addresses'**
+  String get mdnsAdditionalIpv4;
+
+  /// No description provided for @mdnsAdditionalIpv6.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional IPv6 Addresses'**
+  String get mdnsAdditionalIpv6;
+
+  /// No description provided for @mdnsTxtRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Properties'**
+  String get mdnsTxtRecords;
+
+  /// No description provided for @mdnsSetAsTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as Target'**
+  String get mdnsSetAsTarget;
+
+  /// No description provided for @mdnsSetAsTargetButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as Target AI NAS'**
+  String get mdnsSetAsTargetButton;
+
+  /// No description provided for @mdnsServiceTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Service Type'**
+  String get mdnsServiceTypeLabel;
+
+  /// No description provided for @mdnsTargetSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Target AI NAS set to {url}'**
+  String mdnsTargetSet(Object url);
 }
 
 class _AppLocalizationsDelegate

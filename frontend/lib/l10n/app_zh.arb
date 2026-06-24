@@ -362,5 +362,33 @@
   "okButton": "确定",
   "selectFolderTitle": "选择文件夹",
   "openFolder": "打开文件夹",
-  "settingServiceTitle": "设置与服务"
+  "settingServiceTitle": "设置与服务",
+  "mdnsPageTitle": "mDNS 服务",
+  "mdnsWebUnsupported": "网页端不支持 mDNS。",
+  "mdnsNoServicesFound": "未找到 mDNS 服务",
+  "mdnsScanAgain": "重新扫描",
+  "mdnsScanningServers": "正在扫描服务器...",
+  "mdnsAvailableServers": "可用 AI NAS 服务器",
+  "mdnsBrowseAll": "浏览所有 mDNS 服务",
+  "mdnsNoServers": "本地网络未找到服务器",
+  "mdnsWebLimitationTitle": "浏览器限制",
+  "mdnsWebLimitationDesc": "由于安全限制，网页浏览器不支持 mDNS 服务发现。请确保在应用设置中正确配置了 NAS 地址。",
+  "mdnsNameLabel": "名称",
+  "mdnsHostnameLabel": "主机名",
+  "mdnsPriorityLabel": "优先级",
+  "mdnsWeightLabel": "权重",
+  "mdnsIpv4Label": "IPv4",
+  "mdnsIpv6Label": "IPv6",
+  "mdnsAdditionalIpv4": "其他 IPv4 地址",
+  "mdnsAdditionalIpv6": "其他 IPv6 地址",
+  "mdnsTxtRecords": "属性",
+  "mdnsSetAsTarget": "设为目标",
+  "mdnsSetAsTargetButton": "设为目标 AI NAS",
+  "mdnsServiceTypeLabel": "服务类型",
+  "mdnsTargetSet": "目标 AI NAS 已设为 {url}",
+  "@mdnsTargetSet": {
+    "placeholders": {
+      "url": {}
+    }
+  }
 }

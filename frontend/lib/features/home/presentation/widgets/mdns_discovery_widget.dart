@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/shared/models/nas_server.dart';
 
 class MdnsDiscoveryWidget extends StatelessWidget {
@@ -7,6 +8,7 @@ class MdnsDiscoveryWidget extends StatelessWidget {
   final bool isScanning;
   final void Function(NasServer) onServiceSelected;
   final VoidCallback onRefresh;
+  final VoidCallback? onOpenBrowser;
   final String? currentTargetUrl;
 
   const MdnsDiscoveryWidget({
@@ -15,11 +17,14 @@ class MdnsDiscoveryWidget extends StatelessWidget {
     required this.isScanning,
     required this.onServiceSelected,
     required this.onRefresh,
+    this.onOpenBrowser,
     this.currentTargetUrl,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (kIsWeb) {
       return Card(
         elevation: 2,
@@ -33,14 +38,13 @@ class MdnsDiscoveryWidget extends StatelessWidget {
                 children: [
                   Icon(Icons.language, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(width: 8),
-                  Text("Web Browser Limitation", style: Theme.of(context).textTheme.titleMedium),
+                  Text(l10n.mdnsWebLimitationTitle, style: Theme.of(context).textTheme.titleMedium),
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
-                "mDNS Service Discovery is not supported in web browsers due to security restrictions. "
-                "Please ensure your NAS address is correctly configured in the app settings.",
-                style: TextStyle(fontSize: 13),
+              Text(
+                l10n.mdnsWebLimitationDesc,
+                style: const TextStyle(fontSize: 13),
               ),
             ],
           ),
@@ -58,18 +62,43 @@ class MdnsDiscoveryWidget extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Available AI NAS Servers", style: Theme.of(context).textTheme.titleMedium),
-                if (isScanning)
-                  const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                else
-                  IconButton(icon: const Icon(Icons.refresh), onPressed: onRefresh),
+                Text(l10n.mdnsAvailableServers, style: Theme.of(context).textTheme.titleMedium),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onOpenBrowser != null)
+                      IconButton(
+                        icon: const Icon(Icons.open_in_full, size: 20),
+                        onPressed: onOpenBrowser,
+                        tooltip: l10n.mdnsBrowseAll,
+                        constraints: const BoxConstraints(),
+                        padding: EdgeInsets.zero,
+                      ),
+                    if (isScanning)
+                      const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    else
+                      IconButton(icon: const Icon(Icons.refresh), onPressed: onRefresh),
+                  ],
+                ),
               ],
             ),
             const Divider(),
-            if (discoveredServers.isEmpty && !isScanning)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Center(child: Text("No servers found on local network")),
+            if (isScanning && discoveredServers.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                    const SizedBox(width: 12),
+                    Text(l10n.mdnsScanningServers, style: TextStyle(color: Colors.grey.shade600)),
+                  ],
+                ),
+              )
+            else if (discoveredServers.isEmpty && !isScanning)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Center(child: Text(l10n.mdnsNoServers)),
               )
             else
               ListView.builder(

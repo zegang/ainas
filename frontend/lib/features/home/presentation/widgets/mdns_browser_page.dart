@@ -1,0 +1,136 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:ainas_frontend/l10n/app_localizations.dart';
+import 'package:ainas_frontend/services/mdns_service.dart';
+import 'package:ainas_frontend/services/api_service.dart';
+import 'package:ainas_frontend/shared/models/nas_server.dart';
+import 'package:ainas_frontend/features/home/presentation/widgets/mdns_server_detail_page.dart';
+
+class MdnsBrowserPage extends StatefulWidget {
+  const MdnsBrowserPage({super.key});
+
+  @override
+  State<MdnsBrowserPage> createState() => _MdnsBrowserPageState();
+}
+
+class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
+  final ApiService _api = ApiService();
+  bool _isScanning = false;
+  final List<NasServer> _servers = [];
+  StreamSubscription<NasServer>? _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _startScan();
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  void _startScan() {
+    if (kIsWeb) return;
+    setState(() => _isScanning = true);
+    _subscription?.cancel();
+    _servers.clear();
+    _subscription = MdnsService.scanForServers().listen((server) {
+      if (!mounted) return;
+      setState(() {
+        _servers.removeWhere(
+          (s) => s.host == server.host && s.port == server.port,
+        );
+        _servers.add(server);
+      });
+    }, onDone: () {
+      if (mounted) setState(() => _isScanning = false);
+    }, onError: (_) {
+      if (mounted) setState(() => _isScanning = false);
+    });
+  }
+
+  void _onServiceSelected(NasServer server) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => MdnsServerDetailPage(server: server)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.mdnsPageTitle),
+        actions: [
+          if (_isScanning)
+            const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _startScan),
+        ],
+      ),
+      body: kIsWeb
+          ? Center(child: Text(l10n.mdnsWebUnsupported))
+          : _servers.isEmpty && !_isScanning
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.dns_outlined, size: 64, color: Colors.grey.shade400),
+                      const SizedBox(height: 16),
+                      Text(l10n.mdnsNoServicesFound,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      FilledButton.tonalIcon(
+                        onPressed: _startScan,
+                        icon: const Icon(Icons.refresh),
+                        label: Text(l10n.mdnsScanAgain),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: () async => _startScan(),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: _servers.length + (_isScanning ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == _servers.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final server = _servers[index];
+                      final isTarget = _api.baseUrl == server.url;
+                      return ListTile(
+                        leading: Icon(
+                          isTarget ? Icons.check_circle : Icons.dns_outlined,
+                          color: isTarget ? Colors.green : null,
+                        ),
+                        title: Text(server.name,
+                            style: isTarget ? const TextStyle(fontWeight: FontWeight.bold) : null),
+                        subtitle: Text(server.displayUrl,
+                            style: TextStyle(fontSize: 12, color: isTarget ? Colors.green : null)),
+                        trailing: const Icon(Icons.chevron_right),
+                        tileColor: isTarget ? Colors.green.withOpacity(0.08) : null,
+                        shape: isTarget
+                            ? RoundedRectangleBorder(
+                                side: BorderSide(color: Colors.green.withOpacity(0.3)),
+                                borderRadius: BorderRadius.circular(8),
+                              )
+                            : null,
+                        onTap: () => _onServiceSelected(server),
+                      );
+                    },
+                  ),
+                ),
+    );
+  }
+}

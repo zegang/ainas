@@ -380,6 +380,34 @@
   "okButton": "OK",
   "selectFolderTitle": "Select Folder",
   "openFolder": "Open Folder",
-  "settingServiceTitle": "Setting & Service"
+  "settingServiceTitle": "Setting & Service",
+  "mdnsPageTitle": "mDNS Services",
+  "mdnsWebUnsupported": "mDNS is not supported on web.",
+  "mdnsNoServicesFound": "No mDNS services found",
+  "mdnsScanAgain": "Scan Again",
+  "mdnsScanningServers": "Scanning for servers...",
+  "mdnsAvailableServers": "Available AI NAS Servers",
+  "mdnsBrowseAll": "Browse all mDNS services",
+  "mdnsNoServers": "No servers found on local network",
+  "mdnsWebLimitationTitle": "Web Browser Limitation",
+  "mdnsWebLimitationDesc": "mDNS Service Discovery is not supported in web browsers due to security restrictions. Please ensure your NAS address is correctly configured in the app settings.",
+  "mdnsNameLabel": "Name",
+  "mdnsHostnameLabel": "Hostname",
+  "mdnsPriorityLabel": "Priority",
+  "mdnsWeightLabel": "Weight",
+  "mdnsIpv4Label": "IPv4",
+  "mdnsIpv6Label": "IPv6",
+  "mdnsAdditionalIpv4": "Additional IPv4 Addresses",
+  "mdnsAdditionalIpv6": "Additional IPv6 Addresses",
+  "mdnsTxtRecords": "Properties",
+  "mdnsSetAsTarget": "Set as Target",
+  "mdnsSetAsTargetButton": "Set as Target AI NAS",
+  "mdnsServiceTypeLabel": "Service Type",
+  "mdnsTargetSet": "Target AI NAS set to {url}",
+  "@mdnsTargetSet": {
+    "placeholders": {
+      "url": {}
+    }
+  }
 }
 

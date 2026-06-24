@@ -79,6 +79,7 @@ class MdnsService {
             priority: srv.priority,
             weight: srv.weight,
             txtRecords: txtEntries,
+            serviceType: ptr.domainName.split('.').sublist(1).join('.'),
           );
         }
       }

@@ -2,7 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ainas_frontend/features/home/presentation/widgets/mdns_discovery_widget.dart';
-import 'package:ainas_frontend/features/home/presentation/widgets/nas_server_detail_page.dart';
+import 'package:ainas_frontend/features/home/presentation/widgets/mdns_browser_page.dart';
+import 'package:ainas_frontend/features/home/presentation/widgets/mdns_server_detail_page.dart';
 import 'package:ainas_frontend/features/home/presentation/widgets/storage_dashboard_widget.dart';
 import 'package:ainas_frontend/shared/widgets/ai_config_widget.dart';
 import 'package:ainas_frontend/services/api_service.dart';
@@ -69,6 +70,11 @@ class _HomePageState extends State<HomePage> {
       });
     } catch (e) {
       debugPrint("Home Page Refresh Error: $e");
+      setState(() {
+        _storageUsage = null;
+        _ragStatus = null;
+        _aiStatus = null;
+      });
     } finally {
       setState(() => _isScanning = false);
     }
@@ -77,7 +83,7 @@ class _HomePageState extends State<HomePage> {
   void _onServiceSelected(NasServer server) {
     Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => NasServerDetailPage(server: server),
+        builder: (_) => MdnsServerDetailPage(server: server),
       ),
     );
   }
@@ -94,6 +100,10 @@ class _HomePageState extends State<HomePage> {
             isScanning: _isScanning,
             onRefresh: _refreshAll,
             onServiceSelected: _onServiceSelected,
+            onOpenBrowser: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MdnsBrowserPage()),
+            ),
             currentTargetUrl: _api.baseUrl,
           ),
           const SizedBox(height: 16),

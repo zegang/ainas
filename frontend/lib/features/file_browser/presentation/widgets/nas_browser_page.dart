@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:nsd/nsd.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:logging/logging.dart';
 import 'package:intl/intl.dart';
@@ -37,7 +36,6 @@ class _NASBrowserState extends State<NASBrowser> {
   final FileBrowserController _controller = FileBrowserController();
   List<String> pathStack = [""];
   late Future<List<FileItem>> _fileList;
-  bool _isDiscovering = true;
   bool _isGridView = false;
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
@@ -56,7 +54,7 @@ class _NASBrowserState extends State<NASBrowser> {
   @override
   void initState() {
     super.initState();
-    _initDiscovery();
+    _refresh();
   }
 
   @override
@@ -64,51 +62,6 @@ class _NASBrowserState extends State<NASBrowser> {
     _searchController.dispose();
     _stopPolling();
     super.dispose();
-  }
-
-  Future<void> _initDiscovery() async {
-    if (kIsWeb) {
-      setState(() => _isDiscovering = false);
-      _refresh();
-      return;
-    }
-
-    _log.info('Starting Network Service Discovery (mDNS)...');
-    Future.delayed(const Duration(seconds: 5), () {
-      if (_isDiscovering && mounted) {
-        _log.info('Discovery timed out after 5s, using fallback/manual URL.');
-        setState(() => _isDiscovering = false);
-        _refresh();
-      }
-    });
-
-    try {
-      final discovery = await startDiscovery('_http._tcp');
-      discovery.addListener(() {
-        for (final service in discovery.services) {
-          if (service.name != null && service.name!.contains('AINAS')) {
-            _log.info('Service found: ${service.name} at ${service.host}:${service.port}');
-            final host = service.host ?? 'localhost';
-            final port = service.port ?? 9026;
-            if (mounted) {
-              setState(() {
-                api.baseUrl = "http://$host:$port";
-                _isDiscovering = false;
-              });
-              _refresh();
-            }
-            stopDiscovery(discovery);
-            break;
-          }
-        }
-      });
-    } catch (e, st) {
-      _log.warning('Network discovery failed or not supported: $e. Falling back to default URL.', e, st);
-      if (mounted && _isDiscovering) {
-        setState(() => _isDiscovering = false);
-        _refresh();
-      }
-    }
   }
 
   void _refresh({bool forceRefresh = false}) {
@@ -832,9 +785,7 @@ class _NASBrowserState extends State<NASBrowser> {
         children: [
           toolBar,
           Expanded(
-            child: _isDiscovering
-          ? const Center(child: CircularProgressIndicator())
-          : FutureBuilder<List<FileItem>>(
+            child: FutureBuilder<List<FileItem>>(
               future: _fileList,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {

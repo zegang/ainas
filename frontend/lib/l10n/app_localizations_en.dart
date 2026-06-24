@@ -841,4 +841,76 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingServiceTitle => 'Setting & Service';
+
+  @override
+  String get mdnsPageTitle => 'mDNS Services';
+
+  @override
+  String get mdnsWebUnsupported => 'mDNS is not supported on web.';
+
+  @override
+  String get mdnsNoServicesFound => 'No mDNS services found';
+
+  @override
+  String get mdnsScanAgain => 'Scan Again';
+
+  @override
+  String get mdnsScanningServers => 'Scanning for servers...';
+
+  @override
+  String get mdnsAvailableServers => 'Available AI NAS Servers';
+
+  @override
+  String get mdnsBrowseAll => 'Browse all mDNS services';
+
+  @override
+  String get mdnsNoServers => 'No servers found on local network';
+
+  @override
+  String get mdnsWebLimitationTitle => 'Web Browser Limitation';
+
+  @override
+  String get mdnsWebLimitationDesc =>
+      'mDNS Service Discovery is not supported in web browsers due to security restrictions. Please ensure your NAS address is correctly configured in the app settings.';
+
+  @override
+  String get mdnsNameLabel => 'Name';
+
+  @override
+  String get mdnsHostnameLabel => 'Hostname';
+
+  @override
+  String get mdnsPriorityLabel => 'Priority';
+
+  @override
+  String get mdnsWeightLabel => 'Weight';
+
+  @override
+  String get mdnsIpv4Label => 'IPv4';
+
+  @override
+  String get mdnsIpv6Label => 'IPv6';
+
+  @override
+  String get mdnsAdditionalIpv4 => 'Additional IPv4 Addresses';
+
+  @override
+  String get mdnsAdditionalIpv6 => 'Additional IPv6 Addresses';
+
+  @override
+  String get mdnsTxtRecords => 'Properties';
+
+  @override
+  String get mdnsSetAsTarget => 'Set as Target';
+
+  @override
+  String get mdnsSetAsTargetButton => 'Set as Target AI NAS';
+
+  @override
+  String get mdnsServiceTypeLabel => 'Service Type';
+
+  @override
+  String mdnsTargetSet(Object url) {
+    return 'Target AI NAS set to $url';
+  }
 }
