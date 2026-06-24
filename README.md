@@ -78,13 +78,13 @@ AI-NAS is a smart Network Attached Storage (NAS) management solution that integr
 
 ### Docker (Recommended for Production)
 
-Pre-built images are available on [GitHub Container Registry](https://github.com/anomalyco/ainas/pkgs/container/ainas-backend):
+Pre-built images are available on [GitHub Container Registry](https://github.com/zegang/ainas/pkgs/container/ainas-backend):
 
 | Variant | Image |
 |---------|-------|
-| CPU     | `ghcr.io/anomalyco/ainas-backend:cpu` |
-| NVIDIA GPU | `ghcr.io/anomalyco/ainas-backend:cuda` |
-| AMD GPU | `ghcr.io/anomalyco/ainas-backend:rocm` |
+| CPU     | `ghcr.io/zegang/ainas-backend:cpu` |
+| NVIDIA GPU | `ghcr.io/zegang/ainas-backend:cuda` |
+| AMD GPU | `ghcr.io/zegang/ainas-backend:rocm` |
 
 Run the CPU variant:
 
@@ -93,7 +93,7 @@ docker run -d \
   --name ainas \
   -p 9026:9026 \
   -v ./storage:/app/storage \
-  ghcr.io/anomalyco/ainas-backend:cpu
+  ghcr.io/zegang/ainas-backend:cpu
 ```
 
 For NVIDIA GPU:
@@ -104,7 +104,7 @@ docker run -d \
   --gpus all \
   -p 9026:9026 \
   -v ./storage:/app/storage \
-  ghcr.io/anomalyco/ainas-backend:cuda
+  ghcr.io/zegang/ainas-backend:cuda
 ```
 
 For AMD GPU:
@@ -116,7 +116,7 @@ docker run -d \
   --group-add video \
   -p 9026:9026 \
   -v ./storage:/app/storage \
-  ghcr.io/anomalyco/ainas-backend:rocm
+  ghcr.io/zegang/ainas-backend:rocm
 ```
 
 The container serves both the backend API and the Flutter web frontend (at `http://localhost:9026`).

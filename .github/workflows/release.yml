@@ -27,6 +27,8 @@ jobs:
   # ─── Flutter Web build (shared by all backend Docker variants) ─────
   web:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -46,6 +48,18 @@ jobs:
       - name: Build web (release)
         working-directory: frontend
         run: flutter build web --release
+
+      - name: Create web archive
+        run: tar czf ainas-web.tar.gz -C frontend/build/web .
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ainas-web.tar.gz
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -118,6 +132,8 @@ jobs:
   # ─── Android APK ───────────────────────────────────────────────────
   android:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -145,6 +161,15 @@ jobs:
         working-directory: frontend
         run: flutter build apk --release --android-skip-build-dependency-validation
 
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: frontend/build/app/outputs/flutter-apk/app-release.apk
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/upload-artifact@v4
         with:
           name: ainas-android
@@ -153,6 +178,8 @@ jobs:
   # ─── iOS (unsigned archive) ────────────────────────────────────────
   ios:
     runs-on: macos-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -180,6 +207,15 @@ jobs:
       - name: Archive .app
         run: ditto -c -k --keepParent frontend/build/ios/iphoneos/Runner.app ainas-ios.zip
 
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ainas-ios.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/upload-artifact@v4
         with:
           name: ainas-ios
@@ -188,6 +224,8 @@ jobs:
   # ─── macOS ─────────────────────────────────────────────────────────
   macos:
     runs-on: macos-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -211,6 +249,15 @@ jobs:
       - name: Archive .app
         run: ditto -c -k --keepParent frontend/build/macos/Build/Products/Release/Runner.app ainas-macos.zip
 
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ainas-macos.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/upload-artifact@v4
         with:
           name: ainas-macos
@@ -219,6 +266,8 @@ jobs:
   # ─── Linux ─────────────────────────────────────────────────────────
   linux:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -248,6 +297,15 @@ jobs:
       - name: Create tar.gz
         run: tar czf ainas-linux.tar.gz -C frontend/build/linux/x64/release/bundle .
 
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ainas-linux.tar.gz
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/upload-artifact@v4
         with:
           name: ainas-linux
@@ -256,6 +314,8 @@ jobs:
   # ─── Windows ───────────────────────────────────────────────────────
   windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -282,45 +342,19 @@ jobs:
         run: |
           Compress-Archive -Path * -DestinationPath ${{ github.workspace }}/ainas-windows.zip
 
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ainas-windows.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/upload-artifact@v4
         with:
           name: ainas-windows
           path: ainas-windows.zip
 
-  # ─── Publish single release with whatever artifacts succeeded ──────
-  publish:
-    if: always()
-    needs:
-      - backend
-      - web
-      - android
-      - ios
-      - macos
-      - linux
-      - windows
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
-    steps:
-      - uses: actions/download-artifact@v4
-        continue-on-error: true
 
-      - name: Create web archive
-        run: |
-          if [ -d "frontend-web" ]; then
-            tar czf ainas-web.tar.gz -C frontend-web .
-          fi
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          fail_on_unmatched_files: false
-          files: |
-            ainas-android/app-release.apk
-            ainas-ios/*
-            ainas-macos/*
-            ainas-linux/*
-            ainas-windows/*
-            ainas-web.tar.gz
