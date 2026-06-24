@@ -105,12 +105,13 @@ class _SettingsWidgetState extends State<SettingsWidget> {
       await _api.persistFontScale(_selectedFontScale);
 
       if (urlChanged) {
+        await _api.persistBaseUrl(newUrl);
+        if (!mounted) return;
+
         final isHealthy = await _api.checkStatus(newUrl);
         if (!mounted) return;
 
         if (isHealthy) {
-          await _api.persistBaseUrl(newUrl);
-          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(l10n.settingsSaved),
@@ -119,7 +120,6 @@ class _SettingsWidgetState extends State<SettingsWidget> {
           );
           setState(() => _isConnected = true);
         } else {
-          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(l10n.connectionFailedLocalSaved(newUrl)),
@@ -142,20 +142,48 @@ class _SettingsWidgetState extends State<SettingsWidget> {
     }
   }
 
+  Future<void> _checkConnection() async {
+    final host = _hostController.text.trim();
+    final port = _portController.text.trim();
+    if (host.isEmpty || port.isEmpty) return;
+
+    setState(() => _isChecking = true);
+    final url = "http://$host:$port";
+    final isHealthy = await _api.checkStatus(url);
+    if (!mounted) return;
+    setState(() {
+      _isChecking = false;
+      _isConnected = isHealthy;
+    });
+  }
+
   Widget _buildStatusIcon() {
+    Widget icon;
     if (_isChecking) {
-      return const SizedBox(
+      icon = const SizedBox(
         width: 20,
         height: 20,
         child: CircularProgressIndicator(strokeWidth: 2),
       );
+    } else if (_isConnected == null) {
+      icon = const Icon(Icons.help_outline, color: Colors.grey);
+    } else {
+      icon = Icon(
+        _isConnected! ? Icons.check_circle : Icons.error,
+        color: _isConnected! ? Colors.green : Colors.red,
+      );
     }
-    if (_isConnected == null) {
-      return const Icon(Icons.help_outline, color: Colors.grey);
-    }
-    return Icon(
-      _isConnected! ? Icons.check_circle : Icons.error,
-      color: _isConnected! ? Colors.green : Colors.red,
+
+    return Tooltip(
+      message: 'Check connection',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: _isChecking ? null : _checkConnection,
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: icon,
+        ),
+      ),
     );
   }
 
@@ -274,27 +302,29 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                   },
                 ),
                 const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: theme.colorScheme.error,
-                      side: BorderSide(color: theme.colorScheme.error),
+                Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.8,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error,
+                        side: BorderSide(color: theme.colorScheme.error),
+                      ),
+                      onPressed: _api.isLoggedIn
+                          ? () async {
+                              await _api.logout();
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(l10n.logoutSuccess),
+                                  backgroundColor: theme.colorScheme.background,
+                                ),
+                              );
+                            }
+                          : null,
+                      icon: const Icon(Icons.logout),
+                      label: Text(l10n.logout),
                     ),
-                    onPressed: _api.isLoggedIn
-                        ? () async {
-                            await _api.logout();
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(l10n.logoutSuccess),
-                                backgroundColor: theme.colorScheme.background,
-                              ),
-                            );
-                          }
-                        : null,
-                    icon: const Icon(Icons.logout),
-                    label: Text(l10n.logout),
                   ),
                 ),
               ],

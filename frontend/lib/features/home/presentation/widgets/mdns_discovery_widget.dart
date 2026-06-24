@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:ainas_frontend/shared/models/nas_server.dart';
 
 class MdnsDiscoveryWidget extends StatelessWidget {
-  final List<String> discoveredServices;
+  final List<NasServer> discoveredServers;
   final bool isScanning;
-  final Function(String) onServiceSelected;
+  final void Function(NasServer) onServiceSelected;
   final VoidCallback onRefresh;
+  final String? currentTargetUrl;
 
   const MdnsDiscoveryWidget({
     super.key,
-    required this.discoveredServices,
+    required this.discoveredServers,
     required this.isScanning,
     required this.onServiceSelected,
     required this.onRefresh,
+    this.currentTargetUrl,
   });
 
   @override
@@ -39,9 +42,6 @@ class MdnsDiscoveryWidget extends StatelessWidget {
                 "Please ensure your NAS address is correctly configured in the app settings.",
                 style: TextStyle(fontSize: 13),
               ),
-              const SizedBox(height: 8),
-              Text("Current Target: ${discoveredServices.isNotEmpty ? discoveredServices.first : 'Default'}", 
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
             ],
           ),
         ),
@@ -66,7 +66,7 @@ class MdnsDiscoveryWidget extends StatelessWidget {
               ],
             ),
             const Divider(),
-            if (discoveredServices.isEmpty && !isScanning)
+            if (discoveredServers.isEmpty && !isScanning)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
                 child: Center(child: Text("No servers found on local network")),
@@ -75,14 +75,36 @@ class MdnsDiscoveryWidget extends StatelessWidget {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: discoveredServices.length,
+                itemCount: discoveredServers.length,
                 itemBuilder: (context, index) {
-                  final service = discoveredServices[index];
+                  final server = discoveredServers[index];
+                  final isTarget = currentTargetUrl != null && server.url == currentTargetUrl;
                   return ListTile(
-                    leading: const Icon(Icons.dns_outlined),
-                    title: Text(service),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => onServiceSelected(service),
+                    leading: Icon(
+                      isTarget ? Icons.check_circle : Icons.dns_outlined,
+                      color: isTarget ? Colors.green : null,
+                    ),
+                    title: Text(
+                      server.name,
+                      style: isTarget ? const TextStyle(fontWeight: FontWeight.bold) : null,
+                    ),
+                    subtitle: Text(
+                      server.displayUrl,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isTarget ? Colors.green : null,
+                      ),
+                    ),
+                    trailing: Icon(isTarget ? Icons.check_circle : Icons.chevron_right,
+                        color: isTarget ? Colors.green : null),
+                    tileColor: isTarget ? Colors.green.withOpacity(0.08) : null,
+                    shape: isTarget
+                        ? RoundedRectangleBorder(
+                            side: BorderSide(color: Colors.green.withOpacity(0.3)),
+                            borderRadius: BorderRadius.circular(8),
+                          )
+                        : null,
+                    onTap: () => onServiceSelected(server),
                   );
                 },
               ),

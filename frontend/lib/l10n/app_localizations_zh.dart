@@ -241,12 +241,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get moveHere => '移动到此';
 
   @override
+  String get copyTitle => '复制文件';
+
+  @override
+  String get copyHere => '复制到此';
+
+  @override
   String viewOriginalImage(Object size) {
     return '查看原始图片 ($size)';
   }
 
   @override
   String get downloadAction => '下载';
+
+  @override
+  String get copyAction => '复制';
 
   @override
   String get loginTitle => '登录';
@@ -276,16 +285,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loggedIn => '已登录';
 
   @override
-  String get loggedOut => '已登出';
+  String get loggedOut => '已退出登录';
 
   @override
   String get aiScanTooltip => 'AI扫描';
 
   @override
-  String get logout => '登出';
+  String get logout => '退出登录';
 
   @override
-  String get logoutSuccess => '已成功登出。';
+  String get logoutSuccess => '已成功退出登录。';
 
   @override
   String get switchViewList => '切换到列表视图';
@@ -821,4 +830,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get openFolder => '打开文件夹';
+
+  @override
+  String get settingServiceTitle => '设置与服务';
 }

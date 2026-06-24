@@ -78,7 +78,7 @@ class _NasDirPickerState extends State<NasDirPicker> {
         actions: [
           TextButton(
             onPressed: _selectCurrentDir,
-            child: Text(l10n.selectFolder),
+            child: Text(l10n.okButton),
           ),
         ],
       ),
@@ -132,6 +132,11 @@ class _NasDirPickerState extends State<NasDirPicker> {
                   selectedItems: _selectedItems,
                   onSelectAll: (val) {},
                   onItemSelected: (item, val) {},
+                  showSizeColumn: false,
+                  showTypeColumn: false,
+                  showDateColumn: false,
+                  showActionMenu: false,
+                  showOnlyDirs: true,
                 );
               },
             ),

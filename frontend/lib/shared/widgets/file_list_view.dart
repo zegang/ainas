@@ -18,7 +18,12 @@ class FileListView extends StatelessWidget {
   final Set<FileItem> selectedItems;
   final Function(bool?) onSelectAll;
   final Function(FileItem, bool?) onItemSelected;
-  final ApiService api = ApiService(); // Instantiate singleton for baseUrl and row builder
+  final bool showSizeColumn;
+  final bool showTypeColumn;
+  final bool showDateColumn;
+  final bool showActionMenu;
+  final bool showOnlyDirs;
+  final ApiService api = ApiService();
 
   FileListView({
     super.key,
@@ -31,7 +36,15 @@ class FileListView extends StatelessWidget {
     required this.selectedItems,
     required this.onSelectAll,
     required this.onItemSelected,
+    this.showSizeColumn = true,
+    this.showTypeColumn = true,
+    this.showDateColumn = true,
+    this.showActionMenu = true,
+    this.showOnlyDirs = false,
   });
+
+  List<FileItem> get _filteredItems =>
+      showOnlyDirs ? items.where((i) => i.isDir).toList() : items;
 
   String _formatSize(int bytes) {
     if (bytes <= 0) return "---";
@@ -48,25 +61,26 @@ class FileListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSmallScreen = MediaQuery.of(context).size.width < 600;
+    final filtered = _filteredItems;
 
     return Column(
       children: [
-        if (!isSmallScreen) _buildListHeader(context),
+        if (!isSmallScreen) _buildListHeader(context, filtered),
         if (!isSmallScreen) const Divider(height: 1),
         Expanded(
           child: ListView.separated(
-            itemCount: items.length,
+            itemCount: filtered.length,
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) => isSmallScreen
-                ? _buildMobileListRow(context, items[index], api)
-                : _buildListRow(context, items[index], api),
+                ? _buildMobileListRow(context, filtered[index], api)
+                : _buildListRow(context, filtered[index], api),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildListHeader(BuildContext context) {
+  Widget _buildListHeader(BuildContext context, List<FileItem> filtered) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       color: Theme.of(context).colorScheme.surface,
@@ -74,15 +88,15 @@ class FileListView extends StatelessWidget {
         children: [
           Checkbox(
             visualDensity: VisualDensity.compact,
-            value: items.isEmpty ? false : (selectedItems.length == items.length ? true : (selectedItems.isEmpty ? false : null)),
+            value: filtered.isEmpty ? false : (selectedItems.length == filtered.length ? true : (selectedItems.isEmpty ? false : null)),
             tristate: true,
             onChanged: onSelectAll,
           ),
           _buildHeaderCell(context, "Name", 0, flex: 4),
-          _buildHeaderCell(context, "Size", 1, flex: 1),
-          _buildHeaderCell(context, "Type", 2, flex: 1),
-          _buildHeaderCell(context, "Modified", 3, flex: 2),
-          const SizedBox(width: 48),
+          if (showSizeColumn) _buildHeaderCell(context, "Size", 1, flex: 1),
+          if (showTypeColumn) _buildHeaderCell(context, "Type", 2, flex: 1),
+          if (showDateColumn) _buildHeaderCell(context, "Modified", 3, flex: 2),
+          if (showActionMenu) const SizedBox(width: 48),
         ],
       ),
     );
@@ -132,7 +146,7 @@ class FileListView extends StatelessWidget {
                       width: 24,
                       height: 24,
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(2), // Use the new thumbnailUrl from FileItem
+                        borderRadius: BorderRadius.circular(2),
                         child: CachedNetworkImage(
                           imageUrl: '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}&thumbnail=true',
                           fit: BoxFit.cover,
@@ -164,32 +178,35 @@ class FileListView extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(
-              flex: 1,
-              child: Row(
-                children: [
-                  Text(item.isDir ? "---" : _formatSize(item.size), style: const TextStyle(fontSize: 13)),
-                  if (item.tags.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          l10n.taggedLabel,
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onPrimaryContainer),
+            if (showSizeColumn)
+              Expanded(
+                flex: 1,
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(item.isDir ? "---" : _formatSize(item.size), style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+                    ),
+                    if (item.tags.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            l10n.taggedLabel,
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onPrimaryContainer),
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Expanded(flex: 1, child: Text(typeStr, style: const TextStyle(fontSize: 13, color: Colors.grey))),
-            Expanded(flex: 2, child: Text(dateStr, style: const TextStyle(fontSize: 13, color: Colors.grey))),
-            FileActionMenu(item: item, onActionSelected: onActionSelected),
+            if (showTypeColumn) Expanded(flex: 1, child: Text(typeStr, style: const TextStyle(fontSize: 13, color: Colors.grey))),
+            if (showDateColumn) Expanded(flex: 2, child: Text(dateStr, style: const TextStyle(fontSize: 13, color: Colors.grey))),
+            if (showActionMenu) FileActionMenu(item: item, onActionSelected: onActionSelected),
           ],
         ),
       ),
@@ -197,87 +214,7 @@ class FileListView extends StatelessWidget {
   }
 
   void _showMobileActionSheet(BuildContext context, FileItem item) {
-    final l10n = AppLocalizations.of(context)!;
-    
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
-                  Text(item.isDir ? 'Folder' : _formatSize(item.size), style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            if (item.tags.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.aiTags, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.outline)),
-                    Text(item.tags.join(', '), style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary, fontStyle: FontStyle.italic)),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-            ],
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: Text(l10n.renameAction),
-              onTap: () {
-                Navigator.pop(context);
-                onActionSelected('rename', item);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.drive_file_move_outlined),
-              title: Text(l10n.moveAction),
-              onTap: () {
-                Navigator.pop(context);
-                onActionSelected('move', item);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.auto_awesome_outlined),
-              title: Text(l10n.attachToAiAction),
-              onTap: () {
-                Navigator.pop(context);
-                onActionSelected('attach', item);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.download_outlined),
-              title: Text(l10n.downloadAction),
-              onTap: () {
-                Navigator.pop(context);
-                onActionSelected('download', item);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: Text(l10n.deleteAction, style: const TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                onActionSelected('delete', item);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+    FileActionMenu(item: item, onActionSelected: onActionSelected).showSheet(context);
   }
 
   Widget _buildMobileListRow(BuildContext context, FileItem item, ApiService api) {

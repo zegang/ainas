@@ -84,10 +84,16 @@
   "sortTooltip": "Sort",
   "folderEmpty": "This folder is empty",
   "moveHere": "Move here",
+  "copyTitle": "Copy Item",
+  "copyHere": "Copy here",
   "viewOriginalImage": "View original image ({size})",
   "downloadAction": "Download",
   "@downloadAction": {
     "description": "Label for the download action in the file browser"
+  },
+  "copyAction": "Copy",
+  "@copyAction": {
+    "description": "Label for the copy action in the file browser"
   },
   "loginTitle": "Login",
   "usernameLabel": "Username",
@@ -373,6 +379,7 @@
   },
   "okButton": "OK",
   "selectFolderTitle": "Select Folder",
-  "openFolder": "Open Folder"
+  "openFolder": "Open Folder",
+  "settingServiceTitle": "Setting & Service"
 }
 

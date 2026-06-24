@@ -36,7 +36,7 @@ class MdnsService {
         )) {
           _log.info('Found SRV record: ${ptr.domainName} -> ${srv.target}:${srv.port}');
 
-          // Resolve IP addresses (A records) for the SRV target
+          // 3. Resolve IPv4 addresses (A records) for the SRV target
           final List<String> ipAddresses = [];
           await for (final IPAddressResourceRecord ip in client.lookup<IPAddressResourceRecord>(
             ResourceRecordQuery.addressIPv4(srv.target),
@@ -45,7 +45,25 @@ class MdnsService {
             ipAddresses.add(ip.address.address);
           }
 
-          if (ipAddresses.isEmpty) continue;
+          // 4. Resolve IPv6 addresses (AAAA records)
+          final List<String> ipv6Addresses = [];
+          await for (final IPAddressResourceRecord ip in client.lookup<IPAddressResourceRecord>(
+            ResourceRecordQuery.addressIPv6(srv.target),
+            timeout: const Duration(seconds: 2),
+          )) {
+            ipv6Addresses.add(ip.address.address);
+          }
+
+          // 5. Resolve TXT records for additional metadata
+          final List<String> txtEntries = [];
+          await for (final TxtResourceRecord txt in client.lookup<TxtResourceRecord>(
+            ResourceRecordQuery.text(ptr.domainName),
+            timeout: const Duration(seconds: 2),
+          )) {
+            txtEntries.add(txt.text);
+          }
+
+          if (ipAddresses.isEmpty && ipv6Addresses.isEmpty) continue;
 
           // Strip trailing dots from the target hostname for compatibility with http clients
           final host = srv.target.endsWith('.')
@@ -56,7 +74,11 @@ class MdnsService {
             name: ptr.domainName.split('.').first,
             host: host,
             addresses: ipAddresses,
+            ipv6Addresses: ipv6Addresses,
             port: srv.port,
+            priority: srv.priority,
+            weight: srv.weight,
+            txtRecords: txtEntries,
           );
         }
       }

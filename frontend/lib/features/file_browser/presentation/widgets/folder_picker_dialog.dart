@@ -7,7 +7,16 @@ import 'package:ainas_frontend/services/api_service.dart';
 
 class FolderPickerDialog extends StatefulWidget {
   final String currentPath;
-  const FolderPickerDialog({super.key, this.currentPath = ''});
+  final String title;
+  final String actionLabel;
+  final IconData actionIcon;
+  const FolderPickerDialog({
+    super.key,
+    this.currentPath = '',
+    this.title = '',
+    this.actionLabel = '',
+    this.actionIcon = Icons.drive_file_move_outlined,
+  });
 
   @override
   State<FolderPickerDialog> createState() => _FolderPickerDialogState();
@@ -70,9 +79,9 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.drive_file_move_outlined, size: 20, color: cs.primary),
+                  Icon(widget.actionIcon, size: 20, color: cs.primary),
                   const SizedBox(width: 8),
-                  Text(l10n.moveTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  Text(widget.title.isNotEmpty ? widget.title : l10n.moveTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -154,7 +163,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                     child: FilledButton.icon(
                       onPressed: _selectCurrent,
                       icon: const Icon(Icons.check, size: 18),
-                      label: Text(l10n.moveHere),
+                      label: Text(widget.actionLabel.isNotEmpty ? widget.actionLabel : l10n.moveHere),
                     ),
                   ),
                 ],

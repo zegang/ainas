@@ -13,6 +13,7 @@ class ActionItem {
 List<ActionItem> _buildActions(AppLocalizations l10n) => [
   ActionItem('rename', Icons.edit_outlined, l10n.renameAction),
   ActionItem('move', Icons.drive_file_move_outlined, l10n.moveAction),
+  ActionItem('copy', Icons.content_copy, l10n.copyAction),
   ActionItem('attach', Icons.auto_awesome_outlined, l10n.attachToAiAction),
   ActionItem('download', Icons.download_outlined, l10n.downloadAction),
   ActionItem('delete', Icons.delete_outlined, l10n.deleteAction, isDestructive: true),
@@ -28,7 +29,7 @@ class FileActionMenu extends StatelessWidget {
     required this.onActionSelected,
   });
 
-  void _showSheet(BuildContext context) {
+  void showSheet(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final actions = _buildActions(l10n);
@@ -141,6 +142,7 @@ class FileActionMenu extends StatelessWidget {
           if (item.tags.isNotEmpty) const PopupMenuDivider(),
           PopupMenuItem(value: 'rename', child: Text(l10n.renameAction)),
           PopupMenuItem(value: 'move', child: Text(l10n.moveAction)),
+          PopupMenuItem(value: 'copy', child: Text(l10n.copyAction)),
           PopupMenuItem(value: 'attach', child: Text(l10n.attachToAiAction)),
           PopupMenuItem(value: 'download', child: Text(l10n.downloadAction)),
           PopupMenuItem(value: 'delete', child: Text(l10n.deleteAction)),
@@ -149,7 +151,7 @@ class FileActionMenu extends StatelessWidget {
     }
     return IconButton(
       icon: const Icon(Icons.more_vert),
-      onPressed: () => _showSheet(context),
+      onPressed: () => showSheet(context),
     );
   }
 }

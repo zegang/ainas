@@ -6,6 +6,24 @@ on:
   workflow_dispatch:
 
 jobs:
+  # ─── GitHub Pages — deploy docs before builds start ──────────────
+  docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy docs to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          destination_dir: .
+          keep_files: false
+          publish_branch: gh-pages
+
   # ─── Flutter Web build (shared by all backend Docker variants) ─────
   web:
     runs-on: ubuntu-latest
@@ -288,6 +306,12 @@ jobs:
       - uses: actions/download-artifact@v4
         continue-on-error: true
 
+      - name: Create web archive
+        run: |
+          if [ -d "frontend-web" ]; then
+            tar czf ainas-web.tar.gz -C frontend-web .
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -299,3 +323,4 @@ jobs:
             ainas-macos/*
             ainas-linux/*
             ainas-windows/*
+            ainas-web.tar.gz

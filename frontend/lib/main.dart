@@ -99,6 +99,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   Timer? _statusSyncTimer;
+  bool _navRailExtended = true;
 
   @override
   void initState() {
@@ -328,7 +329,7 @@ class _MainShellState extends State<MainShell> {
                 child: Row(
                   children: [
                     NavigationRail(
-                      extended: true,
+                      extended: _navRailExtended,
                       minExtendedWidth: 200,
                       selectedIndex: api.currentTabIndex,
                       onDestinationSelected: (int index) {
@@ -336,6 +337,14 @@ class _MainShellState extends State<MainShell> {
                           if (loggedIn) api.setTabIndex(index);
                         });
                       },
+                      leading: Padding(
+                        padding: EdgeInsets.only(top: 8, bottom: 8),
+                        child: IconButton(
+                          icon: Icon(_navRailExtended ? Icons.menu_open : Icons.menu),
+                          onPressed: () => setState(() => _navRailExtended = !_navRailExtended),
+                          tooltip: _navRailExtended ? 'Collapse sidebar' : 'Expand sidebar',
+                        ),
+                      ),
                       destinations: [
                         NavigationRailDestination(
                           icon: Icon(Icons.home_outlined),
@@ -353,7 +362,7 @@ class _MainShellState extends State<MainShell> {
                           label: Text(l10n.aiAssistant),
                         ),
                         NavigationRailDestination(
-                          icon: const Icon(Icons.person_outline),
+                          icon: const Icon(Icons.person_outlined),
                           selectedIcon: const Icon(Icons.person),
                           label: Text(l10n.minePage),
                         ),

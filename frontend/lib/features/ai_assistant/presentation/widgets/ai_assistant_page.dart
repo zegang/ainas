@@ -48,7 +48,6 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
     if (api.currentRequestId != null) {
       api.cancelAiChat(api.currentRequestId!);
     }
-    _borderAnimController.stop();
     api.markResponseComplete();
     setState(() {}); // Trigger rebuild with updated api state
     _log.info('AI Request cancelled by user');
@@ -67,8 +66,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
       _controller.clear();
       _selectedFiles.clear(); // Clear selected files after sending
     });
-    
-    _borderAnimController.repeat();
+
     api.isAwaitingResponse = true;
     api.currentRequestId = requestId;
     api.notifyListeners();
@@ -91,7 +89,6 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
         setState(() {});
         _scrollToBottom();
       }, onDone: () {
-        _borderAnimController.stop();
         if (mounted) {
           setState(() {});
           _localSubscription = null;
@@ -151,9 +148,11 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
         api.setWelcomeMessage(l10n.aiWelcomeMessage);
       }
       
+      // Always animate the input border
+      _borderAnimController.repeat();
+
       // Reconnect to ongoing or completed AI response
       if (api.isAwaitingResponse) {
-        _borderAnimController.repeat();
         _localSubscription = api.getChatStream().listen((chunk) {
           if (!mounted) return;
           setState(() {});
@@ -763,20 +762,19 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
       child: AnimatedBuilder(
         animation: _borderAnimation,
         builder: (context, child) {
-          final borderColor = api.isAwaitingResponse
-              ? HSLColor.fromAHSL(1, _borderAnimation.value, 0.8, 0.5).toColor()
-              : theme.dividerColor;
+          final borderColor = HSLColor.fromAHSL(1, _borderAnimation.value, 0.8, 0.5).toColor();
           return Container(
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: borderColor),
             ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: child,
           );
         },
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (_selectedFiles.isNotEmpty)
               Padding(
@@ -798,7 +796,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
               decoration: InputDecoration(
                 hintText: l10n.askAiHint,
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                contentPadding: const EdgeInsets.fromLTRB(8, 10, 8, 4),
               ),
             ),
             Row(

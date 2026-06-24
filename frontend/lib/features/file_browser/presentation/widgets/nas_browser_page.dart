@@ -112,6 +112,7 @@ class _NASBrowserState extends State<NASBrowser> {
   }
 
   void _refresh({bool forceRefresh = false}) {
+    api.invalidateFileListCache();
     setState(() {
       _selectedItems.clear();
       _fileList = api.listFiles(pathStack.last, forceRefresh: forceRefresh);
@@ -308,11 +309,51 @@ class _NASBrowserState extends State<NASBrowser> {
     final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
     final targetDir = await showDialog<String>(
       context: context,
-      builder: (context) => FolderPickerDialog(currentPath: pathStack.last),
+      builder: (context) => FolderPickerDialog(
+        currentPath: pathStack.last,
+        title: l10n.moveTitle,
+        actionLabel: l10n.moveHere,
+        actionIcon: Icons.drive_file_move_outlined,
+      ),
     );
     if (targetDir != null && targetDir.isNotEmpty && targetDir != pathStack.last) {
       final newPath = targetDir.isEmpty ? item.name : "$targetDir/${item.name}";
       await api.moveItem(fullPath, newPath);
+      _refresh(forceRefresh: true);
+    }
+  }
+
+  Future<void> _handleCopy(FileItem item) async {
+    final l10n = AppLocalizations.of(context)!;
+    final targetDir = await showDialog<String>(
+      context: context,
+      builder: (context) => FolderPickerDialog(
+        currentPath: pathStack.last,
+        title: l10n.copyTitle,
+        actionLabel: l10n.copyHere,
+        actionIcon: Icons.content_copy,
+      ),
+    );
+    if (targetDir != null && targetDir.isNotEmpty && targetDir != pathStack.last) {
+      await api.copyItem(item.path, targetDir);
+      _refresh(forceRefresh: true);
+    }
+  }
+
+  Future<void> _handleBatchCopy() async {
+    final l10n = AppLocalizations.of(context)!;
+    final targetDir = await showDialog<String>(
+      context: context,
+      builder: (context) => FolderPickerDialog(
+        currentPath: pathStack.last,
+        title: l10n.copyTitle,
+        actionLabel: l10n.copyHere,
+        actionIcon: Icons.content_copy,
+      ),
+    );
+    if (targetDir != null && targetDir.isNotEmpty && targetDir != pathStack.last) {
+      final paths = _selectedItems.map((item) => item.path).toList();
+      await api.copyItems(paths, targetDir);
       _refresh(forceRefresh: true);
     }
   }
@@ -504,6 +545,11 @@ class _NASBrowserState extends State<NASBrowser> {
             onPressed: _handleBatchMove,
           ),
           IconButton(
+            icon: const Icon(Icons.content_copy),
+            tooltip: l10n.copyAction,
+            onPressed: _handleBatchCopy,
+          ),
+          IconButton(
             icon: const Icon(Icons.auto_awesome_outlined),
             tooltip: l10n.attachToAiAction,
             onPressed: _handleBatchAttachToAi,
@@ -677,6 +723,11 @@ class _NASBrowserState extends State<NASBrowser> {
                   icon: const Icon(Icons.drive_file_move_outlined),
                   tooltip: l10n.moveAction,
                   onPressed: _handleBatchMove,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.content_copy),
+                  tooltip: l10n.copyAction,
+                  onPressed: _handleBatchCopy,
                 ),
                 IconButton(
                   icon: const Icon(Icons.auto_awesome_outlined),
@@ -937,6 +988,7 @@ class _NASBrowserState extends State<NASBrowser> {
   void _handleAction(String action, FileItem item) {
     if (action == 'rename') _handleRename(item);
     if (action == 'move') _handleMove(item);
+    if (action == 'copy') _handleCopy(item);
     if (action == 'delete') _handleDelete(item);
     if (action == 'attach') _handleAttachToAi(item);
     if (action == 'download') _handleDownload(item);

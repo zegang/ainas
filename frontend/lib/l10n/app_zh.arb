@@ -72,8 +72,11 @@
   "sortTooltip": "排序",
   "folderEmpty": "此文件夹为空",
   "moveHere": "移动到此",
+  "copyTitle": "复制文件",
+  "copyHere": "复制到此",
   "viewOriginalImage": "查看原始图片 ({size})",
   "downloadAction": "下载",
+  "copyAction": "复制",
   "loginTitle": "登录",
   "usernameLabel": "用户名",
   "passwordLabel": "密码",
@@ -83,10 +86,10 @@
   "vipLabel": "VIP状态",
   "loginStatusLabel": "登录状态",
   "loggedIn": "已登录",
-  "loggedOut": "已登出",
+  "loggedOut": "已退出登录",
   "aiScanTooltip": "AI扫描",
-  "logout": "登出",
-  "logoutSuccess": "已成功登出。",
+  "logout": "退出登录",
+  "logoutSuccess": "已成功退出登录。",
   "switchViewList": "切换到列表视图",
   "switchViewGrid": "切换到网格视图",
   "uploadFolder": "上传文件夹",
@@ -358,5 +361,6 @@
   },
   "okButton": "确定",
   "selectFolderTitle": "选择文件夹",
-  "openFolder": "打开文件夹"
+  "openFolder": "打开文件夹",
+  "settingServiceTitle": "设置与服务"
 }

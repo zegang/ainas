@@ -51,6 +51,10 @@ class MoveRequest(BaseModel):
     path: str
     new_path: str
 
+class CopyRequest(BaseModel):
+    paths: List[str]
+    target_dir: str
+
 class CreateFolderRequest(BaseModel):
     path: str
 
@@ -202,6 +206,60 @@ async def rename_item(request: RenameRequest, db: Session = Depends(get_db)):
             
     db.commit()
     return {"new_path": new_rel}
+
+@router.post("/copy")
+async def copy_items(body: CopyRequest, db: Session = Depends(get_db)):
+    """Copies one or more files/directories into a target directory."""
+    logger = logging.getLogger(__name__)
+    target_abs = os.path.abspath(os.path.join(config.AINAS_DATA_PATH, body.target_dir.lstrip("/")))
+    copied = []
+
+    for src_path in body.paths:
+        src_abs = os.path.abspath(os.path.join(config.AINAS_DATA_PATH, src_path.lstrip("/")))
+        if not src_abs.startswith(os.path.abspath(config.AINAS_DATA_PATH)):
+            logger.warning("Skipping path outside data dir: %s", src_path)
+            continue
+        if not os.path.exists(src_abs):
+            logger.warning("Source not found: %s", src_path)
+            continue
+
+        name = os.path.basename(src_path.rstrip("/"))
+        dst_abs = os.path.join(target_abs, name)
+
+        if os.path.exists(dst_abs):
+            logger.warning("Destination exists, skipping: %s", dst_abs)
+            continue
+
+        if os.path.isdir(src_abs):
+            shutil.copytree(src_abs, dst_abs)
+            for root, _, files in os.walk(dst_abs):
+                for f in files:
+                    fpath = os.path.join(root, f)
+                    rel = os.path.relpath(fpath, config.AINAS_DATA_PATH).replace("\\", "/")
+                    st = os.stat(fpath)
+                    db.add(FileRecord(
+                        path=rel,
+                        size=st.st_size,
+                        created_at=datetime.fromtimestamp(st.st_ctime),
+                        updated_at=datetime.fromtimestamp(st.st_mtime),
+                    ))
+        else:
+            os.makedirs(target_abs, exist_ok=True)
+            shutil.copy2(src_abs, dst_abs)
+            st = os.stat(dst_abs)
+            rel = os.path.relpath(dst_abs, config.AINAS_DATA_PATH).replace("\\", "/")
+            db.add(FileRecord(
+                path=rel,
+                size=st.st_size,
+                created_at=datetime.fromtimestamp(st.st_ctime),
+                updated_at=datetime.fromtimestamp(st.st_mtime),
+            ))
+
+        copied.append(src_path)
+
+    db.commit()
+    logger.info("Copied %d item(s) to %s", len(copied), body.target_dir)
+    return {"copied": copied, "target_dir": body.target_dir}
 
 @router.patch("/move")
 async def move_item(request: MoveRequest, db: Session = Depends(get_db)):

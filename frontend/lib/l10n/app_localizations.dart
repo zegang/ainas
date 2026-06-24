@@ -530,6 +530,18 @@ abstract class AppLocalizations {
   /// **'Move here'**
   String get moveHere;
 
+  /// No description provided for @copyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Item'**
+  String get copyTitle;
+
+  /// No description provided for @copyHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy here'**
+  String get copyHere;
+
   /// No description provided for @viewOriginalImage.
   ///
   /// In en, this message translates to:
@@ -541,6 +553,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Download'**
   String get downloadAction;
+
+  /// Label for the copy action in the file browser
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get copyAction;
 
   /// No description provided for @loginTitle.
   ///
@@ -1603,6 +1621,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open Folder'**
   String get openFolder;
+
+  /// No description provided for @settingServiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Setting & Service'**
+  String get settingServiceTitle;
 }
 
 class _AppLocalizationsDelegate

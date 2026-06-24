@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/shared/models/file_item.dart';
@@ -33,12 +34,41 @@ class PdfViewerPage extends StatefulWidget {
 class _PdfViewerPageState extends State<PdfViewerPage> {
   final _api = ApiService();
   final _log = Logger('PdfViewerPage');
+  final PdfViewerController _pdfController = PdfViewerController();
+  double _currentZoom = 1.0;
 
   @override
   Widget build(BuildContext context) {
     _log.info('Loading PDF from URL: ${widget.url}');
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: kIsWeb
+            ? null
+            : [
+                IconButton(
+                  icon: const Icon(Icons.zoom_out),
+                  tooltip: 'Zoom out',
+                  onPressed: () => _zoom(-0.25),
+                ),
+                Center(
+                  child: Text(
+                    '${(_currentZoom * 100).round()}%',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.zoom_in),
+                  tooltip: 'Zoom in',
+                  onPressed: () => _zoom(0.25),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Reset zoom',
+                  onPressed: () => _zoomTo(1.0),
+                ),
+              ],
+      ),
       body: kIsWeb ? _buildWebPdfViewer() : _buildMobilePdfViewer(),
       bottomNavigationBar: widget.fileItem != null
           ? BottomAppBar(
@@ -53,6 +83,13 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
                 onActionSelected: (action, item) async {
                   if (action == 'pdf_to_images') {
                     _splitToImages(context, item);
+                  } else if (action == 'download') {
+                    final uri = Uri.parse('${_api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  } else if (action == 'attach') {
+                    _api.stageFilesForAi([item.path]);
                   } else {
                     setPdfPointerEvents(false);
                     await Navigator.maybePop(context);
@@ -76,7 +113,31 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
   }
 
   Widget _buildMobilePdfViewer() {
-    return SfPdfViewer.network(widget.url);
+    final scale = _currentZoom < 1.0 ? _currentZoom : 1.0;
+
+    return Transform.scale(
+      scale: scale,
+      alignment: Alignment.topCenter,
+      child: SfPdfViewer.network(
+        widget.url,
+        controller: _pdfController,
+        onZoomLevelChanged: (details) {
+          setState(() => _currentZoom = details.newZoomLevel);
+        },
+      ),
+    );
+  }
+
+  void _zoom(double delta) {
+    final next = (_currentZoom + delta).clamp(0.1, 5.0);
+    _zoomTo(next);
+  }
+
+  void _zoomTo(double level) {
+    if (level >= 1.0) {
+      _pdfController.zoomLevel = level;
+    }
+    setState(() => _currentZoom = level);
   }
 
   Future<void> _splitToImages(BuildContext context, FileItem item) async {

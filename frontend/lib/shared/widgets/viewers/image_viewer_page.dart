@@ -96,20 +96,20 @@ class _ImageViewerPageState extends State<ImageViewerPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.auto_awesome, size: 14, color: cs.primary),
-                    const SizedBox(width: 6),
+                    Icon(Icons.auto_awesome, size: 18, color: cs.primary),
+                    const SizedBox(width: 8),
                     Flexible(
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: tags.map((tag) => Container(
-                            margin: const EdgeInsets.only(right: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                             decoration: BoxDecoration(
                               color: cs.primaryContainer,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            child: Text(tag, style: TextStyle(fontSize: 11, color: cs.onPrimaryContainer)),
+                            child: Text(tag, style: TextStyle(fontSize: 14, color: cs.onPrimaryContainer)),
                           )).toList(),
                         ),
                       ),

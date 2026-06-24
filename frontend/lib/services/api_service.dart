@@ -541,6 +541,28 @@ class ApiService with ChangeNotifier {
     if (response.statusCode != 200) throw Exception('Failed to move');
   }
 
+  Future<void> copyItem(String path, String targetDir) async {
+    final url = '$baseUrl/api/files/copy';
+    _log.info('--> POST $url');
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'paths': [path], 'target_dir': targetDir}),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to copy');
+  }
+
+  Future<void> copyItems(List<String> paths, String targetDir) async {
+    final url = '$baseUrl/api/files/copy';
+    _log.info('--> POST $url');
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'paths': paths, 'target_dir': targetDir}),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to copy');
+  }
+
   void cancelUpload(String taskId) {
     final index = uploads.indexWhere((t) => t.id == taskId);
     if (index != -1) {

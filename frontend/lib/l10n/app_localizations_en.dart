@@ -245,12 +245,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get moveHere => 'Move here';
 
   @override
+  String get copyTitle => 'Copy Item';
+
+  @override
+  String get copyHere => 'Copy here';
+
+  @override
   String viewOriginalImage(Object size) {
     return 'View original image ($size)';
   }
 
   @override
   String get downloadAction => 'Download';
+
+  @override
+  String get copyAction => 'Copy';
 
   @override
   String get loginTitle => 'Login';
@@ -829,4 +838,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get openFolder => 'Open Folder';
+
+  @override
+  String get settingServiceTitle => 'Setting & Service';
 }
