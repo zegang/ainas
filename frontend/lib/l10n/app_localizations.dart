@@ -1765,6 +1765,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Target AI NAS set to {url}'**
   String mdnsTargetSet(Object url);
+
+  /// No description provided for @mergeToPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge to PDF'**
+  String get mergeToPdf;
+
+  /// No description provided for @mergeToPdfDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge to PDF'**
+  String get mergeToPdfDialogTitle;
+
+  /// No description provided for @mergeToPdfCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Merging {count} files'**
+  String mergeToPdfCount(Object count);
+
+  /// No description provided for @mergeToPdfFilename.
+  ///
+  /// In en, this message translates to:
+  /// **'Output filename'**
+  String get mergeToPdfFilename;
+
+  /// No description provided for @mergePdfsOrderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag or use arrows to reorder files'**
+  String get mergePdfsOrderHint;
+
+  /// No description provided for @mergeToPdfAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge'**
+  String get mergeToPdfAction;
+
+  /// No description provided for @mergeToPdfSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF created: {filename}'**
+  String mergeToPdfSuccess(Object filename);
+
+  /// No description provided for @mergeToPdfFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to merge files'**
+  String get mergeToPdfFailed;
+
+  /// No description provided for @imageType.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get imageType;
+
+  /// No description provided for @pdfType.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF'**
+  String get pdfType;
 }
 
 class _AppLocalizationsDelegate

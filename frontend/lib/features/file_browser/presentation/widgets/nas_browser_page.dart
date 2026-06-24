@@ -22,6 +22,7 @@ import 'package:ainas_frontend/shared/widgets/viewers/docx_viewer_page.dart';
 import 'package:ainas_frontend/shared/widgets/viewers/image_viewer_page.dart';
 import 'upload_overlay.dart';
 import 'folder_picker_dialog.dart';
+import 'merge_to_pdf_dialog.dart';
 
 class NASBrowser extends StatefulWidget {
   const NASBrowser({super.key});
@@ -364,6 +365,44 @@ class _NASBrowserState extends State<NASBrowser> {
     api.setTabIndex(2);
   }
 
+  bool get _allSelectedAreMergeable => _selectedItems.length >= 2 &&
+      _selectedItems.every((item) =>
+          !item.isDir && (_isImageFile(item.name) || item.name.toLowerCase().endsWith('.pdf')));
+
+  Future<void> _handleMergeToPdf() async {
+    final l10n = AppLocalizations.of(context)!;
+    final paths = _selectedItems.map((item) {
+      return pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
+    }).toList();
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => MergeToPdfDialog(
+        currentPath: pathStack.last,
+        filePaths: paths,
+      ),
+    );
+    if (result == null) return;
+
+    final folder = result['folder'] as String;
+    final filename = result['filename'] as String;
+    final orderedPaths = result['file_paths'] as List<String>;
+    final outputPath = folder.isEmpty ? filename : "$folder/$filename";
+
+    try {
+      await api.mergeToPdf(orderedPaths, outputPath);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.mergeToPdfSuccess(filename)), backgroundColor: Colors.green),
+      );
+      _refresh(forceRefresh: true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.mergeToPdfFailed), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   Future<void> _handleBatchMove() async {
     final l10n = AppLocalizations.of(context)!;
     final targetDir = await showDialog<String>(
@@ -502,6 +541,12 @@ class _NASBrowserState extends State<NASBrowser> {
             tooltip: l10n.copyAction,
             onPressed: _handleBatchCopy,
           ),
+          if (_allSelectedAreMergeable)
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf),
+              tooltip: l10n.mergeToPdf,
+              onPressed: _handleMergeToPdf,
+            ),
           IconButton(
             icon: const Icon(Icons.auto_awesome_outlined),
             tooltip: l10n.attachToAiAction,
@@ -682,6 +727,12 @@ class _NASBrowserState extends State<NASBrowser> {
                   tooltip: l10n.copyAction,
                   onPressed: _handleBatchCopy,
                 ),
+                if (_allSelectedAreMergeable)
+                  IconButton(
+                    icon: const Icon(Icons.picture_as_pdf),
+                    tooltip: l10n.mergeToPdf,
+                    onPressed: _handleMergeToPdf,
+                  ),
                 IconButton(
                   icon: const Icon(Icons.auto_awesome_outlined),
                   tooltip: l10n.attachToAiAction,

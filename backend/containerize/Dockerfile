@@ -58,6 +58,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         export CMAKE_PREFIX_PATH="/opt/rocm:$CMAKE_PREFIX_PATH" && \
         export LIBRARY_PATH="/usr/local/cuda/lib64/stubs:$LIBRARY_PATH" && \
         export LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH" && \
+        if [ -f /usr/local/cuda/lib64/stubs/libcuda.so ] && [ ! -f /usr/local/cuda/lib64/stubs/libcuda.so.1 ]; then \
+            ln -sf libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; \
+        fi && \
         CMAKE_ARGS="$LLAMA_CPP_CMAKE_ARGS" uv sync --frozen --no-dev ${TORCH_INDEX_URL:+--index-url "$TORCH_INDEX_URL"}; \
     else \
         uv sync --frozen --no-dev ${TORCH_INDEX_URL:+--index-url "$TORCH_INDEX_URL"}; \

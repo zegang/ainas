@@ -60,6 +60,7 @@ class FileGridView extends StatelessWidget {
         final isSelected = selectedItems.contains(item);
         
         return Card(
+          key: ValueKey(item.path),
           clipBehavior: Clip.antiAlias,
           shape: isSmallScreen && isSelected
               ? RoundedRectangleBorder(

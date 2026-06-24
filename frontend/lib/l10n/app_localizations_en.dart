@@ -913,4 +913,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String mdnsTargetSet(Object url) {
     return 'Target AI NAS set to $url';
   }
+
+  @override
+  String get mergeToPdf => 'Merge to PDF';
+
+  @override
+  String get mergeToPdfDialogTitle => 'Merge to PDF';
+
+  @override
+  String mergeToPdfCount(Object count) {
+    return 'Merging $count files';
+  }
+
+  @override
+  String get mergeToPdfFilename => 'Output filename';
+
+  @override
+  String get mergePdfsOrderHint => 'Drag or use arrows to reorder files';
+
+  @override
+  String get mergeToPdfAction => 'Merge';
+
+  @override
+  String mergeToPdfSuccess(Object filename) {
+    return 'PDF created: $filename';
+  }
+
+  @override
+  String get mergeToPdfFailed => 'Failed to merge files';
+
+  @override
+  String get imageType => 'Image';
+
+  @override
+  String get pdfType => 'PDF';
 }

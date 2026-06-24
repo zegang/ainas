@@ -390,5 +390,25 @@
     "placeholders": {
       "url": {}
     }
-  }
+  },
+  "mergeToPdf": "合并为 PDF",
+  "mergeToPdfDialogTitle": "合并为 PDF",
+  "mergeToPdfCount": "合并 {count} 个文件",
+  "@mergeToPdfCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "mergeToPdfFilename": "输出文件名",
+  "mergePdfsOrderHint": "拖拽或使用箭头调整文件顺序",
+  "mergeToPdfAction": "合并",
+  "mergeToPdfSuccess": "PDF 已创建：{filename}",
+  "@mergeToPdfSuccess": {
+    "placeholders": {
+      "filename": {}
+    }
+  },
+  "mergeToPdfFailed": "合并文件失败",
+  "imageType": "图片",
+  "pdfType": "PDF"
 }

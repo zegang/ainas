@@ -32,7 +32,7 @@ class ApiService with ChangeNotifier {
   static const String _usernameKey = 'nas_username';
   static const String _vipStatusKey = 'nas_vip_status';
   static const String _fontScaleKey = 'nas_font_scale';
-  String locale = 'en';
+  String locale = 'zh';
   ThemeMode themeMode = ThemeMode.system;
   double fontScale = 1.0;
   bool isLoggedIn = false;
@@ -601,6 +601,23 @@ class ApiService with ChangeNotifier {
       return json.decode(response.body);
     }
     throw Exception('PDF-to-images failed: ${response.body}');
+  }
+
+  Future<Map<String, dynamic>> mergeToPdf(
+      List<String> filePaths, String outputPath) async {
+    final url = Uri.parse('$baseUrl/api/files/merge-to-pdf');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'file_paths': filePaths,
+        'output_path': outputPath,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Merge-to-PDF failed: ${response.body}');
   }
 
   Future<void> uploadFile(String fileName, Uint8List bytes, {String? parentPath}) async {

@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from backend.services.image_service import create_thumbnail, create_pdf_thumbnail, pdf_to_images
+from backend.services.pdf_service import merge_to_pdf
 from backend.services.system_service import check_disk_and_alert
 from backend.services.ai.ai_engine import AIEngine
 from backend.services.elasticsearch_service import ElasticsearchService
@@ -64,6 +65,10 @@ class DeleteRequest(BaseModel):
 class PdfToImagesRequest(BaseModel):
     path: str
     output_dir: str
+
+class MergeToPdfRequest(BaseModel):
+    file_paths: list[str]
+    output_path: str
 
 # --- Endpoints ---
 
@@ -431,4 +436,29 @@ async def pdf_to_images_endpoint(body: PdfToImagesRequest, request: Request):
             img["path"] = f"{rel_base}/{img['filename']}"
         return {"total_pages": len(images), "images": images}
     except (RuntimeError, OSError) as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/merge-to-pdf")
+async def merge_to_pdf_endpoint(body: MergeToPdfRequest):
+    """Merge multiple files (images and/or PDFs) into a single PDF."""
+    logger = logging.getLogger(__name__)
+
+    valid_paths = []
+    for src in body.file_paths:
+        full = os.path.abspath(os.path.join(config.AINAS_DATA_PATH, src.lstrip("/")))
+        if not full.startswith(os.path.abspath(config.AINAS_DATA_PATH)):
+            raise HTTPException(status_code=403, detail=f"Access denied: {src}")
+        if not os.path.isfile(full):
+            raise HTTPException(status_code=404, detail=f"File not found: {src}")
+        valid_paths.append(full)
+
+    output_full = os.path.abspath(os.path.join(config.AINAS_DATA_PATH, body.output_path.lstrip("/")))
+    if not output_full.startswith(os.path.abspath(config.AINAS_DATA_PATH)):
+        raise HTTPException(status_code=403, detail="Access denied: output path")
+
+    try:
+        merge_to_pdf(valid_paths, output_full)
+        return {"pdf_path": body.output_path, "file_count": len(valid_paths)}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

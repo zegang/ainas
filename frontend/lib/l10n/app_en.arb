@@ -408,6 +408,26 @@
     "placeholders": {
       "url": {}
     }
-  }
+  },
+  "mergeToPdf": "Merge to PDF",
+  "mergeToPdfDialogTitle": "Merge to PDF",
+  "mergeToPdfCount": "Merging {count} files",
+  "@mergeToPdfCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "mergeToPdfFilename": "Output filename",
+  "mergePdfsOrderHint": "Drag or use arrows to reorder files",
+  "mergeToPdfAction": "Merge",
+  "mergeToPdfSuccess": "PDF created: {filename}",
+  "@mergeToPdfSuccess": {
+    "placeholders": {
+      "filename": {}
+    }
+  },
+  "mergeToPdfFailed": "Failed to merge files",
+  "imageType": "Image",
+  "pdfType": "PDF"
 }
 

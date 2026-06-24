@@ -306,8 +306,15 @@ class _MainShellState extends State<MainShell> {
                   label: l10n.navFiles,
                 ),
                 NavigationDestination(
-                  icon: const Icon(Icons.psychology_outlined),
-                  selectedIcon: const Icon(Icons.psychology),
+                  icon: const Icon(Icons.auto_awesome, size: 28),
+                  selectedIcon: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.auto_awesome, size: 28),
+                  ),
                   label: l10n.aiAssistant,
                 ),
                 NavigationDestination(

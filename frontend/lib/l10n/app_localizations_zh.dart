@@ -905,4 +905,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String mdnsTargetSet(Object url) {
     return '目标 AI NAS 已设为 $url';
   }
+
+  @override
+  String get mergeToPdf => '合并为 PDF';
+
+  @override
+  String get mergeToPdfDialogTitle => '合并为 PDF';
+
+  @override
+  String mergeToPdfCount(Object count) {
+    return '合并 $count 个文件';
+  }
+
+  @override
+  String get mergeToPdfFilename => '输出文件名';
+
+  @override
+  String get mergePdfsOrderHint => '拖拽或使用箭头调整文件顺序';
+
+  @override
+  String get mergeToPdfAction => '合并';
+
+  @override
+  String mergeToPdfSuccess(Object filename) {
+    return 'PDF 已创建：$filename';
+  }
+
+  @override
+  String get mergeToPdfFailed => '合并文件失败';
+
+  @override
+  String get imageType => '图片';
+
+  @override
+  String get pdfType => 'PDF';
 }

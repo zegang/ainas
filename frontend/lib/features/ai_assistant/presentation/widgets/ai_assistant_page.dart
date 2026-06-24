@@ -135,7 +135,9 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
     _textFocusNode.onKey = (node, event) {
       if (event is RawKeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
         if (!event.isShiftPressed || event.isControlPressed) {
-          _handleSend();
+          if (!api.isAwaitingResponse) {
+            _handleSend();
+          }
           return KeyEventResult.handled;
         }
       }
@@ -738,15 +740,15 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
         children: [
           _QuickActionChip(
             label: l10n.checkStorage,
-            onTap: () => _controller.text = l10n.checkStoragePrompt,
+            onTap: api.isAwaitingResponse ? null : () => _controller.text = l10n.checkStoragePrompt,
           ),
           _QuickActionChip(
             label: l10n.searchDocuments,
-            onTap: () => _controller.text = l10n.searchDocumentsPrompt,
+            onTap: api.isAwaitingResponse ? null : () => _controller.text = l10n.searchDocumentsPrompt,
           ),
           _QuickActionChip(
             label: l10n.optimizeNas,
-            onTap: () => _controller.text = l10n.optimizeNasPrompt,
+            onTap: api.isAwaitingResponse ? null : () => _controller.text = l10n.optimizeNasPrompt,
           ),
         ],
       ),
@@ -791,6 +793,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
             TextField(
               controller: _controller,
               focusNode: _textFocusNode,
+              enabled: !api.isAwaitingResponse,
               minLines: 1,
               maxLines: 8,
               decoration: InputDecoration(
@@ -804,19 +807,21 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
                 IconButton(
                   icon: const Icon(Icons.attach_file),
                   tooltip: l10n.attachFiles,
-                  onPressed: () async {
-                    final List<String>? result = await showModalBottomSheet<List<String>>(
-                      context: context,
-                      isScrollControlled: true,
-                      builder: (context) => FractionallySizedBox(
-                        heightFactor: 0.9,
-                        child: NasFilePicker(initialSelectedFiles: _selectedFiles),
-                      ),
-                    );
-                    if (result != null) {
-                      setState(() => _selectedFiles = result);
-                    }
-                  },
+                  onPressed: api.isAwaitingResponse
+                      ? null
+                      : () async {
+                          final List<String>? result = await showModalBottomSheet<List<String>>(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (context) => FractionallySizedBox(
+                              heightFactor: 0.9,
+                              child: NasFilePicker(initialSelectedFiles: _selectedFiles),
+                            ),
+                          );
+                          if (result != null) {
+                            setState(() => _selectedFiles = result);
+                          }
+                        },
                 ),
                 const Spacer(),
                 Padding(
@@ -923,9 +928,9 @@ class _AnimatedStopIconState extends State<_AnimatedStopIcon> with SingleTickerP
 
 class _QuickActionChip extends StatelessWidget {
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
-  const _QuickActionChip({required this.label, required this.onTap});
+  const _QuickActionChip({required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {

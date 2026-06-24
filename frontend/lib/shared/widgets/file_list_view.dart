@@ -71,9 +71,15 @@ class FileListView extends StatelessWidget {
           child: ListView.separated(
             itemCount: filtered.length,
             separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) => isSmallScreen
-                ? _buildMobileListRow(context, filtered[index], api)
-                : _buildListRow(context, filtered[index], api),
+            itemBuilder: (context, index) {
+              final item = filtered[index];
+              return KeyedSubtree(
+                key: ValueKey(item.path),
+                child: isSmallScreen
+                    ? _buildMobileListRow(context, item, api)
+                    : _buildListRow(context, item, api),
+              );
+            },
           ),
         ),
       ],
