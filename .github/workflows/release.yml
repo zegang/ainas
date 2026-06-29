@@ -445,6 +445,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Install dependencies
         run: |
@@ -491,6 +493,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Configure CMake
         working-directory: backendcpp
@@ -531,13 +535,27 @@ jobs:
       contents: write
 
     steps:
+      # Fix 1: Add submodules: true so vendor/oatpp actually gets checked out
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
+      # Fix 2: Download and drop SQLite amalgamation source into vendor
+      - name: Install SQLite amalgamation
+        run: |
+          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3460100.zip \
+            -o sqlite-amal.zip
+          unzip -q sqlite-amal.zip
+          cp sqlite-amalgamation-*/sqlite3.{c,h} backendcpp/vendor/
+
+      # Fix 3: Direct CMake to treat the amalgamation files as the source library
       - name: Configure CMake
         working-directory: backendcpp
         run: |
           mkdir -p build
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+            -DSQLITE3_INCLUDE_DIRS="$GITHUB_WORKSPACE/backendcpp/vendor" \
+            -DSQLITE3_LIBRARIES="$GITHUB_WORKSPACE/backendcpp/vendor/sqlite3.c"
 
       - name: Build
         working-directory: backendcpp
@@ -545,8 +563,8 @@ jobs:
 
       - name: Package binary
         run: |
-          cd backendcpp/build/src
-          tar czf ainas-backend-windows.tar.gz ainas-backend-cpp.exe
+          cd backendcpp/build/src/Release   # MSVC outputs to a build configuration subfolder
+          tar czf ../../../ainas-backendcpp-windows.tar.gz ainas-backend-cpp.exe
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
@@ -561,7 +579,7 @@ jobs:
         with:
           name: ainas-backendcpp-windows
           path: ainas-backendcpp-windows.tar.gz
-
+  
   # ─── Full bundles: Flutter frontend + C++ backend ──────────────────
   ainas-full-linux:
     needs: [ainas-front-linux, ainas-backendcpp-linux]
@@ -570,6 +588,10 @@ jobs:
       contents: write
 
     steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
       - name: Download Flutter Linux bundle
         uses: actions/download-artifact@v4
         with:
