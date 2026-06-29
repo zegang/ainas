@@ -410,5 +410,63 @@
   },
   "mergeToPdfFailed": "合并文件失败",
   "imageType": "图片",
-  "pdfType": "PDF"
+  "pdfType": "PDF",
+  "storageTitle": "存储",
+  "storageRootPath": "存储根路径",
+  "storageUpdateSuccess": "存储根路径更新成功",
+  "backendProcess": "后端进程",
+  "pidLabel": "进程 ID",
+  "enterBinaryPath": "输入可执行文件路径",
+  "processRunning": "运行中",
+  "processStopped": "已停止",
+  "noProcessFound": "未找到后端进程",
+  "processStopConfirm": "确定要停止 PID {pid} 的进程吗？",
+  "@processStopConfirm": {
+    "placeholders": {
+      "pid": {}
+    }
+  },
+  "storageSubtitle": "磁盘用量、存储路径、进程管理",
+  "stop": "停止",
+  "start": "启动",
+  "browse": "浏览",
+  "pathCannotBeEmpty": "路径不能为空",
+  "enterBinaryPathFirst": "请先输入可执行文件路径",
+  "startBackendConfirm": "启动后端：{path}？",
+  "@startBackendConfirm": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "failedToStopPid": "停止 PID {pid} 失败",
+  "@failedToStopPid": {
+    "placeholders": {
+      "pid": {}
+    }
+  },
+  "failedToStartBackend": "启动后端失败",
+  "startupOptions": "启动选项",
+  "runAsDaemon": "作为守护进程运行（后台）",
+  "notConfigured": "未配置",
+  "unavailable": "不可用",
+  "loadingStorageUsage": "正在加载存储用量...",
+  "nasStorageStatus": "NAS 存储状态",
+  "percentUsed": "已用 {percent}%",
+  "@percentUsed": {
+    "placeholders": {
+      "percent": {}
+    }
+  },
+  "freeOfTotal": "剩余 {free} GB / 总计 {total} GB",
+  "@freeOfTotal": {
+    "placeholders": {
+      "free": {},
+      "total": {}
+    }
+  },
+  "storageAlmostFull": "警告：存储空间即将耗尽！",
+  "homePageTitle": "AI-NAS 首页",
+  "listenAddressLabel": "监听地址",
+  "logLevelLabel": "日志级别",
+  "logFileLabel": "日志文件"
 }

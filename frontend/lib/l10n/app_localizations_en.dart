@@ -947,4 +947,110 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pdfType => 'PDF';
+
+  @override
+  String get storageTitle => 'Storage';
+
+  @override
+  String get storageRootPath => 'Storage Root Path';
+
+  @override
+  String get storageUpdateSuccess => 'Storage root updated successfully';
+
+  @override
+  String get backendProcess => 'Backend Process';
+
+  @override
+  String get pidLabel => 'PID';
+
+  @override
+  String get enterBinaryPath => 'Enter binary path';
+
+  @override
+  String get processRunning => 'Running';
+
+  @override
+  String get processStopped => 'Stopped';
+
+  @override
+  String get noProcessFound => 'No backend process found';
+
+  @override
+  String processStopConfirm(Object pid) {
+    return 'Are you sure you want to stop process PID $pid?';
+  }
+
+  @override
+  String get storageSubtitle => 'Disk usage, root path, process';
+
+  @override
+  String get stop => 'Stop';
+
+  @override
+  String get start => 'Start';
+
+  @override
+  String get browse => 'Browse';
+
+  @override
+  String get pathCannotBeEmpty => 'Path cannot be empty';
+
+  @override
+  String get enterBinaryPathFirst => 'Enter binary path first';
+
+  @override
+  String startBackendConfirm(Object path) {
+    return 'Start backend: $path?';
+  }
+
+  @override
+  String failedToStopPid(Object pid) {
+    return 'Failed to stop PID $pid';
+  }
+
+  @override
+  String get failedToStartBackend => 'Failed to start backend';
+
+  @override
+  String get startupOptions => 'Startup Options';
+
+  @override
+  String get runAsDaemon => 'Run as daemon (background)';
+
+  @override
+  String get notConfigured => 'Not configured';
+
+  @override
+  String get unavailable => 'Unavailable';
+
+  @override
+  String get loadingStorageUsage => 'Loading storage usage...';
+
+  @override
+  String get nasStorageStatus => 'NAS Storage Status';
+
+  @override
+  String percentUsed(Object percent) {
+    return '$percent% Used';
+  }
+
+  @override
+  String freeOfTotal(Object free, Object total) {
+    return '$free GB Free of $total GB';
+  }
+
+  @override
+  String get storageAlmostFull => 'Warning: Storage almost full!';
+
+  @override
+  String get homePageTitle => 'AI-NAS Home';
+
+  @override
+  String get listenAddressLabel => 'Listen Address';
+
+  @override
+  String get logLevelLabel => 'Log Level';
+
+  @override
+  String get logFileLabel => 'Log File';
 }

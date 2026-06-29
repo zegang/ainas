@@ -939,4 +939,110 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get pdfType => 'PDF';
+
+  @override
+  String get storageTitle => '存储';
+
+  @override
+  String get storageRootPath => '存储根路径';
+
+  @override
+  String get storageUpdateSuccess => '存储根路径更新成功';
+
+  @override
+  String get backendProcess => '后端进程';
+
+  @override
+  String get pidLabel => '进程 ID';
+
+  @override
+  String get enterBinaryPath => '输入可执行文件路径';
+
+  @override
+  String get processRunning => '运行中';
+
+  @override
+  String get processStopped => '已停止';
+
+  @override
+  String get noProcessFound => '未找到后端进程';
+
+  @override
+  String processStopConfirm(Object pid) {
+    return '确定要停止 PID $pid 的进程吗？';
+  }
+
+  @override
+  String get storageSubtitle => '磁盘用量、存储路径、进程管理';
+
+  @override
+  String get stop => '停止';
+
+  @override
+  String get start => '启动';
+
+  @override
+  String get browse => '浏览';
+
+  @override
+  String get pathCannotBeEmpty => '路径不能为空';
+
+  @override
+  String get enterBinaryPathFirst => '请先输入可执行文件路径';
+
+  @override
+  String startBackendConfirm(Object path) {
+    return '启动后端：$path？';
+  }
+
+  @override
+  String failedToStopPid(Object pid) {
+    return '停止 PID $pid 失败';
+  }
+
+  @override
+  String get failedToStartBackend => '启动后端失败';
+
+  @override
+  String get startupOptions => '启动选项';
+
+  @override
+  String get runAsDaemon => '作为守护进程运行（后台）';
+
+  @override
+  String get notConfigured => '未配置';
+
+  @override
+  String get unavailable => '不可用';
+
+  @override
+  String get loadingStorageUsage => '正在加载存储用量...';
+
+  @override
+  String get nasStorageStatus => 'NAS 存储状态';
+
+  @override
+  String percentUsed(Object percent) {
+    return '已用 $percent%';
+  }
+
+  @override
+  String freeOfTotal(Object free, Object total) {
+    return '剩余 $free GB / 总计 $total GB';
+  }
+
+  @override
+  String get storageAlmostFull => '警告：存储空间即将耗尽！';
+
+  @override
+  String get homePageTitle => 'AI-NAS 首页';
+
+  @override
+  String get listenAddressLabel => '监听地址';
+
+  @override
+  String get logLevelLabel => '日志级别';
+
+  @override
+  String get logFileLabel => '日志文件';
 }

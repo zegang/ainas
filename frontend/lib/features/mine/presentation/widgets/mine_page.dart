@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/services/api_service.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/settings_widget.dart';
+import 'package:ainas_frontend/features/mine/presentation/widgets/storage_page.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/user_info_widget.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/ai_config_page.dart';
 
@@ -148,6 +149,15 @@ class MinePage extends StatelessWidget {
                           body: const SettingsWidget(),
                         ),
                       ),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.storage),
+                    title: Text(l10n.storageTitle),
+                    subtitle: Text(l10n.storageSubtitle),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const StoragePage()),
                     ),
                   ),
                   ListTile(

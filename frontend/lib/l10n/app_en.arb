@@ -428,6 +428,64 @@
   },
   "mergeToPdfFailed": "Failed to merge files",
   "imageType": "Image",
-  "pdfType": "PDF"
+  "pdfType": "PDF",
+  "storageTitle": "Storage",
+  "storageRootPath": "Storage Root Path",
+  "storageUpdateSuccess": "Storage root updated successfully",
+  "backendProcess": "Backend Process",
+  "pidLabel": "PID",
+  "enterBinaryPath": "Enter binary path",
+  "processRunning": "Running",
+  "processStopped": "Stopped",
+  "noProcessFound": "No backend process found",
+  "processStopConfirm": "Are you sure you want to stop process PID {pid}?",
+  "@processStopConfirm": {
+    "placeholders": {
+      "pid": {}
+    }
+  },
+  "storageSubtitle": "Disk usage, root path, process",
+  "stop": "Stop",
+  "start": "Start",
+  "browse": "Browse",
+  "pathCannotBeEmpty": "Path cannot be empty",
+  "enterBinaryPathFirst": "Enter binary path first",
+  "startBackendConfirm": "Start backend: {path}?",
+  "@startBackendConfirm": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "failedToStopPid": "Failed to stop PID {pid}",
+  "@failedToStopPid": {
+    "placeholders": {
+      "pid": {}
+    }
+  },
+  "failedToStartBackend": "Failed to start backend",
+  "startupOptions": "Startup Options",
+  "runAsDaemon": "Run as daemon (background)",
+  "notConfigured": "Not configured",
+  "unavailable": "Unavailable",
+  "loadingStorageUsage": "Loading storage usage...",
+  "nasStorageStatus": "NAS Storage Status",
+  "percentUsed": "{percent}% Used",
+  "@percentUsed": {
+    "placeholders": {
+      "percent": {}
+    }
+  },
+  "freeOfTotal": "{free} GB Free of {total} GB",
+  "@freeOfTotal": {
+    "placeholders": {
+      "free": {},
+      "total": {}
+    }
+  },
+  "storageAlmostFull": "Warning: Storage almost full!",
+  "homePageTitle": "AI-NAS Home",
+  "listenAddressLabel": "Listen Address",
+  "logLevelLabel": "Log Level",
+  "logFileLabel": "Log File"
 }
 

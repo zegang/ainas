@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/features/home/presentation/widgets/mdns_discovery_widget.dart';
 import 'package:ainas_frontend/features/home/presentation/widgets/mdns_browser_page.dart';
 import 'package:ainas_frontend/features/home/presentation/widgets/mdns_server_detail_page.dart';
 import 'package:ainas_frontend/features/home/presentation/widgets/storage_dashboard_widget.dart';
+import 'package:ainas_frontend/features/mine/presentation/widgets/storage_page.dart';
 import 'package:ainas_frontend/shared/widgets/ai_config_widget.dart';
 import 'package:ainas_frontend/services/api_service.dart';
 import 'package:ainas_frontend/services/mdns_service.dart';
@@ -91,7 +93,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("AI-NAS Home")),
+      appBar: AppBar(title: Text(AppLocalizations.of(context)!.homePageTitle)),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
@@ -107,9 +109,15 @@ class _HomePageState extends State<HomePage> {
             currentTargetUrl: _api.baseUrl,
           ),
           const SizedBox(height: 16),
-          StorageDashboardWidget(
-            usageData: _storageUsage,
-            onRefresh: _refreshAll,
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const StoragePage()),
+            ),
+            child: StorageDashboardWidget(
+              usageData: _storageUsage,
+              onRefresh: _refreshAll,
+            ),
           ),
           const SizedBox(height: 16),
           AiConfigWidget(

@@ -1825,6 +1825,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'PDF'**
   String get pdfType;
+
+  /// No description provided for @storageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get storageTitle;
+
+  /// No description provided for @storageRootPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage Root Path'**
+  String get storageRootPath;
+
+  /// No description provided for @storageUpdateSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage root updated successfully'**
+  String get storageUpdateSuccess;
+
+  /// No description provided for @backendProcess.
+  ///
+  /// In en, this message translates to:
+  /// **'Backend Process'**
+  String get backendProcess;
+
+  /// No description provided for @pidLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'PID'**
+  String get pidLabel;
+
+  /// No description provided for @enterBinaryPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter binary path'**
+  String get enterBinaryPath;
+
+  /// No description provided for @processRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get processRunning;
+
+  /// No description provided for @processStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get processStopped;
+
+  /// No description provided for @noProcessFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No backend process found'**
+  String get noProcessFound;
+
+  /// No description provided for @processStopConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to stop process PID {pid}?'**
+  String processStopConfirm(Object pid);
+
+  /// No description provided for @storageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk usage, root path, process'**
+  String get storageSubtitle;
+
+  /// No description provided for @stop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get stop;
+
+  /// No description provided for @start.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get start;
+
+  /// No description provided for @browse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse'**
+  String get browse;
+
+  /// No description provided for @pathCannotBeEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Path cannot be empty'**
+  String get pathCannotBeEmpty;
+
+  /// No description provided for @enterBinaryPathFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter binary path first'**
+  String get enterBinaryPathFirst;
+
+  /// No description provided for @startBackendConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Start backend: {path}?'**
+  String startBackendConfirm(Object path);
+
+  /// No description provided for @failedToStopPid.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to stop PID {pid}'**
+  String failedToStopPid(Object pid);
+
+  /// No description provided for @failedToStartBackend.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to start backend'**
+  String get failedToStartBackend;
+
+  /// No description provided for @startupOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Startup Options'**
+  String get startupOptions;
+
+  /// No description provided for @runAsDaemon.
+  ///
+  /// In en, this message translates to:
+  /// **'Run as daemon (background)'**
+  String get runAsDaemon;
+
+  /// No description provided for @notConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Not configured'**
+  String get notConfigured;
+
+  /// No description provided for @unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get unavailable;
+
+  /// No description provided for @loadingStorageUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading storage usage...'**
+  String get loadingStorageUsage;
+
+  /// No description provided for @nasStorageStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'NAS Storage Status'**
+  String get nasStorageStatus;
+
+  /// No description provided for @percentUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% Used'**
+  String percentUsed(Object percent);
+
+  /// No description provided for @freeOfTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{free} GB Free of {total} GB'**
+  String freeOfTotal(Object free, Object total);
+
+  /// No description provided for @storageAlmostFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning: Storage almost full!'**
+  String get storageAlmostFull;
+
+  /// No description provided for @homePageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI-NAS Home'**
+  String get homePageTitle;
+
+  /// No description provided for @listenAddressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen Address'**
+  String get listenAddressLabel;
+
+  /// No description provided for @logLevelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Log Level'**
+  String get logLevelLabel;
+
+  /// No description provided for @logFileLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Log File'**
+  String get logFileLabel;
 }
 
 class _AppLocalizationsDelegate

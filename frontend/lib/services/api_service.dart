@@ -680,6 +680,59 @@ class ApiService with ChangeNotifier {
     }
   }
 
+  Future<String?> getConfig(String key) async {
+    final url = '$baseUrl/api/config/$key';
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final configs = data['configs'] as List?;
+        if (configs != null && configs.isNotEmpty) {
+          return configs[0]['value'] as String?;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> updateConfig(String key, String value) async {
+    final url = '$baseUrl/api/config/$key';
+    _log.info('--> PUT $url');
+    final response = await http.put(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'value': value}),
+    );
+    if (response.statusCode != 200) {
+      final data = json.decode(response.body);
+      throw Exception(data['message'] ?? 'Failed to update config');
+    }
+  }
+
+  Future<Map<String, dynamic>> getSystemConfig() async {
+    final url = '$baseUrl/api/system/config';
+    _log.info('--> GET $url');
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Failed to load system config');
+  }
+
+  Future<Map<String, dynamic>> updateStorageRoot(String path) async {
+    final url = '$baseUrl/api/system/storage-root';
+    _log.info('--> PATCH $url');
+    final response = await http.patch(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'path': path}),
+    );
+    final data = json.decode(response.body);
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Failed to update storage root');
+    }
+    return data;
+  }
 
 }
 

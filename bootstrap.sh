@@ -28,29 +28,31 @@ show_usage() {
     echo "Usage: ./bootstrap.sh [OPTIONS]"
     echo ""
     echo "Options:"
-    echo "  --upgrade    Upgrade Python and Flutter dependencies to latest allowed versions"
-    echo "  --outdated   Check for outdated Flutter dependencies"
-    echo "  --setup      Install Python dependencies and Flutter SDK submodule"
-    echo "  --backend    Setup and run only the FastAPI backend"
-    echo "  --platform   Frontend target (web, linux; default: web)"
-    echo "  --openapi    Export the backend OpenAPI spec to openapi.json"
+    echo "  --upgrade      Upgrade Python and Flutter dependencies to latest allowed versions"
+    echo "  --outdated     Check for outdated Flutter dependencies"
+    echo "  --setup        Install Python dependencies and Flutter SDK submodule"
+    echo "  --backend      Setup and run only the FastAPI backend"
+    echo "  --backendcpp   Build and run the C++ (oatpp) backend"
+    echo "  --build-cpp    Build the C++ backend binary without running"
+    echo "  --platform     Frontend target (web, linux; default: web)"
+    echo "  --openapi      Export the backend OpenAPI spec to openapi.json"
     echo "  --container-tool Tool for services (podman, docker; default: podman)"
-    echo "  --frontend   Setup and run only the Flutter frontend"
-    echo "  --build-web  Compile the Flutter Web GUI for production"
+    echo "  --frontend     Setup and run only the Flutter frontend"
+    echo "  --build-web    Compile the Flutter Web GUI for production"
     echo "  --build-backend-image [cpu|cuda|rocm] Build frontend web + backend Docker image (default: cpu)"
-    echo "  --rag        Start RAG services (Elasticsearch/Kibana)"
+    echo "  --rag          Start RAG services (Elasticsearch/Kibana)"
     echo "  --check-rag-health Check RAG services health (Elasticsearch)"
-    echo "  --logs-rag   View RAG service logs"
-    echo "  --stop-rag   Stop RAG services"
+    echo "  --logs-rag     View RAG service logs"
+    echo "  --stop-rag     Stop RAG services"
     echo "  --observability Start Prometheus observability services"
     echo "  --logs-observability View observability logs"
     echo "  --stop-observability Stop observability services"
-    echo "  --web        Run the Flutter frontend as a web application"
-    echo "  --linux      Run the Flutter frontend as a native Linux app"
-    echo "  --android    Build the Android APK (Release)"
-    echo "  --pyinstaller Build a standalone binary with PyInstaller"
-    echo "  --all        Setup and run both backend and frontend (default)"
-    echo "  --help, -h   Show this help message"
+    echo "  --web          Run the Flutter frontend as a web application"
+    echo "  --linux        Run the Flutter frontend as a native Linux app"
+    echo "  --android      Build the Android APK (Release)"
+    echo "  --pyinstaller  Build a standalone binary with PyInstaller"
+    echo "  --all          Setup and run both backend and frontend (default)"
+    echo "  --help, -h     Show this help message"
     echo ""
     echo "Environment Variables:"
     echo "  NAS_HOST     Listening IP (default: 0.0.0.0)"
@@ -331,6 +333,32 @@ run_backend() {
     fi
 }
 
+setup_cpp() {
+    local build_type="${1:-Release}"
+    echo "Step: Building C++ Backend with CMake..."
+    cmake -S "$PROJECT_ROOT/backendcpp" -B "$PROJECT_ROOT/backendcpp/build" \
+        -DCMAKE_BUILD_TYPE="$build_type" \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cmake --build "$PROJECT_ROOT/backendcpp/build" -j"$(nproc)"
+}
+
+run_backendcpp() {
+    local is_bg="${1:-true}"
+    echo "Step: Launching C++ Backend..."
+    mkdir -p "$PROJECT_ROOT/logs"
+
+    export AINAS_ADDR="$NAS_HOST"
+    export AINAS_PORT="$NAS_PORT"
+    export AINAS_DATA_PATH="$PROJECT_ROOT/storage/nasdata"
+
+    if [[ "$is_bg" == "true" ]]; then
+        "$PROJECT_ROOT/backendcpp/build/src/ainas-backend-cpp" &
+        BACKENDCPP_PID=$!
+    else
+        "$PROJECT_ROOT/backendcpp/build/src/ainas-backend-cpp"
+    fi
+}
+
 run_frontend() {
     local is_bg="${1:-true}"
     unset http_proxy
@@ -499,6 +527,13 @@ case "$COMMAND" in
     --backend)
         setup_python
         run_backend false
+        ;;
+    --build-cpp)
+        setup_cpp
+        ;;
+    --backendcpp)
+        setup_cpp
+        run_backendcpp false
         ;;
     --frontend)
         setup_flutter

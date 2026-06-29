@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ainas_frontend/l10n/app_localizations.dart';
 
 class StorageDashboardWidget extends StatelessWidget {
   final Map<String, dynamic>? usageData;
@@ -8,12 +9,14 @@ class StorageDashboardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (usageData == null) {
-      return const Card(
+      return Card(
         elevation: 2,
         child: Padding(
-          padding: EdgeInsets.all(24.0),
-          child: Center(child: Text("Loading storage usage...")),
+          padding: const EdgeInsets.all(24.0),
+          child: Center(child: Text(l10n.loadingStorageUsage)),
         ),
       );
     }
@@ -43,7 +46,7 @@ class StorageDashboardWidget extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("NAS Storage Status", style: Theme.of(context).textTheme.titleMedium),
+                Text(l10n.nasStorageStatus, style: Theme.of(context).textTheme.titleMedium),
                 if (onRefresh != null)
                   IconButton(
                     icon: const Icon(Icons.refresh, size: 20),
@@ -65,16 +68,16 @@ class StorageDashboardWidget extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("${percent.toStringAsFixed(1)}% Used", 
+                Text(l10n.percentUsed(percent.toStringAsFixed(1)),
                   style: TextStyle(fontWeight: FontWeight.bold, color: color)),
-                Text("${free.toStringAsFixed(1)} GB Free of ${total.toStringAsFixed(1)} GB",
+                Text(l10n.freeOfTotal(free.toStringAsFixed(1), total.toStringAsFixed(1)),
                   style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
             if (percent > 90)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
-                child: Text("Warning: Storage almost full!", 
+                child: Text(l10n.storageAlmostFull, 
                   style: TextStyle(color: Colors.red[700], fontSize: 12, fontWeight: FontWeight.bold)),
               ),
           ],
