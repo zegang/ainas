@@ -420,6 +420,10 @@
             onclick="showDlTab('frontend')">
       <span data-i18n="tabFrontend">Frontend Only</span>
     </button>
+    <button class="dl-tab" id="tab-backend-btn" role="tab" aria-selected="false"
+            onclick="showDlTab('backend')">
+      <span data-i18n="tabBackend">Backend Only</span>
+    </button>
     <button class="dl-tab" id="tab-docker-dl-btn" role="tab" aria-selected="false"
             onclick="showDlTab('docker-dl')">
       🐳 <span data-i18n="tabDocker">Docker</span>
@@ -541,16 +545,46 @@
           ⬇ <span data-i18n="dlDownload">Download</span>
         </a>
       </div>
+    </div>
+  </div>
+
+  <!-- ── Backend Only tab ─────────────────────────────────────── -->
+  <div id="dl-panel-backend" role="tabpanel" style="display:none">
+    <p style="color:#9aa0a6;margin-bottom:1.5rem;font-size:.9rem" data-i18n="dlBackendDesc">
+      Standalone high-performance native C++ core microservices. Ideal for headless home servers and NAS systems.
+    </p>
+    <div class="download-grid">
       <div class="download-card">
-        <span class="dl-icon">🌐</span>
-        <h3 data-i18n="dlWeb">Web</h3>
-        <div class="dl-meta" data-i18n="dlWebDesc">Static web build (tar.gz)</div>
-        <a class="dl-btn" id="dl-web"
+        <span class="dl-icon">🐧</span>
+        <h3 data-i18n="dlLinux">Linux</h3>
+        <div class="dl-meta" data-i18n="dlBackendLinuxMeta">x64 · Core service (tar.gz)</div>
+        <a class="dl-btn" id="dl-backend-linux"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
+      <div class="download-card">
+        <span class="dl-icon">🍎</span>
+        <h3 data-i18n="dlMacos">macOS</h3>
+        <div class="dl-meta" data-i18n="dlBackendMacosMeta">Universal · Executable (tar.gz)</div>
+        <a class="dl-btn" id="dl-backend-macos"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
+      <div class="download-card">
+        <span class="dl-icon">🪟</span>
+        <h3 data-i18n="dlWindows">Windows</h3>
+        <div class="dl-meta" data-i18n="dlBackendWindowsMeta">x64 · Service daemon (tar.gz)</div>
+        <a class="dl-btn" id="dl-backend-windows"
            href="https://github.com/zegang/ainas/releases/latest" target="_blank">
           ⬇ <span data-i18n="dlDownload">Download</span>
         </a>
       </div>
     </div>
+    <p style="font-size:.82rem;color:#9aa0a6" data-i18n="dlBackendNote">
+      💡 Exposes REST API endpoint server sockets locally. Runs directly over terminal consoles or initialized daemon frameworks.
+    </p>
   </div>
 
   <!-- ── Docker tab ───────────────────────────────────────────── -->
@@ -833,6 +867,7 @@ const i18n = {
     downloadsDesc: "Pre-built packages for all major platforms \u2014 choose the Full Bundle for the easiest setup.",
     tabFull: "Full Bundle",
     tabFrontend: "Frontend Only",
+    tabBackend: "Backend Only",
     tabDocker: "Docker",
     badgeFull: "Full Bundle",
     dlFullDesc: "Includes the Flutter UI and the native C++ backend in a single download. No extra setup required \u2014 just extract and run.",
@@ -843,6 +878,7 @@ const i18n = {
     dlFullIosMeta: "arm64 \u00b7 unsigned zip",
     dlFullNote: "\ud83d\udca1 The C++ backend daemon starts automatically when the app launches. For Android/iOS the binary is embedded in the app and extracted on first run.",
     dlFrontendDesc: "UI-only builds. Connect to an existing backend (Python or C++) over the network.",
+    dlBackendDesc: "Standalone high-performance native C++ core microservices. Ideal for headless home servers and NAS systems.",
     dlLinux: "Linux",
     dlLinuxDesc: "App bundle (tar.gz)",
     dlMacos: "macOS",
@@ -855,6 +891,10 @@ const i18n = {
     dlIosDesc: "Unsigned .app (zip)",
     dlWeb: "Web",
     dlWebDesc: "Static web build (tar.gz)",
+    dlBackendLinuxMeta: "x64 \u00b7 Core service (tar.gz)",
+    dlBackendMacosMeta: "Universal \u00b7 Executable (tar.gz)",
+    dlBackendWindowsMeta: "x64 \u00b7 Service daemon (tar.gz)",
+    dlBackendNote: "\ud83d\udca1 Exposes REST API endpoint server sockets locally. Runs directly over terminal consoles or initialized daemon frameworks.",
     dlDownload: "Download",
     dlDockerTabDesc: "Pre-built images for CPU, NVIDIA GPU, and AMD GPU on GitHub Container Registry. The container serves both the backend API and the Flutter web frontend on port 9026.",
     dlDockerPull: "Pull Image",
@@ -917,6 +957,7 @@ const i18n = {
     downloadsDesc: "所有主流平台的预构建安装包 \u2014 推荐选择完整包，开箱即用。",
     tabFull: "完整包",
     tabFrontend: "仅前端",
+    tabBackend: "仅后端",
     tabDocker: "Docker",
     badgeFull: "完整包",
     dlFullDesc: "单个下载文件中同时包含 Flutter 界面和原生 C++ 后端，无需额外配置，解压即可运行。",
@@ -927,6 +968,7 @@ const i18n = {
     dlFullIosMeta: "arm64 \u00b7 未签名 zip",
     dlFullNote: "\ud83d\udca1 C++ 后端守护进程在应用启动时自动运行。Android/iOS 版本将二进制文件内嵌于应用包中，首次运行时自动解压。",
     dlFrontendDesc: "纯 UI 构建，通过网络连接到现有后端（Python 或 C++）。",
+    dlBackendDesc: "独立的高性能原生 C++ 核心微服务。非常适合无界面的家用服务器和 NAS 系统。",
     dlLinux: "Linux",
     dlLinuxDesc: "应用包 (tar.gz)",
     dlMacos: "macOS",
@@ -939,6 +981,10 @@ const i18n = {
     dlIosDesc: "未签名 .app (zip)",
     dlWeb: "Web",
     dlWebDesc: "静态 Web 构建 (tar.gz)",
+    dlBackendLinuxMeta: "x64 \u00b7 核心服务 (tar.gz)",
+    dlBackendMacosMeta: "通用 \u00b7 可执行文件 (tar.gz)",
+    dlBackendWindowsMeta: "x64 \u00b7 服务守护进程 (tar.gz)",
+    dlBackendNote: "\ud83d\udca1 本地直接暴露 REST API 端点服务套接字。可直接在终端控制台或通过初始化的系统守护进程框架中运行。",
     dlDownload: "下载",
     dlDockerTabDesc: "预构建的 CPU、NVIDIA GPU 和 AMD GPU 镜像已发布至 GitHub Container Registry。容器同时提供后端 API 和 Flutter Web 前端服务（端口 9026）。",
     dlDockerPull: "拉取镜像",
@@ -973,7 +1019,7 @@ if (saved && i18n[saved]) {
 
 // Download-section tab switcher
 function showDlTab(name) {
-  ['full', 'frontend', 'docker-dl'].forEach(t => {
+  ['full', 'frontend', 'backend', 'docker-dl'].forEach(t => {
     const panel = document.getElementById('dl-panel-' + t);
     const btn   = document.getElementById('tab-' + t + '-btn');
     const active = t === name;
@@ -998,13 +1044,17 @@ function showDlTab(name) {
       'ainas-full-windows.zip':    ['dl-full-windows'],
       'ainas-full-android.apk':    ['dl-full-android'],
       'ainas-full-ios.zip':        ['dl-full-ios'],
-      // Frontend-only assets (existing jobs)
-      'ainas-linux.tar.gz':        ['dl-linux'],
-      'ainas-macos.zip':           ['dl-macos'],
-      'ainas-windows.zip':         ['dl-windows'],
-      'app-release.apk':           ['dl-android'],
-      'ainas-ios.zip':             ['dl-ios'],
-      'ainas-web.tar.gz':          ['dl-web'],
+      // Backend-only assets (ainas-backendcpp-* jobs)
+      'ainas-backend-linux.tar.gz':   ['dl-backend-linux'],
+      'ainas-backend-macos.tar.gz':   ['dl-backend-macos'],
+      'ainas-backend-windows.tar.gz': ['dl-backend-windows'],
+      // Frontend-only assets (ainas-front-* jobs)
+      'ainas-front-linux.tar.gz':        ['dl-linux'],
+      'ainas-front-macos.zip':           ['dl-macos'],
+      'ainas-front-windows.zip':         ['dl-windows'],
+      'ainas-front-android.tar.gz':      ['dl-android'],
+      'ainas-front-ios.zip':             ['dl-ios'],
+      'ainas-front-web.tar.gz':          ['dl-web'],
     };
     for (const asset of release.assets) {
       const ids = dlMap[asset.name];
