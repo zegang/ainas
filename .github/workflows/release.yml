@@ -250,7 +250,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ainas-android-frontend
+          name: ainas-front-android
           path: frontend/build/app/outputs/flutter-apk/app-release.apk
 
   # ─── iOS (unsigned archive) ────────────────────────────────────────
@@ -563,17 +563,6 @@ jobs:
           path: ainas-backendcpp-windows.tar.gz
 
   # ─── Full bundles: Flutter frontend + C++ backend ──────────────────
-  #
-  # Each "ainas-full-*" job waits for BOTH the frontend build and the
-  # matching backendcpp build, then repacks them into a single archive
-  # that users can download and run without extra steps.
-  #
-  # Android / iOS use CMake cross-compilation (NDK / Xcode) to produce
-  # an arm64 (and x86_64 for Android) backend binary that is embedded
-  # into the app package so the Flutter app can extract and launch it.
-  # ────────────────────────────────────────────────────────────────────
-
-  # ── Linux full bundle ──────────────────────────────────────────────
   ainas-full-linux:
     needs: [ainas-front-linux, ainas-backendcpp-linux]
     runs-on: ubuntu-latest
@@ -584,21 +573,19 @@ jobs:
       - name: Download Flutter Linux bundle
         uses: actions/download-artifact@v4
         with:
-          name: ainas-front-linux          # tar.gz uploaded by the 'ainas-front-linux' job
+          name: ainas-front-linux
           path: dl/linux
 
       - name: Download C++ backend (Linux)
         uses: actions/download-artifact@v4
         with:
-          name: ainas-backendcpp-linux  # tar.gz uploaded by the 'ainas-backendcpp-linux' job
+          name: ainas-backendcpp-linux
           path: dl/backend-linux
 
       - name: Assemble bundle
         run: |
           mkdir -p bundle
-          # Extract Flutter bundle (preserves lib/, data/, etc.)
           tar xzf dl/linux/ainas-front-linux.tar.gz -C bundle
-          # Extract backend binary directly into bundle root
           tar xzf dl/backend-linux/ainas-backendcpp-linux.tar.gz -C bundle
           chmod +x bundle/ainas-backend-cpp || true
 
@@ -630,7 +617,7 @@ jobs:
       - name: Download Flutter macOS app
         uses: actions/download-artifact@v4
         with:
-          name: ainas-front-macos          # zip of Runner.app
+          name: ainas-front-macos
           path: dl/macos
 
       - name: Download C++ backend (macOS)
@@ -642,10 +629,8 @@ jobs:
       - name: Assemble bundle
         run: |
           mkdir -p staging
-          # Unzip Flutter .app bundle
           unzip -q dl/macos/ainas-front-macos.zip -d staging
           APP=$(find staging -maxdepth 1 -name "*.app" | head -1)
-          # Extract backend binary next to the Flutter app binary
           MACOS_DIR="$APP/Contents/MacOS"
           tar xzf dl/backend-macos/ainas-backendcpp-macos.tar.gz -C "$MACOS_DIR"
           chmod +x "$MACOS_DIR/ainas-backend-cpp" || true
@@ -683,7 +668,7 @@ jobs:
       - name: Download Flutter Windows bundle
         uses: actions/download-artifact@v4
         with:
-          name: ainas-front-windows        # zip of runner/Release contents
+          name: ainas-front-windows
           path: dl/windows
 
       - name: Download C++ backend (Windows)
@@ -696,7 +681,6 @@ jobs:
         run: |
           mkdir -p bundle
           unzip -q dl/windows/ainas-front-windows.zip -d bundle
-          # Extract backend binary into the bundle directory
           tar xzf dl/backend-windows/ainas-backendcpp-windows.tar.gz -C bundle
 
       - name: Create zip
@@ -720,14 +704,8 @@ jobs:
           path: ainas-full-windows.zip
 
   # ── Android full bundle (APK + embedded backend binaries) ──────────
-  #
-  # The C++ backend is cross-compiled for Android arm64-v8a and x86_64
-  # using the Android NDK. The resulting binaries are packed into the
-  # APK's assets/backend/ directory so the Flutter app can extract and
-  # execute them at runtime via the app's private files directory.
-  # ────────────────────────────────────────────────────────────────────
   ainas-full-android:
-    needs: [ainas-front-android]            # backendcpp stays because Android uses CMake cross-compilation
+    needs: [ainas-front-android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -752,7 +730,6 @@ jobs:
 
       - name: Install SQLite amalgamation (for Android cross-build)
         run: |
-          # Download SQLite amalgamation so we can compile it into the binary
           curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3460100.zip \
             -o sqlite-amal.zip
           unzip -q sqlite-amal.zip
@@ -788,19 +765,17 @@ jobs:
             -DSQLITE3_LIBRARIES="$GITHUB_WORKSPACE/backendcpp/vendor/sqlite3.c"
           cmake --build build-android-x86_64 --parallel --config Release
 
-        - name: Download Flutter APK
+      - name: Download Flutter APK
         uses: actions/download-artifact@v4
         with:
-          name: ainas-front-android            # now from 'ainas-front-android' job
+          name: ainas-front-android
           path: dl/android
 
       - name: Inject backend binaries into APK
         run: |
-          # APK is just a zip — we can append assets to it
           APK="dl/android/app-release.apk"
           cp "$APK" ainas-full-android.apk
 
-          # Create the assets/backend/<abi>/ directory structure
           mkdir -p apk-inject/assets/backend/arm64-v8a
           mkdir -p apk-inject/assets/backend/x86_64
 
@@ -809,7 +784,6 @@ jobs:
           cp build-android-x86_64/src/ainas-backend-cpp \
              apk-inject/assets/backend/x86_64/ainas-backend-cpp
 
-          # Add the files into the APK (zip) — no compression for executables
           cd apk-inject
           zip -0 -r "$GITHUB_WORKSPACE/ainas-full-android.apk" assets/
 
@@ -828,13 +802,8 @@ jobs:
           path: ainas-full-android.apk
 
   # ── iOS full bundle (.app + embedded backend binary) ───────────────
-  #
-  # The C++ backend is cross-compiled for arm64-apple-ios (device) and
-  # placed inside Runner.app so the Flutter app can execute it at
-  # runtime from the app bundle's Frameworks or Resources directory.
-  # ────────────────────────────────────────────────────────────────────
   ainas-full-ios:
-    needs: [ainas-front-ios]              # backendcpp stays because iOS uses CMake cross-compilation
+    needs: [ainas-front-ios]
     runs-on: macos-latest
     permissions:
       contents: write
@@ -865,18 +834,17 @@ jobs:
             -DSQLITE3_LIBRARIES="$GITHUB_WORKSPACE/backendcpp/vendor/sqlite3.c"
           cmake --build build-ios-arm64 --parallel --config Release
 
-        - name: Download Flutter iOS app
+      - name: Download Flutter iOS app
         uses: actions/download-artifact@v4
         with:
-          name: ainas-front-ios            # zip containing Runner.app
+          name: ainas-front-ios
           path: dl/ios
 
-        - name: Inject backend binary into .app bundle
+      - name: Inject backend binary into .app bundle
         run: |
           unzip -q dl/ios/ainas-front-ios.zip -d staging-ios
           APP=$(find staging-ios -maxdepth 1 -name "*.app" | head -1)
 
-          # Place the backend binary alongside the app's main executable
           DEST="$APP/Frameworks"
           mkdir -p "$DEST"
           cp build-ios-arm64/src/ainas-backend-cpp "$DEST/ainas-backend-cpp"
