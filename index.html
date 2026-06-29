@@ -222,54 +222,123 @@
     color: #c4d7f5;
   }
 
+  /* Download tabs */
+  .dl-tabs {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+  .dl-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .5rem 1.25rem;
+    border-radius: 999px;
+    font-size: .88rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid rgba(232,234,237,.18);
+    background: transparent;
+    color: #9aa0a6;
+    transition: all .2s;
+  }
+  .dl-tab:hover { color: #e8eaed; border-color: rgba(138,180,248,.35); }
+  .dl-tab.active {
+    background: linear-gradient(135deg, #1a73e8, #4285f4);
+    border-color: transparent;
+    color: #fff;
+  }
+  .dl-tab .rec-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #81c995;
+    display: inline-block;
+  }
+
   /* Download Grid */
   .download-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
     gap: 1rem;
     margin-bottom: 2.5rem;
   }
   .download-card {
     background: rgba(232,234,237,.04);
     border: 1px solid rgba(232,234,237,.08);
-    border-radius: 12px;
-    padding: 1.5rem;
+    border-radius: 14px;
+    padding: 1.5rem 1.25rem;
     text-align: center;
     transition: all .25s;
+    position: relative;
+    overflow: hidden;
+  }
+  .download-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(138,180,248,.07) 0%, transparent 70%);
+    pointer-events: none;
   }
   .download-card:hover {
-    border-color: rgba(138,180,248,.3);
-    transform: translateY(-3px);
+    border-color: rgba(138,180,248,.35);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,.3);
   }
   .download-card .dl-icon {
-    font-size: 2.2rem;
+    font-size: 2.4rem;
     margin-bottom: .75rem;
+    display: block;
   }
   .download-card h3 {
     font-size: 1rem;
     font-weight: 600;
-    margin-bottom: .3rem;
+    margin-bottom: .25rem;
   }
-  .download-card p {
-    font-size: .8rem;
+  .download-card .dl-meta {
+    font-size: .78rem;
     color: #9aa0a6;
-    margin-bottom: 1rem;
+    margin-bottom: .9rem;
+    min-height: 1.2em;
+  }
+  .download-card .dl-badge {
+    display: inline-block;
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    padding: .15rem .55rem;
+    border-radius: 999px;
+    background: rgba(129,201,149,.15);
+    border: 1px solid rgba(129,201,149,.3);
+    color: #81c995;
+    margin-bottom: .75rem;
+    text-transform: uppercase;
   }
   .download-card .dl-btn {
-    display: inline-block;
-    padding: .45rem 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .5rem 1.35rem;
     border-radius: 999px;
-    font-size: .8rem;
+    font-size: .82rem;
     font-weight: 500;
     background: rgba(138,180,248,.12);
-    border: 1px solid rgba(138,180,248,.25);
+    border: 1px solid rgba(138,180,248,.28);
     color: #8ab4f8;
     cursor: pointer;
     transition: all .2s;
   }
   .download-card .dl-btn:hover {
-    background: rgba(138,180,248,.2);
+    background: rgba(138,180,248,.22);
+    transform: scale(1.03);
     text-decoration: none;
+  }
+  .download-card.featured {
+    border-color: rgba(138,180,248,.22);
+    background: rgba(26,115,232,.07);
+  }
+  .download-card.featured:hover {
+    border-color: rgba(138,180,248,.5);
   }
   .steps {
     display: flex;
@@ -338,48 +407,194 @@
 <section class="section" id="downloads">
   <span class="section-label" data-i18n="downloadsLabel">Downloads</span>
   <h2 data-i18n="downloadsTitle">Download AI-NAS</h2>
-  <p data-i18n="downloadsDesc">Pre-built binaries for all major platforms. Docker images are available on GitHub Container Registry.</p>
+  <p data-i18n="downloadsDesc">Pre-built packages for all major platforms — choose the Full Bundle for the easiest setup.</p>
 
-  <div class="download-grid">
-    <div class="download-card">
-      <div class="dl-icon">🐧</div>
-      <h3 data-i18n="dlLinux">Linux</h3>
-      <p data-i18n="dlLinuxDesc">App bundle (tar.gz)</p>
-      <a class="dl-btn" id="dl-linux" href="https://github.com/zegang/ainas/releases/latest" target="_blank" data-i18n="dlDownload">Download</a>
+  <!-- Tab pills -->
+  <div class="dl-tabs" role="tablist">
+    <button class="dl-tab active" id="tab-full-btn" role="tab" aria-selected="true"
+            onclick="showDlTab('full')">
+      <span class="rec-dot"></span>
+      <span data-i18n="tabFull">Full Bundle</span>
+    </button>
+    <button class="dl-tab" id="tab-frontend-btn" role="tab" aria-selected="false"
+            onclick="showDlTab('frontend')">
+      <span data-i18n="tabFrontend">Frontend Only</span>
+    </button>
+    <button class="dl-tab" id="tab-docker-dl-btn" role="tab" aria-selected="false"
+            onclick="showDlTab('docker-dl')">
+      🐳 <span data-i18n="tabDocker">Docker</span>
+    </button>
+  </div>
+
+  <!-- ── Full Bundle tab ──────────────────────────────────────── -->
+  <div id="dl-panel-full" role="tabpanel">
+    <p style="color:#9aa0a6;margin-bottom:1.5rem;font-size:.9rem" data-i18n="dlFullDesc">
+      Includes the Flutter UI <strong style="color:#e8eaed">and</strong> the native C++ backend in a single download.
+      No extra setup required — just extract and run.
+    </p>
+    <div class="download-grid">
+      <div class="download-card featured">
+        <span class="dl-icon">🐧</span>
+        <h3 data-i18n="dlLinux">Linux</h3>
+        <div class="dl-badge" data-i18n="badgeFull">Full Bundle</div>
+        <div class="dl-meta" data-i18n="dlFullLinuxMeta">x64 · tar.gz</div>
+        <a class="dl-btn" id="dl-full-linux"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
+      <div class="download-card featured">
+        <span class="dl-icon">🍎</span>
+        <h3 data-i18n="dlMacos">macOS</h3>
+        <div class="dl-badge" data-i18n="badgeFull">Full Bundle</div>
+        <div class="dl-meta" data-i18n="dlFullMacosMeta">Universal · zip</div>
+        <a class="dl-btn" id="dl-full-macos"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
+      <div class="download-card featured">
+        <span class="dl-icon">🪟</span>
+        <h3 data-i18n="dlWindows">Windows</h3>
+        <div class="dl-badge" data-i18n="badgeFull">Full Bundle</div>
+        <div class="dl-meta" data-i18n="dlFullWindowsMeta">x64 · zip</div>
+        <a class="dl-btn" id="dl-full-windows"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
+      <div class="download-card featured">
+        <span class="dl-icon">🤖</span>
+        <h3 data-i18n="dlAndroid">Android</h3>
+        <div class="dl-badge" data-i18n="badgeFull">Full Bundle</div>
+        <div class="dl-meta" data-i18n="dlFullAndroidMeta">arm64-v8a + x86_64 · APK</div>
+        <a class="dl-btn" id="dl-full-android"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
+      <div class="download-card featured">
+        <span class="dl-icon">📱</span>
+        <h3 data-i18n="dlIos">iOS</h3>
+        <div class="dl-badge" data-i18n="badgeFull">Full Bundle</div>
+        <div class="dl-meta" data-i18n="dlFullIosMeta">arm64 · unsigned zip</div>
+        <a class="dl-btn" id="dl-full-ios"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
     </div>
-    <div class="download-card">
-      <div class="dl-icon">🍎</div>
-      <h3 data-i18n="dlMacos">macOS</h3>
-      <p data-i18n="dlMacosDesc">Apple app (zip)</p>
-      <a class="dl-btn" id="dl-macos" href="https://github.com/zegang/ainas/releases/latest" target="_blank" data-i18n="dlDownload">Download</a>
-    </div>
-    <div class="download-card">
-      <div class="dl-icon">🪟</div>
-      <h3 data-i18n="dlWindows">Windows</h3>
-      <p data-i18n="dlWindowsDesc">Portable app (zip)</p>
-      <a class="dl-btn" id="dl-windows" href="https://github.com/zegang/ainas/releases/latest" target="_blank" data-i18n="dlDownload">Download</a>
-    </div>
-    <div class="download-card">
-      <div class="dl-icon">🤖</div>
-      <h3 data-i18n="dlAndroid">Android</h3>
-      <p data-i18n="dlAndroidDesc">APK (arm64)</p>
-      <a class="dl-btn" id="dl-android" href="https://github.com/zegang/ainas/releases/latest" target="_blank" data-i18n="dlDownload">Download</a>
-    </div>
-    <div class="download-card">
-      <div class="dl-icon">📱</div>
-      <h3 data-i18n="dlIos">iOS</h3>
-      <p data-i18n="dlIosDesc">Unsigned .app (zip)</p>
-      <a class="dl-btn" id="dl-ios" href="https://github.com/zegang/ainas/releases/latest" target="_blank" data-i18n="dlDownload">Download</a>
-    </div>
-    <div class="download-card">
-      <div class="dl-icon">🌐</div>
-      <h3 data-i18n="dlWeb">Web</h3>
-      <p data-i18n="dlWebDesc">Static web build (tar.gz)</p>
-      <a class="dl-btn" id="dl-web" href="https://github.com/zegang/ainas/releases/latest" target="_blank" data-i18n="dlDownload">Download</a>
+    <p style="font-size:.82rem;color:#9aa0a6" data-i18n="dlFullNote">
+      💡 The C++ backend daemon starts automatically when the app launches.
+      For Android/iOS the binary is embedded in the app and extracted on first run.
+    </p>
+  </div>
+
+  <!-- ── Frontend Only tab ────────────────────────────────────── -->
+  <div id="dl-panel-frontend" role="tabpanel" style="display:none">
+    <p style="color:#9aa0a6;margin-bottom:1.5rem;font-size:.9rem" data-i18n="dlFrontendDesc">
+      UI-only builds. Connect to an existing backend (Python or C++) over the network.
+    </p>
+    <div class="download-grid">
+      <div class="download-card">
+        <span class="dl-icon">🐧</span>
+        <h3 data-i18n="dlLinux">Linux</h3>
+        <div class="dl-meta" data-i18n="dlLinuxDesc">App bundle (tar.gz)</div>
+        <a class="dl-btn" id="dl-linux"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
+      <div class="download-card">
+        <span class="dl-icon">🍎</span>
+        <h3 data-i18n="dlMacos">macOS</h3>
+        <div class="dl-meta" data-i18n="dlMacosDesc">Apple app (zip)</div>
+        <a class="dl-btn" id="dl-macos"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
+      <div class="download-card">
+        <span class="dl-icon">🪟</span>
+        <h3 data-i18n="dlWindows">Windows</h3>
+        <div class="dl-meta" data-i18n="dlWindowsDesc">Portable app (zip)</div>
+        <a class="dl-btn" id="dl-windows"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
+      <div class="download-card">
+        <span class="dl-icon">🤖</span>
+        <h3 data-i18n="dlAndroid">Android</h3>
+        <div class="dl-meta" data-i18n="dlAndroidDesc">APK (arm64)</div>
+        <a class="dl-btn" id="dl-android"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
+      <div class="download-card">
+        <span class="dl-icon">📱</span>
+        <h3 data-i18n="dlIos">iOS</h3>
+        <div class="dl-meta" data-i18n="dlIosDesc">Unsigned .app (zip)</div>
+        <a class="dl-btn" id="dl-ios"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
+      <div class="download-card">
+        <span class="dl-icon">🌐</span>
+        <h3 data-i18n="dlWeb">Web</h3>
+        <div class="dl-meta" data-i18n="dlWebDesc">Static web build (tar.gz)</div>
+        <a class="dl-btn" id="dl-web"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
     </div>
   </div>
 
-  <p data-i18n="dlDockerText">🐳 Docker images: <code style="background:rgba(232,234,237,.08);padding:.2rem .5rem;border-radius:4px;font-size:.85rem">ghcr.io/zegang/ainas-backend:latest</code> (CPU), <code>:cuda</code> (NVIDIA), <code>:rocm</code> (AMD) — <a href="https://github.com/zegang/ainas/pkgs/container/ainas-backend" target="_blank" data-i18n="dlDockerLink">view packages</a></p>
+  <!-- ── Docker tab ───────────────────────────────────────────── -->
+  <div id="dl-panel-docker-dl" role="tabpanel" style="display:none">
+    <p style="color:#9aa0a6;margin-bottom:1.5rem;font-size:.9rem" data-i18n="dlDockerTabDesc">
+      Pre-built images for CPU, NVIDIA GPU, and AMD GPU on GitHub Container Registry.
+      The container serves both the backend API and the Flutter web frontend on port 9026.
+    </p>
+    <div class="download-grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
+      <div class="download-card">
+        <span class="dl-icon">🖥️</span>
+        <h3>CPU</h3>
+        <div class="dl-meta">python:3.12-slim</div>
+        <a class="dl-btn"
+           href="https://github.com/zegang/ainas/pkgs/container/ainas-backend" target="_blank">
+          ⬇ <span data-i18n="dlDockerPull">Pull Image</span>
+        </a>
+      </div>
+      <div class="download-card">
+        <span class="dl-icon">⚡</span>
+        <h3>NVIDIA CUDA</h3>
+        <div class="dl-meta">CUDA 12.4 · Ubuntu 22.04</div>
+        <a class="dl-btn"
+           href="https://github.com/zegang/ainas/pkgs/container/ainas-backend" target="_blank">
+          ⬇ <span data-i18n="dlDockerPull">Pull Image</span>
+        </a>
+      </div>
+      <div class="download-card">
+        <span class="dl-icon">🔴</span>
+        <h3>AMD ROCm</h3>
+        <div class="dl-meta">ROCm 7.2 · Ubuntu 24.04</div>
+        <a class="dl-btn"
+           href="https://github.com/zegang/ainas/pkgs/container/ainas-backend" target="_blank">
+          ⬇ <span data-i18n="dlDockerPull">Pull Image</span>
+        </a>
+      </div>
+    </div>
+    <p style="font-size:.82rem;color:#9aa0a6" data-i18n="dlDockerText">
+      🐳 <code style="background:rgba(232,234,237,.08);padding:.15rem .45rem;border-radius:4px">ghcr.io/zegang/ainas-backend:latest</code> (CPU) ·
+      <code style="background:rgba(232,234,237,.08);padding:.15rem .45rem;border-radius:4px">:cuda</code> (NVIDIA) ·
+      <code style="background:rgba(232,234,237,.08);padding:.15rem .45rem;border-radius:4px">:rocm</code> (AMD) —
+      <a href="https://github.com/zegang/ainas/pkgs/container/ainas-backend" target="_blank" data-i18n="dlDockerLink">view packages</a>
+    </p>
+  </div>
 </section>
 
 <section class="section" id="features">
@@ -615,7 +830,19 @@ const i18n = {
     footerGitHub: "GitHub",
     downloadsLabel: "Downloads",
     downloadsTitle: "Download AI-NAS",
-    downloadsDesc: "Pre-built binaries for all major platforms. Docker images are available on GitHub Container Registry.",
+    downloadsDesc: "Pre-built packages for all major platforms \u2014 choose the Full Bundle for the easiest setup.",
+    tabFull: "Full Bundle",
+    tabFrontend: "Frontend Only",
+    tabDocker: "Docker",
+    badgeFull: "Full Bundle",
+    dlFullDesc: "Includes the Flutter UI and the native C++ backend in a single download. No extra setup required \u2014 just extract and run.",
+    dlFullLinuxMeta: "x64 \u00b7 tar.gz",
+    dlFullMacosMeta: "Universal \u00b7 zip",
+    dlFullWindowsMeta: "x64 \u00b7 zip",
+    dlFullAndroidMeta: "arm64-v8a + x86_64 \u00b7 APK",
+    dlFullIosMeta: "arm64 \u00b7 unsigned zip",
+    dlFullNote: "\ud83d\udca1 The C++ backend daemon starts automatically when the app launches. For Android/iOS the binary is embedded in the app and extracted on first run.",
+    dlFrontendDesc: "UI-only builds. Connect to an existing backend (Python or C++) over the network.",
     dlLinux: "Linux",
     dlLinuxDesc: "App bundle (tar.gz)",
     dlMacos: "macOS",
@@ -629,7 +856,9 @@ const i18n = {
     dlWeb: "Web",
     dlWebDesc: "Static web build (tar.gz)",
     dlDownload: "Download",
-    dlDockerText: "Docker images: ghcr.io/zegang/ainas-backend:latest (CPU), :cuda (NVIDIA), :rocm (AMD) \u2014",
+    dlDockerTabDesc: "Pre-built images for CPU, NVIDIA GPU, and AMD GPU on GitHub Container Registry. The container serves both the backend API and the Flutter web frontend on port 9026.",
+    dlDockerPull: "Pull Image",
+    dlDockerText: "ghcr.io/zegang/ainas-backend:latest (CPU) \u00b7 :cuda (NVIDIA) \u00b7 :rocm (AMD) \u2014",
     dlDockerLink: "view packages",
   },
   zh: {
@@ -685,7 +914,19 @@ const i18n = {
     footerGitHub: "GitHub",
     downloadsLabel: "下载",
     downloadsTitle: "下载 AI-NAS",
-    downloadsDesc: "所有主流平台的预构建二进制文件。Docker 镜像可在 GitHub Container Registry 获取。",
+    downloadsDesc: "所有主流平台的预构建安装包 \u2014 推荐选择完整包，开箱即用。",
+    tabFull: "完整包",
+    tabFrontend: "仅前端",
+    tabDocker: "Docker",
+    badgeFull: "完整包",
+    dlFullDesc: "单个下载文件中同时包含 Flutter 界面和原生 C++ 后端，无需额外配置，解压即可运行。",
+    dlFullLinuxMeta: "x64 \u00b7 tar.gz",
+    dlFullMacosMeta: "通用 \u00b7 zip",
+    dlFullWindowsMeta: "x64 \u00b7 zip",
+    dlFullAndroidMeta: "arm64-v8a + x86_64 \u00b7 APK",
+    dlFullIosMeta: "arm64 \u00b7 未签名 zip",
+    dlFullNote: "\ud83d\udca1 C++ 后端守护进程在应用启动时自动运行。Android/iOS 版本将二进制文件内嵌于应用包中，首次运行时自动解压。",
+    dlFrontendDesc: "纯 UI 构建，通过网络连接到现有后端（Python 或 C++）。",
     dlLinux: "Linux",
     dlLinuxDesc: "应用包 (tar.gz)",
     dlMacos: "macOS",
@@ -699,7 +940,9 @@ const i18n = {
     dlWeb: "Web",
     dlWebDesc: "静态 Web 构建 (tar.gz)",
     dlDownload: "下载",
-    dlDockerText: "Docker 镜像：ghcr.io/zegang/ainas-backend:latest (CPU)、:cuda (NVIDIA)、:rocm (AMD) \u2014",
+    dlDockerTabDesc: "预构建的 CPU、NVIDIA GPU 和 AMD GPU 镜像已发布至 GitHub Container Registry。容器同时提供后端 API 和 Flutter Web 前端服务（端口 9026）。",
+    dlDockerPull: "拉取镜像",
+    dlDockerText: "ghcr.io/zegang/ainas-backend:latest (CPU) \u00b7 :cuda (NVIDIA) \u00b7 :rocm (AMD) \u2014",
     dlDockerLink: "查看包列表",
   }
 };
@@ -728,27 +971,48 @@ if (saved && i18n[saved]) {
   setLang(saved);
 }
 
+// Download-section tab switcher
+function showDlTab(name) {
+  ['full', 'frontend', 'docker-dl'].forEach(t => {
+    const panel = document.getElementById('dl-panel-' + t);
+    const btn   = document.getElementById('tab-' + t + '-btn');
+    const active = t === name;
+    if (panel) panel.style.display = active ? '' : 'none';
+    if (btn) {
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active);
+    }
+  });
+}
+
 // Populate download links from the latest GitHub Release
 (async () => {
   try {
     const resp = await fetch('https://api.github.com/repos/zegang/ainas/releases/latest');
     const release = await resp.json();
-    const tag = release.tag_name;
-    // Map asset name patterns to element IDs
+    // Map asset filename → element ID(s)
     const dlMap = {
-      'dl-linux':   ['ainas-linux.tar.gz'],
-      'dl-macos':   ['ainas-macos.zip'],
-      'dl-windows': ['ainas-windows.zip'],
-      'dl-android': ['app-release.apk'],
-      'dl-ios':     ['ainas-ios.zip'],
-      'dl-web':     ['ainas-web.tar.gz'],
+      // Full-bundle assets (ainas-full-* jobs)
+      'ainas-full-linux.tar.gz':   ['dl-full-linux'],
+      'ainas-full-macos.zip':      ['dl-full-macos'],
+      'ainas-full-windows.zip':    ['dl-full-windows'],
+      'ainas-full-android.apk':    ['dl-full-android'],
+      'ainas-full-ios.zip':        ['dl-full-ios'],
+      // Frontend-only assets (existing jobs)
+      'ainas-linux.tar.gz':        ['dl-linux'],
+      'ainas-macos.zip':           ['dl-macos'],
+      'ainas-windows.zip':         ['dl-windows'],
+      'app-release.apk':           ['dl-android'],
+      'ainas-ios.zip':             ['dl-ios'],
+      'ainas-web.tar.gz':          ['dl-web'],
     };
     for (const asset of release.assets) {
-      for (const [id, names] of Object.entries(dlMap)) {
-        if (names.some(n => asset.name === n)) {
+      const ids = dlMap[asset.name];
+      if (ids) {
+        ids.forEach(id => {
           const el = document.getElementById(id);
           if (el) el.href = asset.browser_download_url;
-        }
+        });
       }
     }
   } catch (e) {
