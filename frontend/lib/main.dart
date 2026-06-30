@@ -30,6 +30,7 @@ void main() async {
   // Initialize the singleton and load saved settings
   final api = ApiService();
   await api.loadSettings();
+  api.loadPendingUploads();
   runApp(
     ListenableBuilder(
       listenable: api,

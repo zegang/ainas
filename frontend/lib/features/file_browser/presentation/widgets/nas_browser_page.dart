@@ -12,6 +12,7 @@ import 'package:ainas_frontend/shared/themes/app_theme.dart';
 import 'package:ainas_frontend/services/api_service.dart';
 import '../controllers/file_browser_controller.dart';
 import 'package:ainas_frontend/shared/models/file_item.dart';
+import 'package:ainas_frontend/shared/models/upload_models.dart';
 import 'package:ainas_frontend/shared/widgets/breadcrumb_bar.dart';
 import 'package:ainas_frontend/shared/widgets/file_grid_view.dart';
 import 'package:ainas_frontend/shared/widgets/file_list_view.dart';
@@ -52,18 +53,29 @@ class _NASBrowserState extends State<NASBrowser> {
   int _pollAttempts = 0;
   static const int _maxPollAttempts = 12;
   static const Duration _pollInterval = Duration(seconds: 1);
+  int _previousActiveUploads = 0;
 
   @override
   void initState() {
     super.initState();
     _refresh();
+    api.addListener(_onUploadStateChanged);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _stopPolling();
+    api.removeListener(_onUploadStateChanged);
     super.dispose();
+  }
+
+  void _onUploadStateChanged() {
+    final activeCount = api.uploads.where((t) => t.status == UploadStatus.pending || t.status == UploadStatus.uploading).length;
+    if (_previousActiveUploads > 0 && activeCount == 0) {
+      _refresh();
+    }
+    _previousActiveUploads = activeCount;
   }
 
   void _refresh({bool forceRefresh = false}) {
@@ -80,15 +92,20 @@ class _NASBrowserState extends State<NASBrowser> {
     try {
       FilePickerResult? result = await FilePicker.pickFiles(
         allowMultiple: true,
-        withData: true,
+        withData: false,
         type: FileType.any,
       );
 
       if (result != null && result.files.isNotEmpty) {
+        final entries = <MapEntry<String, String>>[];
         for (var file in result.files) {
-          if (file.bytes != null) {
-            api.uploadFile(file.name, file.bytes!).then((_) => _refresh(forceRefresh: true));
+          if (file.path != null) {
+            entries.add(MapEntry(file.name, file.path!));
           }
+        }
+        if (entries.isNotEmpty) {
+          api.enqueueUploads(entries);
+          _openTransfers();
         }
       }
     } catch (e, st) {
@@ -110,24 +127,21 @@ class _NASBrowserState extends State<NASBrowser> {
         final dir = Directory(selectedDirectory);
         final parentPath = dir.parent.path;
 
-        // 2. Stream all entities recursively
-        final List<Future<void>> uploadFutures = [];
+        // 2. Collect all files with relative paths
+        final entries = <MapEntry<String, String>>[];
         await for (final entity in dir.list(recursive: true)) {
           if (entity is File) {
-            final bytes = await entity.readAsBytes();
-            
             // 3. Calculate relative path to preserve folder structure on the server
-            // e.g., "my_folder/sub_dir/file.txt"
             final relativePath = entity.path.substring(parentPath.length).replaceFirst(RegExp(r'^[/\\]'), '');
-            
-            // 4. Trigger upload task
-            uploadFutures.add(api.uploadFile(relativePath, bytes));
+            entries.add(MapEntry(relativePath, entity.path));
           }
         }
-        
-        _log.info('Started uploading ${uploadFutures.length} files from $selectedDirectory');
-        await Future.wait(uploadFutures);
-        _refresh(forceRefresh: true);
+
+        if (entries.isNotEmpty) {
+          _log.info('Enqueuing ${entries.length} files for sequential upload from $selectedDirectory');
+          api.enqueueUploads(entries);
+          _openTransfers();
+        }
       }
     } catch (e, st) {
       _log.severe('Folder upload failed', e, st);

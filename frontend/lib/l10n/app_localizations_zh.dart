@@ -1050,6 +1050,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noFeaturesRegistered => '暂无可用的 AI 功能';
 
   @override
+  String get logViewerTitle => '前端日志';
+
+  @override
+  String get logViewerSubtitle => '查看和分享应用日志';
+
+  @override
+  String get logTruncated => '日志文件已截断至最后 500 KB 以提升性能。';
+
+  @override
+  String get uploadEmpty => '暂无上传任务';
+
+  @override
   String get showWindow => '显示窗口';
 
   @override
@@ -1057,4 +1069,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get quitBackendRunning => '后端进程仍在运行，是否在退出前停止它？';
+
+  @override
+  String uploadTitle(int count) {
+    return '上传 ($count)';
+  }
+
+  @override
+  String uploadToPath(Object path) {
+    return '目标：/$path';
+  }
+
+  @override
+  String get uploadStatusUploading => '上传中';
 }

@@ -2024,6 +2024,30 @@ abstract class AppLocalizations {
   /// **'No features registered.'**
   String get noFeaturesRegistered;
 
+  /// No description provided for @logViewerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Frontend Log'**
+  String get logViewerTitle;
+
+  /// No description provided for @logViewerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View and share app logs'**
+  String get logViewerSubtitle;
+
+  /// No description provided for @logTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Log file truncated to the last 500 KB for performance.'**
+  String get logTruncated;
+
+  /// No description provided for @uploadEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No upload tasks'**
+  String get uploadEmpty;
+
   /// No description provided for @showWindow.
   ///
   /// In en, this message translates to:
@@ -2041,6 +2065,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Backend process is still running. Stop it before quitting?'**
   String get quitBackendRunning;
+
+  /// No description provided for @uploadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploads ({count})'**
+  String uploadTitle(int count);
+
+  /// No description provided for @uploadToPath.
+  ///
+  /// In en, this message translates to:
+  /// **'To: /{path}'**
+  String uploadToPath(Object path);
+
+  /// No description provided for @uploadStatusUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading'**
+  String get uploadStatusUploading;
 }
 
 class _AppLocalizationsDelegate

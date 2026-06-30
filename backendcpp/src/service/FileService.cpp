@@ -345,7 +345,18 @@ oatpp::Object<UploadResponseDto> FileService::uploadFile(
         rec.createdAt = ts;
         rec.updatedAt = ts;
         rec.parentId = parentId;
-        m_repo.insert(rec);
+
+        // If a record with the same path already exists, update it instead of
+        // inserting — avoids SQLITE_CONSTRAINT on the UNIQUE path column when
+        // re-uploading a file with the same name.
+        auto existing = m_repo.findByPath(uploadRelPath);
+        if (existing) {
+            rec.id = existing->id;
+            rec.createdAt = existing->createdAt; // preserve original creation time
+            m_repo.update(rec);
+        } else {
+            m_repo.insert(rec);
+        }
     }
 
     LOG_INFO("uploadFile: saved \"{}\" ({} bytes)",

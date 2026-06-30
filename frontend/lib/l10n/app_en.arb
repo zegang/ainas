@@ -488,8 +488,27 @@
   "logLevelLabel": "Log Level",
   "logFileLabel": "Log File",
   "noFeaturesRegistered": "No features registered.",
+  "logViewerTitle": "Frontend Log",
+  "logViewerSubtitle": "View and share app logs",
+  "logTruncated": "Log file truncated to the last 500 KB for performance.",
+  "uploadEmpty": "No upload tasks",
   "showWindow": "Show Window",
   "quitApp": "Quit",
-  "quitBackendRunning": "Backend process is still running. Stop it before quitting?"
+  "quitBackendRunning": "Backend process is still running. Stop it before quitting?",
+  "uploadTitle": "Uploads ({count})",
+  "@uploadTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadToPath": "To: /{path}",
+  "@uploadToPath": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "uploadStatusUploading": "Uploading"
 }
 

@@ -1058,6 +1058,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noFeaturesRegistered => 'No features registered.';
 
   @override
+  String get logViewerTitle => 'Frontend Log';
+
+  @override
+  String get logViewerSubtitle => 'View and share app logs';
+
+  @override
+  String get logTruncated =>
+      'Log file truncated to the last 500 KB for performance.';
+
+  @override
+  String get uploadEmpty => 'No upload tasks';
+
+  @override
   String get showWindow => 'Show Window';
 
   @override
@@ -1066,4 +1079,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get quitBackendRunning =>
       'Backend process is still running. Stop it before quitting?';
+
+  @override
+  String uploadTitle(int count) {
+    return 'Uploads ($count)';
+  }
+
+  @override
+  String uploadToPath(Object path) {
+    return 'To: /$path';
+  }
+
+  @override
+  String get uploadStatusUploading => 'Uploading';
 }

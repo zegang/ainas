@@ -1,15 +1,17 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../shared/models/chat_message.dart'; // Already moved
-import '../shared/models/file_item.dart'; // Already moved
-import '../shared/models/upload_models.dart'; // New import
+import 'package:path/path.dart' as p;
+import '../shared/models/chat_message.dart';
+import '../shared/models/file_item.dart';
+import '../shared/models/upload_models.dart';
 import 'connection_helper.dart';
-import 'progress_multipart_request.dart'; // New import
+import 'progress_multipart_request.dart';
 
 class ApiService with ChangeNotifier {
   // 1. Private internal constructor
@@ -40,6 +42,19 @@ class ApiService with ChangeNotifier {
   String vipStatus = 'Visitor';
   String currentPath = ''; // Tracks the directory currently being navigated by the user
   final List<UploadTask> uploads = [];
+  static const String _pendingUploadsKey = 'nas_pending_uploads';
+
+  /// Upload queue for sequential one-by-one processing
+  final List<UploadTask> _uploadQueue = [];
+  bool _isProcessingQueue = false;
+
+  Directory get _stagingDir => Directory('${Directory.systemTemp.path}/ainas_uploads');
+
+  Future<void> _ensureStagingDir() async {
+    if (!await _stagingDir.exists()) {
+      await _stagingDir.create(recursive: true);
+    }
+  }
 
   // In-memory cache for file listings
   static const Duration _fileListCacheTtl = Duration(seconds: 30);
@@ -565,15 +580,24 @@ class ApiService with ChangeNotifier {
 
   void cancelUpload(String taskId) {
     final index = uploads.indexWhere((t) => t.id == taskId);
-    if (index != -1) {
-      uploads[index].client?.close();
-      uploads[index].status = UploadStatus.canceled;
-      notifyListeners();
+    if (index == -1) return;
+    final task = uploads[index];
+    task.client?.close();
+    task.status = UploadStatus.canceled;
+    // Only remove from queue if not currently being processed (processing loop handles its own removal)
+    if (_isProcessingQueue && _uploadQueue.isNotEmpty && _uploadQueue.first.id == taskId) {
+      // Currently being uploaded — let _processQueue remove it after _performUpload returns
+    } else {
+      _uploadQueue.removeWhere((t) => t.id == taskId);
     }
+    _cleanupStagedFile(task);
+    _persistQueue();
+    notifyListeners();
   }
 
   void clearCompletedUploads() {
     uploads.removeWhere((t) => t.status == UploadStatus.completed || t.status == UploadStatus.canceled);
+    _uploadQueue.removeWhere((t) => t.status == UploadStatus.completed || t.status == UploadStatus.canceled);
     notifyListeners();
   }
 
@@ -587,7 +611,9 @@ class ApiService with ChangeNotifier {
     task.errorMessage = null;
     notifyListeners();
 
-    await _performUpload(task);
+    _uploadQueue.add(task);
+    await _persistQueue();
+    _processQueue();
   }
 
   Future<Map<String, dynamic>> pdfToImages(String path, String outputDir) async {
@@ -622,7 +648,6 @@ class ApiService with ChangeNotifier {
 
   Future<void> uploadFile(String fileName, Uint8List bytes, {String? parentPath}) async {
     final taskId = DateTime.now().millisecondsSinceEpoch.toString() + fileName;
-    // Default to the current navigated path if no specific path is provided
     final targetPath = parentPath ?? currentPath;
     final task = UploadTask(
       id: taskId,
@@ -634,6 +659,151 @@ class ApiService with ChangeNotifier {
     uploads.add(task);
     notifyListeners();
     await _performUpload(task);
+  }
+
+  Future<void> uploadFileFromPath(String fileName, String filePath, {String? parentPath}) async {
+    final taskId = DateTime.now().millisecondsSinceEpoch.toString() + fileName;
+    final targetPath = parentPath ?? currentPath;
+    final task = UploadTask(
+      id: taskId,
+      fileName: fileName,
+      parentPath: targetPath,
+      filePath: filePath,
+      status: UploadStatus.uploading,
+    );
+    uploads.add(task);
+    notifyListeners();
+    await _performUpload(task);
+  }
+
+  /// Enqueue files for sequential upload.
+  /// [files] is a list of (displayName, sourcePath) pairs.
+  /// Each file is copied to a staging directory so it survives app restarts.
+  Future<void> enqueueUploads(List<MapEntry<String, String>> files) async {
+    await _ensureStagingDir();
+
+    for (final entry in files) {
+      final fileName = entry.key;
+      final sourcePath = entry.value;
+      final taskId = DateTime.now().millisecondsSinceEpoch.toString() + fileName;
+      final ext = p.extension(fileName);
+      final stagedPath = '${_stagingDir.path}/$taskId$ext';
+
+      try {
+        await File(sourcePath).copy(stagedPath);
+      } catch (e) {
+        _log.warning('Failed to stage file $fileName for persistent upload: $e');
+        // If copy fails (e.g. content URI expired), try uploading directly
+        final task = UploadTask(
+          id: taskId,
+          fileName: fileName,
+          parentPath: currentPath,
+          filePath: sourcePath,
+          status: UploadStatus.pending,
+        );
+        _uploadQueue.add(task);
+        uploads.add(task);
+        continue;
+      }
+
+      final task = UploadTask(
+        id: taskId,
+        fileName: fileName,
+        parentPath: currentPath,
+        stagingFilePath: stagedPath,
+        status: UploadStatus.pending,
+      );
+      _uploadQueue.add(task);
+      uploads.add(task);
+    }
+
+    await _persistQueue();
+    _processQueue();
+  }
+
+  Future<void> _processQueue() async {
+    if (_isProcessingQueue) return;
+    _isProcessingQueue = true;
+
+    while (_uploadQueue.isNotEmpty) {
+      final task = _uploadQueue.first;
+
+      if (task.status == UploadStatus.canceled) {
+        _uploadQueue.removeAt(0);
+        await _persistQueue();
+        notifyListeners();
+        continue;
+      }
+
+      task.status = UploadStatus.uploading;
+      notifyListeners();
+      try {
+        await _performUpload(task);
+      } catch (e) {
+        _log.severe('Unexpected error in upload queue for "${task.fileName}": $e');
+        if (task.status != UploadStatus.canceled) {
+          task.status = UploadStatus.failed;
+          task.errorMessage = e.toString();
+        }
+      }
+
+      // Remove from queue regardless of outcome (one failure doesn't block others)
+      _uploadQueue.removeAt(0);
+      try {
+        await _persistQueue();
+      } catch (e) {
+        _log.severe('Failed to persist upload queue: $e');
+      }
+      if (task.status == UploadStatus.completed || task.status == UploadStatus.canceled) {
+        _cleanupStagedFile(task);
+      }
+      notifyListeners();
+    }
+
+    _isProcessingQueue = false;
+  }
+
+  void _cleanupStagedFile(UploadTask task) {
+    if (task.stagingFilePath != null) {
+      try {
+        File(task.stagingFilePath!).deleteSync();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _persistQueue() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = _uploadQueue
+        .where((t) => t.status == UploadStatus.pending || t.status == UploadStatus.uploading)
+        .map((t) => t.toJson())
+        .toList();
+    await prefs.setString(_pendingUploadsKey, json.encode(jsonList));
+  }
+
+  Future<void> loadPendingUploads() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_pendingUploadsKey);
+    if (raw == null || raw.isEmpty) return;
+
+    try {
+      final List<dynamic> jsonList = json.decode(raw);
+      for (final j in jsonList) {
+        final task = UploadTask.fromJson(j as Map<String, dynamic>);
+        if (task.status == UploadStatus.pending || task.status == UploadStatus.uploading) {
+          // Reset to pending so it retries on restart
+          final resetTask = task.copyWith(status: UploadStatus.pending, progress: 0.0);
+          _uploadQueue.add(resetTask);
+          uploads.add(resetTask);
+        }
+      }
+      if (_uploadQueue.isNotEmpty) {
+        _log.info('Loaded ${_uploadQueue.length} pending uploads from persistence');
+        _processQueue();
+      }
+    } catch (e) {
+      _log.severe('Failed to load pending uploads: $e');
+      await prefs.remove(_pendingUploadsKey);
+    }
   }
 
   Future<void> _performUpload(UploadTask task) async {
@@ -649,21 +819,32 @@ class ApiService with ChangeNotifier {
         'POST',
         Uri.parse(uploadUrl),
         onProgress: (bytes, total) {
-          task.progress = total > 0 ? bytes / total : 0.0;
-          notifyListeners();
+          try {
+            task.progress = total > 0 ? bytes / total : 0.0;
+            notifyListeners();
+          } catch (_) {
+            // Ignore listener errors during progress callbacks;
+            // they must never corrupt the upload stream.
+          }
         },
       );
 
-      request.files.add(http.MultipartFile.fromBytes('file', task.bytes, filename: task.fileName));
+      final uploadPath = task.stagingFilePath ?? task.filePath;
+      if (uploadPath != null) {
+        request.files.add(await http.MultipartFile.fromPath('file', uploadPath, filename: task.fileName));
+      } else if (task.bytes != null) {
+        request.files.add(http.MultipartFile.fromBytes('file', task.bytes!, filename: task.fileName));
+      }
 
       final response = await client.send(request);
       
+      // Drain response body on all paths to release the connection cleanly
+      final respBody = await response.stream.bytesToString();
       if (response.statusCode == 200) {
         task.status = UploadStatus.completed;
         task.progress = 1.0;
         _log.info('Successfully uploaded "${task.fileName}"');
       } else {
-        final respBody = await response.stream.bytesToString();
         task.status = UploadStatus.failed;
         task.errorMessage = "Status ${response.statusCode}";
         _log.severe('Upload failed for "${task.fileName}": $respBody');

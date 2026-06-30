@@ -470,7 +470,26 @@
   "logLevelLabel": "日志级别",
   "logFileLabel": "日志文件",
   "noFeaturesRegistered": "暂无可用的 AI 功能",
+  "logViewerTitle": "前端日志",
+  "logViewerSubtitle": "查看和分享应用日志",
+  "logTruncated": "日志文件已截断至最后 500 KB 以提升性能。",
+  "uploadEmpty": "暂无上传任务",
   "showWindow": "显示窗口",
   "quitApp": "退出",
-  "quitBackendRunning": "后端进程仍在运行，是否在退出前停止它？"
+  "quitBackendRunning": "后端进程仍在运行，是否在退出前停止它？",
+  "uploadTitle": "上传 ({count})",
+  "@uploadTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadToPath": "目标：/{path}",
+  "@uploadToPath": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "uploadStatusUploading": "上传中"
 }
