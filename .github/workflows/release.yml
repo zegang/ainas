@@ -567,7 +567,8 @@ jobs:
       - name: Package binary
         run: |
           cd backendcpp/build/src/Release   # MSVC outputs to a build configuration subfolder
-          tar czf ../../../ainas-backendcpp-windows.tar.gz ainas-backend-cpp.exe
+          ls -la
+          tar czf "$GITHUB_WORKSPACE/ainas-backendcpp-windows.tar.gz" ainas-backend-cpp.exe
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
