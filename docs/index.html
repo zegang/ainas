@@ -545,6 +545,15 @@
           ⬇ <span data-i18n="dlDownload">Download</span>
         </a>
       </div>
+      <div class="download-card">
+        <span class="dl-icon">🌐</span>
+        <h3 data-i18n="dlWeb">Web</h3>
+        <div class="dl-meta" data-i18n="dlWebDesc">Static web build (tar.gz)</div>
+        <a class="dl-btn" id="dl-web"
+           href="https://github.com/zegang/ainas/releases/latest" target="_blank">
+          ⬇ <span data-i18n="dlDownload">Download</span>
+        </a>
+      </div>
     </div>
   </div>
 
@@ -1045,16 +1054,16 @@ function showDlTab(name) {
       'ainas-full-android.apk':    ['dl-full-android'],
       'ainas-full-ios.zip':        ['dl-full-ios'],
       // Backend-only assets (ainas-backendcpp-* jobs)
-      'ainas-backend-linux.tar.gz':   ['dl-backend-linux'],
-      'ainas-backend-macos.tar.gz':   ['dl-backend-macos'],
-      'ainas-backend-windows.tar.gz': ['dl-backend-windows'],
+      'ainas-backendcpp-linux.tar.gz':   ['dl-backend-linux'],
+      'ainas-backendcpp-macos.tar.gz':   ['dl-backend-macos'],
+      'ainas-backendcpp-windows.tar.gz': ['dl-backend-windows'],
       // Frontend-only assets (ainas-front-* jobs)
       'ainas-front-linux.tar.gz':        ['dl-linux'],
       'ainas-front-macos.zip':           ['dl-macos'],
       'ainas-front-windows.zip':         ['dl-windows'],
-      'ainas-front-android.tar.gz':      ['dl-android'],
+      'app-release.apk':                 ['dl-android'],
       'ainas-front-ios.zip':             ['dl-ios'],
-      'ainas-front-web.tar.gz':          ['dl-web'],
+      'ainas-web.tar.gz':                ['dl-web'],
     };
     for (const asset of release.assets) {
       const ids = dlMap[asset.name];

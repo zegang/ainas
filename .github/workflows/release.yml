@@ -13,7 +13,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Deploy docs to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -31,7 +31,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
@@ -53,7 +53,7 @@ jobs:
         run: tar czf ainas-web.tar.gz -C frontend/build/web .
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-web.tar.gz
@@ -61,7 +61,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-front-web
           path: frontend/build/web
@@ -75,15 +75,15 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: ainas-front-web
           path: frontend/build/web
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -91,7 +91,7 @@ jobs:
 
       - name: Generate tags
         id: tags
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}/backend
           tags: |
@@ -100,7 +100,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: backend/containerize/Dockerfile
@@ -122,15 +122,15 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: ainas-front-web
           path: frontend/build/web
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -138,7 +138,7 @@ jobs:
 
       - name: Generate tags
         id: tags
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}/backend
           tags: |
@@ -147,7 +147,7 @@ jobs:
             type=raw,value=latest-cuda,enable={{is_default_branch}}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: backend/containerize/Dockerfile
@@ -169,15 +169,15 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: ainas-front-web
           path: frontend/build/web
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -185,7 +185,7 @@ jobs:
 
       - name: Generate tags
         id: tags
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}/backend
           tags: |
@@ -194,7 +194,7 @@ jobs:
             type=raw,value=latest-rocm,enable={{is_default_branch}}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: backend/containerize/Dockerfile
@@ -214,19 +214,19 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.44.3"
           channel: stable
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           java-version: "21"
           distribution: "temurin"
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
 
       - working-directory: frontend
         run: |
@@ -240,7 +240,7 @@ jobs:
         run: flutter build apk --release --android-skip-build-dependency-validation
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: frontend/build/app/outputs/flutter-apk/app-release.apk
@@ -248,7 +248,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-front-android
           path: frontend/build/app/outputs/flutter-apk/app-release.apk
@@ -260,7 +260,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
@@ -286,7 +286,7 @@ jobs:
         run: ditto -c -k --keepParent frontend/build/ios/iphoneos/Runner.app ainas-front-ios.zip
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-front-ios.zip
@@ -294,7 +294,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-front-ios
           path: ainas-front-ios.zip
@@ -306,7 +306,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
@@ -328,7 +328,7 @@ jobs:
         run: ditto -c -k --keepParent frontend/build/macos/Build/Products/Release/Runner.app ainas-front-macos.zip
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-front-macos.zip
@@ -336,7 +336,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-front-macos
           path: ainas-front-macos.zip
@@ -348,7 +348,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
@@ -373,11 +373,14 @@ jobs:
         working-directory: frontend
         run: flutter build linux --release
 
+      - name: Add run.sh wrapper
+        run: cp frontend/linux/run.sh frontend/build/linux/x64/release/bundle/run.sh
+
       - name: Create tar.gz
         run: tar czf ainas-front-linux.tar.gz -C frontend/build/linux/x64/release/bundle .
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-front-linux.tar.gz
@@ -385,7 +388,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-front-linux
           path: ainas-front-linux.tar.gz
@@ -397,7 +400,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
@@ -422,7 +425,7 @@ jobs:
           Compress-Archive -Path * -DestinationPath ${{ github.workspace }}/ainas-front-windows.zip
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-front-windows.zip
@@ -430,7 +433,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-front-windows
           path: ainas-front-windows.zip
@@ -445,7 +448,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
 
@@ -468,7 +471,7 @@ jobs:
         run: tar czf ainas-backendcpp-linux.tar.gz -C backendcpp/build/src ainas-backend-cpp
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-backendcpp-linux.tar.gz
@@ -476,7 +479,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-backendcpp-linux
           path: ainas-backendcpp-linux.tar.gz
@@ -491,7 +494,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
 
@@ -509,7 +512,7 @@ jobs:
         run: tar czf ainas-backendcpp-macos.tar.gz -C backendcpp/build/src ainas-backend-cpp
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-backendcpp-macos.tar.gz
@@ -517,7 +520,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-backendcpp-macos
           path: ainas-backendcpp-macos.tar.gz
@@ -533,7 +536,7 @@ jobs:
 
     steps:
       # Fix 1: Add submodules: true so vendor/oatpp actually gets checked out
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
 
@@ -564,7 +567,7 @@ jobs:
           tar czf ../../../ainas-backendcpp-windows.tar.gz ainas-backend-cpp.exe
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-backendcpp-windows.tar.gz
@@ -572,7 +575,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-backendcpp-windows
           path: ainas-backendcpp-windows.tar.gz
@@ -585,18 +588,18 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
 
       - name: Download Flutter Linux bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ainas-front-linux
           path: dl/linux
 
       - name: Download C++ backend (Linux)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ainas-backendcpp-linux
           path: dl/backend-linux
@@ -606,13 +609,13 @@ jobs:
           mkdir -p bundle
           tar xzf dl/linux/ainas-front-linux.tar.gz -C bundle
           tar xzf dl/backend-linux/ainas-backendcpp-linux.tar.gz -C bundle
-          chmod +x bundle/ainas-backend-cpp || true
+          chmod +x bundle/ainas_frontend bundle/run.sh bundle/ainas-backend-cpp 2>/dev/null || true
 
       - name: Create archive
         run: tar czf ainas-full-linux.tar.gz -C bundle .
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-full-linux.tar.gz
@@ -620,7 +623,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-full-linux
           path: ainas-full-linux.tar.gz
@@ -634,13 +637,13 @@ jobs:
 
     steps:
       - name: Download Flutter macOS app
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ainas-front-macos
           path: dl/macos
 
       - name: Download C++ backend (macOS)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ainas-backendcpp-macos
           path: dl/backend-macos
@@ -660,7 +663,7 @@ jobs:
           ditto -c -k --keepParent "$APP" ainas-full-macos.zip
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-full-macos.zip
@@ -668,7 +671,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-full-macos
           path: ainas-full-macos.zip
@@ -685,13 +688,13 @@ jobs:
 
     steps:
       - name: Download Flutter Windows bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ainas-front-windows
           path: dl/windows
 
       - name: Download C++ backend (Windows)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ainas-backendcpp-windows
           path: dl/backend-windows
@@ -709,7 +712,7 @@ jobs:
             -DestinationPath "${{ github.workspace }}\ainas-full-windows.zip"
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-full-windows.zip
@@ -717,7 +720,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-full-windows
           path: ainas-full-windows.zip
@@ -734,16 +737,16 @@ jobs:
       ANDROID_API: "24"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           java-version: "21"
           distribution: "temurin"
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
 
       - name: Install Android NDK
         run: |
@@ -787,7 +790,7 @@ jobs:
           cmake --build build-android-x86_64 --parallel --config Release
 
       - name: Download Flutter APK
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ainas-front-android
           path: dl/android
@@ -809,7 +812,7 @@ jobs:
           zip -0 -r "$GITHUB_WORKSPACE/ainas-full-android.apk" assets/
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-full-android.apk
@@ -817,7 +820,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-full-android
           path: ainas-full-android.apk
@@ -830,7 +833,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
 
@@ -858,7 +861,7 @@ jobs:
           cmake --build build-ios-arm64 --parallel --config Release
 
       - name: Download Flutter iOS app
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ainas-front-ios
           path: dl/ios
@@ -879,7 +882,7 @@ jobs:
           ditto -c -k --keepParent "$APP" ainas-full-ios.zip
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: ainas-full-ios.zip
@@ -887,7 +890,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ainas-full-ios
           path: ainas-full-ios.zip

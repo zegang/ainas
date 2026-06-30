@@ -56,7 +56,7 @@ bool ThumbnailService::generate(const std::filesystem::path& relPath) {
 
     // Load image
     int w, h, channels;
-    unsigned char* img = stbi_load(source.c_str(), &w, &h, &channels, 0);
+    unsigned char* img = stbi_load(source.string().c_str(), &w, &h, &channels, 0);
     if (!img) {
         LOG_WARN("Thumbnail: failed to load {}", source.string());
         return false;
@@ -88,7 +88,7 @@ bool ThumbnailService::generate(const std::filesystem::path& relPath) {
     // Save as JPEG
     int success;
     if (channels >= 3) {
-        success = stbi_write_jpg(dest.c_str(), newW, newH, 3, resized, 90);
+        success = stbi_write_jpg(dest.string().c_str(), newW, newH, 3, resized, 90);
     } else {
         // Grayscale: expand to RGB
         auto* rgb = static_cast<unsigned char*>(std::malloc(newW * newH * 3));
@@ -98,7 +98,7 @@ bool ThumbnailService::generate(const std::filesystem::path& relPath) {
                 rgb[i * 3 + 1] = resized[i];
                 rgb[i * 3 + 2] = resized[i];
             }
-            success = stbi_write_jpg(dest.c_str(), newW, newH, 3, rgb, 90);
+            success = stbi_write_jpg(dest.string().c_str(), newW, newH, 3, rgb, 90);
             std::free(rgb);
         } else {
             success = 0;

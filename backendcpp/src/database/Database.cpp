@@ -20,7 +20,7 @@ Database::Database(const std::filesystem::path& dbPath)
         std::filesystem::create_directories(parent, ec);
     }
 
-    int rc = sqlite3_open(dbPath.c_str(), &m_db);
+    int rc = sqlite3_open(dbPath.string().c_str(), &m_db);
     if (rc != SQLITE_OK) {
         std::string msg = sqlite3_errmsg(m_db);
         sqlite3_close(m_db);

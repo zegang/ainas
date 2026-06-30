@@ -25,7 +25,9 @@
 #include <cstdlib>
 #include <iostream>
 
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(_WIN32)
+#include <windows.h>
+#else
 #include <fcntl.h>
 #include <unistd.h>
 #endif
@@ -42,24 +44,32 @@ void signalHandler(int sig) {
     running() = false;
 }
 
+void setEnvVar(const char* name, const char* value) {
+#if defined(_WIN32)
+    _putenv_s(name, value);
+#else
+    setenv(name, value, 1);
+#endif
+}
+
 void applyFlags(const ainas::util::FlagParser& flags) {
     if (flags.has("addr")) {
-        setenv("AINAS_ADDR", flags.get("addr").c_str(), 1);
+        setEnvVar("AINAS_ADDR", flags.get("addr").c_str());
     }
     if (flags.has("port")) {
-        setenv("AINAS_PORT", flags.get("port").c_str(), 1);
+        setEnvVar("AINAS_PORT", flags.get("port").c_str());
     }
     if (flags.has("storage")) {
-        setenv("AINAS_STORAGE_ROOT", flags.get("storage").c_str(), 1);
+        setEnvVar("AINAS_STORAGE_ROOT", flags.get("storage").c_str());
     }
     if (flags.has("storage-root-path")) {
-        setenv("AINAS_STORAGE_ROOT", flags.get("storage-root-path").c_str(), 1);
+        setEnvVar("AINAS_STORAGE_ROOT", flags.get("storage-root-path").c_str());
     }
     if (flags.has("log-level")) {
-        setenv("AINAS_LOG_LEVEL", flags.get("log-level").c_str(), 1);
+        setEnvVar("AINAS_LOG_LEVEL", flags.get("log-level").c_str());
     }
     if (flags.has("log-file")) {
-        setenv("AINAS_LOG_FILE", flags.get("log-file").c_str(), 1);
+        setEnvVar("AINAS_LOG_FILE", flags.get("log-file").c_str());
     }
 }
 
