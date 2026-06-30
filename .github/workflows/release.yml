@@ -239,11 +239,14 @@ jobs:
         working-directory: frontend
         run: flutter build apk --release --android-skip-build-dependency-validation
 
+      - name: Rename APK
+        run: cp frontend/build/app/outputs/flutter-apk/app-release.apk ainas-frontend-android.apk
+
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          files: frontend/build/app/outputs/flutter-apk/app-release.apk
+          files: ainas-frontend-android.apk
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

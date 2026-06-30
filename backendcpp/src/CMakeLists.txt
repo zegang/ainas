@@ -35,7 +35,22 @@ if(NOT SQLITE3_FOUND)
     endif()
 endif()
 if(NOT SQLITE3_FOUND)
-    message(FATAL_ERROR "sqlite3 development library not found")
+    # If the user passed a .c file as SQLITE3_LIBRARIES (Windows CI fallback),
+    # compile it into a static library
+    if(DEFINED SQLITE3_LIBRARIES AND SQLITE3_LIBRARIES MATCHES "\\.c$")
+        get_filename_component(SQLITE3_C_FILE "${SQLITE3_LIBRARIES}" ABSOLUTE)
+        get_filename_component(SQLITE3_DIR "${SQLITE3_C_FILE}" DIRECTORY)
+        if(NOT SQLITE3_INCLUDE_DIRS)
+            set(SQLITE3_INCLUDE_DIRS "${SQLITE3_DIR}")
+        endif()
+        add_library(sqlite3_amalg STATIC "${SQLITE3_C_FILE}")
+        target_include_directories(sqlite3_amalg PUBLIC "${SQLITE3_INCLUDE_DIRS}")
+        set(SQLITE3_FOUND TRUE)
+        set(SQLITE3_LIBRARIES sqlite3_amalg)
+        message(STATUS "SQLite3: building amalgamation source as static library")
+    else()
+        message(FATAL_ERROR "sqlite3 development library not found")
+    endif()
 endif()
 
 add_executable(ainas-backend-cpp
