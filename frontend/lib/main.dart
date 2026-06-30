@@ -8,11 +8,11 @@ import 'dart:developer' as developer;
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'l10n/app_localizations.dart';
+import 'shared/utils/backend_process_manager.dart';
 import 'features/file_browser/presentation/widgets/nas_browser_page.dart';
 import 'features/mine/presentation/widgets/login_widget.dart';
 import 'features/mine/presentation/widgets/mine_page.dart';
 import './services/api_service.dart';
-import 'shared/utils/backend_process_manager.dart';
 import 'shared/themes/app_theme.dart';
 import 'shared/widgets/ad_splash_screen.dart';
 import 'features/home/presentation/widgets/home_page.dart';
@@ -22,7 +22,7 @@ void main() async {
   _setupLogging();
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (!kIsWeb) {
+  if (BackendProcessManager.isDesktopSupported) {
     await windowManager.ensureInitialized();
     await windowManager.setPreventClose(true);
   }
@@ -114,7 +114,7 @@ class _MainShellState extends State<MainShell> with WindowListener, TrayListener
   @override
   void initState() {
     super.initState();
-    if (!kIsWeb) {
+    if (BackendProcessManager.isDesktopSupported) {
       windowManager.addListener(this);
       trayManager.addListener(this);
       _setupTray();
@@ -208,7 +208,7 @@ class _MainShellState extends State<MainShell> with WindowListener, TrayListener
   @override
   void dispose() {
     _statusSyncTimer?.cancel();
-    if (!kIsWeb) {
+    if (BackendProcessManager.isDesktopSupported) {
       windowManager.removeListener(this);
       trayManager.removeListener(this);
     }

@@ -20,6 +20,7 @@ import 'package:ainas_frontend/features/ai_assistant/presentation/widgets/ai_ass
 import 'package:ainas_frontend/shared/widgets/viewers/pdf_viewer_page.dart';
 import 'package:ainas_frontend/shared/widgets/viewers/docx_viewer_page.dart';
 import 'package:ainas_frontend/shared/widgets/viewers/image_viewer_page.dart';
+import 'package:ainas_frontend/shared/widgets/viewers/video_viewer_page.dart';
 import 'upload_overlay.dart';
 import 'folder_picker_dialog.dart';
 import 'merge_to_pdf_dialog.dart';
@@ -1084,6 +1085,19 @@ class _NASBrowserState extends State<NASBrowser> {
               originalUrl: downloadUrl,
               title: item.name,
               fileSize: item.size,
+              fileItem: item,
+              onActionSelected: _handleAction,
+            ),
+          ),
+        );
+      } else if (['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv', '.wmv', '.m4v', '.3gp']
+          .any((suffix) => ext.endsWith(suffix))) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VideoViewerPage(
+              url: downloadUrl,
+              title: item.name,
               fileItem: item,
               onActionSelected: _handleAction,
             ),
