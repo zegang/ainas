@@ -5,3 +5,6 @@
 [submodule "vendor/oatpp"]
 	path = vendor/oatpp
 	url = git@github.com:zegang/oatpp.git
+[submodule "vendor/cllama"]
+	path = vendor/cllama
+	url = git@github.com:zegang/cllama.git
