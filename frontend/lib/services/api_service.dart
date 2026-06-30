@@ -26,7 +26,7 @@ class ApiService with ChangeNotifier {
   final _log = Logger('ApiService');
 
   // Shared state: Default values synchronized with bootstrap.sh via dart-define
-  String baseUrl = 'http://${const String.fromEnvironment('AINAS_ADDR', defaultValue: 'localhost')}:${const String.fromEnvironment('AINAS_PORT', defaultValue: '9026')}';
+  String baseUrl = 'http://${const String.fromEnvironment('AINAS_ADDR', defaultValue: '127.0.0.1')}:${const String.fromEnvironment('AINAS_PORT', defaultValue: '9026')}';
   static const String _baseUrlKey = 'nas_base_url';
   static const String _localeKey = 'nas_locale';
   static const String _themeModeKey = 'nas_theme_mode';

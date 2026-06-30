@@ -119,20 +119,11 @@ MdnsService::MdnsService(const std::string& host, uint16_t port)
     : m_host(host)
     , m_port(port)
     , m_serviceName("AINAS-" + getHostname())
-    , m_poll(nullptr)
     , m_client(nullptr)
-    , m_group(nullptr)
     , m_running(false)
 {}
 
 MdnsService::~MdnsService() { stop(); }
-
-//===----------------------------------------------------------------------===//
-//  Unused callbacks (required by shared header for Avahi compat)
-//===----------------------------------------------------------------------===//
-
-void MdnsService::mdnsClientCallback(void*, int, void*) {}
-void MdnsService::mdnsGroupCallback(void*, int, void*) {}
 
 //===----------------------------------------------------------------------===//
 //  Start / Stop

@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <string>
-#include <thread>
 
 namespace ainas {
 
@@ -19,18 +18,12 @@ public:
 
 private:
     static std::string getHostname();
-    static void mdnsClientCallback(void* c, int state, void* userdata);
-    static void mdnsGroupCallback(void* g, int state, void* userdata);
 
     std::string m_host;
     uint16_t m_port;
     std::string m_serviceName;
 
-    void* m_poll;
     void* m_client;
-    void* m_group;
-
-    std::thread m_thread;
     std::atomic<bool> m_running;
 };
 

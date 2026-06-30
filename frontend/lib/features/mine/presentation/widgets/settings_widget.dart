@@ -28,10 +28,10 @@ class _SettingsWidgetState extends State<SettingsWidget> {
   void initState() {
     super.initState();
 
-    final uri = Uri.tryParse(_api.baseUrl) ?? Uri.parse("http://localhost:9026");
+    final uri = Uri.tryParse(_api.baseUrl) ?? Uri.parse("http://127.0.0.1:9026");
 
     // Use current settings from the singleton as the starting point
-    final defaultHost = uri.host.isEmpty ? "localhost" : uri.host;
+    final defaultHost = uri.host.isEmpty ? "127.0.0.1" : uri.host;
     final defaultPort = (uri.port == 0 || uri.port == 80) ? "9026" : uri.port.toString();
     
     _hostController = TextEditingController(text: defaultHost);
