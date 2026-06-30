@@ -77,7 +77,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v5
         with:
           name: ainas-front-web
           path: frontend/build/web
@@ -124,7 +124,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v5
         with:
           name: ainas-front-web
           path: frontend/build/web
@@ -171,7 +171,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v5
         with:
           name: ainas-front-web
           path: frontend/build/web
@@ -596,13 +596,13 @@ jobs:
           submodules: true
 
       - name: Download Flutter Linux bundle
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v5
         with:
           name: ainas-front-linux
           path: dl/linux
 
       - name: Download C++ backend (Linux)
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v5
         with:
           name: ainas-backendcpp-linux
           path: dl/backend-linux
@@ -640,13 +640,13 @@ jobs:
 
     steps:
       - name: Download Flutter macOS app
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v5
         with:
           name: ainas-front-macos
           path: dl/macos
 
       - name: Download C++ backend (macOS)
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v5
         with:
           name: ainas-backendcpp-macos
           path: dl/backend-macos
@@ -691,13 +691,13 @@ jobs:
 
     steps:
       - name: Download Flutter Windows bundle
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v5
         with:
           name: ainas-front-windows
           path: dl/windows
 
       - name: Download C++ backend (Windows)
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v5
         with:
           name: ainas-backendcpp-windows
           path: dl/backend-windows
@@ -793,7 +793,7 @@ jobs:
           cmake --build build-android-x86_64 --parallel --config Release
 
       - name: Download Flutter APK
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v5
         with:
           name: ainas-front-android
           path: dl/android
@@ -864,7 +864,7 @@ jobs:
           cmake --build build-ios-arm64 --parallel --config Release
 
       - name: Download Flutter iOS app
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v5
         with:
           name: ainas-front-ios
           path: dl/ios
