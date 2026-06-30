@@ -33,11 +33,35 @@ inline std::filesystem::path stripLeadingSlash(const std::string& p) {
 }
 
 namespace detail {
-
-namespace detail {
 inline std::string str(const oatpp::String& s) {
     if (!s) return "";
     return {s->data(), static_cast<size_t>(s->size())};
+}
+
+inline std::string urlDecode(const std::string& encoded) {
+    std::string result;
+    result.reserve(encoded.size());
+    for (size_t i = 0; i < encoded.size(); ++i) {
+        if (encoded[i] == '%' && i + 2 < encoded.size()) {
+            auto hexVal = [](char c) -> int {
+                if (c >= '0' && c <= '9') return c - '0';
+                if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+                if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+                return 0;
+            };
+            char hi = static_cast<char>(encoded[i + 1]);
+            char lo = static_cast<char>(encoded[i + 2]);
+            bool valid = (hi >= '0' && hi <= '9') || (hi >= 'a' && hi <= 'f') || (hi >= 'A' && hi <= 'F');
+            valid = valid && ((lo >= '0' && lo <= '9') || (lo >= 'a' && lo <= 'f') || (lo >= 'A' && lo <= 'F'));
+            if (valid) {
+                result += static_cast<char>((hexVal(hi) << 4) | hexVal(lo));
+                i += 2;
+                continue;
+            }
+        }
+        result += encoded[i];
+    }
+    return result;
 }
 
 inline std::string mimeType(const std::filesystem::path& path) {
@@ -100,8 +124,9 @@ public:
 
     ENDPOINT("GET", "/api/files", listFiles,
              QUERY(String, path, "path", "/")) {
-        LOG_INFO("GET /api/files?path=\"{}\"", detail::str(path));
-        auto result = m_fileService->listFiles(path);
+        auto decodedPath = oatpp::String(detail::urlDecode(detail::str(path)));
+        LOG_INFO("GET /api/files?path=\"{}\"", detail::str(decodedPath));
+        auto result = m_fileService->listFiles(decodedPath);
         if (result->success) {
             return createDtoResponse(Status::CODE_200, result);
         }
@@ -150,8 +175,12 @@ public:
                     auto relPath = stripLeadingSlash(detail::str(result->path));
                     auto thumbSvc = m_thumbnailService;
                     std::thread([relPath=std::move(relPath), thumbSvc=std::move(thumbSvc)]() {
-                        if (ThumbnailService::isSupportedImage(relPath)) {
-                            thumbSvc->generate(relPath);
+                        try {
+                            if (ThumbnailService::isSupportedImage(relPath)) {
+                                thumbSvc->generate(relPath);
+                            }
+                        } catch (const std::exception& e) {
+                            LOG_ERROR("Thumbnail generation failed: {}", e.what());
                         }
                     }).detach();
                 }
@@ -217,6 +246,15 @@ public:
         LOG_INFO("POST /api/files/copy (targetDir=\"{}\" targetDirId={})",
                  detail::str(body->targetDir), dirId);
         auto result = m_fileService->copyFile(body);
+        if (result->success && result->files && result->sources
+            && result->files->size() == result->sources->size()) {
+            for (size_t i = 0; i < result->files->size(); ++i) {
+                auto dstRel = stripLeadingSlash(detail::str(result->files[i]));
+                if (!ThumbnailService::isSupportedImage(dstRel)) continue;
+                auto srcRel = stripLeadingSlash(detail::str(result->sources[i]));
+                m_thumbnailService->copy(srcRel, dstRel);
+            }
+        }
         auto status = result->success ? Status::CODE_200 : Status::CODE_400;
         return createDtoResponse(status, result);
     }
@@ -251,12 +289,33 @@ public:
             return createDtoResponse(Status::CODE_400, error);
         }
 
-        auto relPath = detail::str(path);
+        auto relPath = detail::urlDecode(detail::str(path));
         std::filesystem::path fullPath;
 
-        // When thumbnail is requested, serve from thumbnail dir if available
-        if (thumbnail && m_thumbnailService->exists(relPath)) {
-            fullPath = m_thumbnailService->thumbnailPath(relPath);
+        // When thumbnail is requested, generate on-the-fly if missing, then serve
+        if (thumbnail) {
+            if (!m_thumbnailService->exists(relPath)) {
+                try {
+                    m_fileService->resolveExistingPath(relPath);
+                    if (ThumbnailService::isSupportedImage(relPath)) {
+                        m_thumbnailService->generate(relPath);
+                    }
+                } catch (...) {}
+            }
+            if (m_thumbnailService->exists(relPath)) {
+                fullPath = m_thumbnailService->thumbnailPath(relPath);
+            } else {
+                try {
+                    fullPath = m_fileService->resolveExistingPath(relPath);
+                } catch (const FileServiceError& e) {
+                    auto error = ApiResponseDto::createShared();
+                    error->success = false;
+                    error->message = oatpp::String(e.what());
+                    auto status = e.kind == FileServiceError::Kind::NotFound
+                                  ? Status::CODE_404 : Status::CODE_400;
+                    return createDtoResponse(status, error);
+                }
+            }
         } else {
             try {
                 fullPath = m_fileService->resolveExistingPath(relPath);
@@ -332,7 +391,16 @@ public:
              PATH(Int64, id, "id"),
              BODY_DTO(Object<UpdateFileRequestDto>, body)) {
         LOG_INFO("PATCH /api/files/{}", *id);
+        auto old = m_fileService->getFileById(*id);
         auto result = m_fileService->updateFile(*id, body);
+        if (result->success && result->file && old->success && old->file) {
+            auto oldPath = stripLeadingSlash(detail::str(old->file->path));
+            auto newPath = stripLeadingSlash(detail::str(result->file->path));
+            if (oldPath != newPath && (ThumbnailService::isSupportedImage(oldPath)
+                                       || ThumbnailService::isSupportedImage(newPath))) {
+                m_thumbnailService->move(oldPath, newPath);
+            }
+        }
         auto status = result->success ? Status::CODE_200 : Status::CODE_404;
         return createDtoResponse(status, result);
     }

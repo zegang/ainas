@@ -88,6 +88,8 @@ async def download_file(path: str, thumbnail: bool = False):
         thumb_path = os.path.abspath(os.path.join(config.AINAS_THUMBNAIL_DIR, clean_path))
         # PDF thumbnails are stored with an extra .jpg extension
         pdf_thumb_path = thumb_path + ".jpg"
+        if not os.path.exists(pdf_thumb_path) and not os.path.exists(thumb_path):
+            thumbnail_task(clean_path)
         if os.path.exists(pdf_thumb_path):
             return FileResponse(pdf_thumb_path)
         if os.path.exists(thumb_path):
@@ -210,6 +212,20 @@ async def rename_item(request: RenameRequest, db: Session = Depends(get_db)):
             child.path = new_rel + child.path[len(request.path):]
             
     db.commit()
+
+    # Move thumbnails
+    old_thumb = os.path.join(config.AINAS_THUMBNAIL_DIR, request.path.lstrip("/"))
+    new_thumb = os.path.join(config.AINAS_THUMBNAIL_DIR, new_rel)
+    if os.path.exists(old_thumb):
+        os.makedirs(os.path.dirname(new_thumb), exist_ok=True)
+        shutil.move(old_thumb, new_thumb)
+    # Also handle PDF thumbnail (.jpg suffix)
+    old_thumb_pdf = old_thumb + ".jpg"
+    new_thumb_pdf = new_thumb + ".jpg"
+    if os.path.exists(old_thumb_pdf):
+        os.makedirs(os.path.dirname(new_thumb_pdf), exist_ok=True)
+        shutil.move(old_thumb_pdf, new_thumb_pdf)
+
     return {"new_path": new_rel}
 
 @router.post("/copy")
@@ -248,6 +264,11 @@ async def copy_items(body: CopyRequest, db: Session = Depends(get_db)):
                         created_at=datetime.fromtimestamp(st.st_ctime),
                         updated_at=datetime.fromtimestamp(st.st_mtime),
                     ))
+                    # Copy thumbnail from original relative path
+                    src_rel = os.path.relpath(
+                        os.path.join(src_path.rstrip("/"), os.path.relpath(fpath, dst_abs)),
+                        config.AINAS_DATA_PATH).replace("\\", "/")
+                    _copy_thumbnail(src_rel, rel)
         else:
             os.makedirs(target_abs, exist_ok=True)
             shutil.copy2(src_abs, dst_abs)
@@ -259,12 +280,29 @@ async def copy_items(body: CopyRequest, db: Session = Depends(get_db)):
                 created_at=datetime.fromtimestamp(st.st_ctime),
                 updated_at=datetime.fromtimestamp(st.st_mtime),
             ))
+            src_rel = os.path.relpath(src_abs, config.AINAS_DATA_PATH).replace("\\", "/")
+            _copy_thumbnail(src_rel, rel)
 
         copied.append(src_path)
 
     db.commit()
     logger.info("Copied %d item(s) to %s", len(copied), body.target_dir)
     return {"copied": copied, "target_dir": body.target_dir}
+
+
+def _copy_thumbnail(src_rel: str, dst_rel: str):
+    """Copy thumbnail from src_rel to dst_rel, falling back to generation if missing."""
+    src_thumb = os.path.join(config.AINAS_THUMBNAIL_DIR, src_rel.lstrip("/"))
+    dst_thumb = os.path.join(config.AINAS_THUMBNAIL_DIR, dst_rel.lstrip("/"))
+    dst_thumb_pdf = dst_thumb + ".jpg"
+    if os.path.exists(src_thumb) or os.path.exists(src_thumb + ".jpg"):
+        os.makedirs(os.path.dirname(dst_thumb), exist_ok=True)
+        if os.path.exists(src_thumb):
+            shutil.copy2(src_thumb, dst_thumb)
+        if os.path.exists(src_thumb + ".jpg"):
+            shutil.copy2(src_thumb + ".jpg", dst_thumb_pdf)
+    else:
+        thumbnail_task(dst_rel)
 
 @router.patch("/move")
 async def move_item(request: MoveRequest, db: Session = Depends(get_db)):
@@ -286,6 +324,20 @@ async def move_item(request: MoveRequest, db: Session = Depends(get_db)):
             child.path = request.new_path + child.path[len(request.path):]
             
     db.commit()
+
+    # Move thumbnails
+    old_thumb = os.path.join(config.AINAS_THUMBNAIL_DIR, request.path.lstrip("/"))
+    new_thumb = os.path.join(config.AINAS_THUMBNAIL_DIR, request.new_path.lstrip("/"))
+    if os.path.exists(old_thumb):
+        os.makedirs(os.path.dirname(new_thumb), exist_ok=True)
+        shutil.move(old_thumb, new_thumb)
+    # Also handle PDF thumbnail (.jpg suffix)
+    old_thumb_pdf = old_thumb + ".jpg"
+    new_thumb_pdf = new_thumb + ".jpg"
+    if os.path.exists(old_thumb_pdf):
+        os.makedirs(os.path.dirname(new_thumb_pdf), exist_ok=True)
+        shutil.move(old_thumb_pdf, new_thumb_pdf)
+
     return {"new_path": request.new_path}
 
 @router.post("/upload")

@@ -1045,4 +1045,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get logFileLabel => '日志文件';
+
+  @override
+  String get noFeaturesRegistered => '暂无可用的 AI 功能';
+
+  @override
+  String get showWindow => '显示窗口';
+
+  @override
+  String get quitApp => '退出';
+
+  @override
+  String get quitBackendRunning => '后端进程仍在运行，是否在退出前停止它？';
 }

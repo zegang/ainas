@@ -46,6 +46,8 @@ class ApiResponseDto : public oatpp::DTO {
     DTO_FIELD(Boolean, success);
     DTO_FIELD(String, message);
     DTO_FIELD(String, path);
+    DTO_FIELD(Vector<String>, files);
+    DTO_FIELD(Vector<String>, sources);
 };
 
 class UploadResponseDto : public oatpp::DTO {
@@ -65,7 +67,7 @@ class DeleteRequestDto : public oatpp::DTO {
 class MoveRequestDto : public oatpp::DTO {
     DTO_INIT(MoveRequestDto, DTO)
     DTO_FIELD(String, path);
-    DTO_FIELD(String, newPath);
+    DTO_FIELD(String, newPath, "new_path");
     DTO_FIELD(Int64, id, "id");
     DTO_FIELD(String, itemId, "item_id");
     DTO_FIELD(Int64, targetParentId, "target_parent_id");
@@ -76,14 +78,14 @@ class CopyRequestDto : public oatpp::DTO {
     DTO_INIT(CopyRequestDto, DTO)
     DTO_FIELD(Vector<String>, paths);
     DTO_FIELD(Vector<Int64>, ids, "ids");
-    DTO_FIELD(String, targetDir);
+    DTO_FIELD(String, targetDir, "target_dir");
     DTO_FIELD(Int64, targetDirId, "target_dir_id");
 };
 
 class RenameRequestDto : public oatpp::DTO {
     DTO_INIT(RenameRequestDto, DTO)
     DTO_FIELD(String, path);
-    DTO_FIELD(String, newName);
+    DTO_FIELD(String, newName, "new_name");
 };
 
 class CreateFolderRequestDto : public oatpp::DTO {

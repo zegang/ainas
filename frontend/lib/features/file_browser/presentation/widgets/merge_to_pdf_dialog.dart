@@ -27,8 +27,10 @@ class _MergeToPdfDialogState extends State<MergeToPdfDialog> {
   List<String> _pathStack = [];
   late Future<List<FileItem>> _folderFuture;
 
-  String _thumbnailUrl(String path) =>
-      '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(path)}&thumbnail=true';
+  String _thumbnailUrl(String path) {
+    final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(cleanPath)}&thumbnail=true';
+  }
 
   static final _imageExts = {'.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'};
 

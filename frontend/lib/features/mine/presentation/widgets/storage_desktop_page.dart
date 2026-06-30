@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -44,6 +45,7 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
   Timer? _storageRootDebounce;
   bool _optionsExpanded = false;
   String? _processMessage;
+  String? _activeCommandLine;
 
   @override
   void initState() {
@@ -57,11 +59,27 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
     _loadPids();
   }
 
+  String _defaultStorageRoot() {
+    try {
+      return '${File(Platform.resolvedExecutable).parent.path}/storage';
+    } catch (_) {
+      return 'storage';
+    }
+  }
+
+  String _defaultLogFilePath() {
+    try {
+      return '${File(Platform.resolvedExecutable).parent.path}/ainas_frontend.log';
+    } catch (_) {
+      return 'ainas_backend.log';
+    }
+  }
+
   Future<void> _loadPersistedValues() async {
     final prefs = await SharedPreferences.getInstance();
     final savedRoot = prefs.getString(_storageRootPathKey);
     final savedBinary = prefs.getString(_backendBinaryPathKey);
-    _rootPathController.text = savedRoot ?? 'storage';
+    _rootPathController.text = savedRoot ?? _defaultStorageRoot();
     if (savedBinary != null) _binaryPathController.text = savedBinary;
 
     final savedAddr = prefs.getString(_listenAddrKey);
@@ -73,7 +91,7 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
     _logLevel = prefs.getString(_logLevelKey) ?? 'info';
 
     final savedLogFile = prefs.getString(_logFilePathKey);
-    _logFileController.text = savedLogFile ?? 'ainas_backend.log';
+    _logFileController.text = savedLogFile ?? _defaultLogFilePath();
 
     _runAsDaemon = prefs.getBool(_daemonKey) ?? true;
 
@@ -122,6 +140,7 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
     } catch (_) {
       _pids = [];
     }
+    if (_pids.isEmpty) _activeCommandLine = null;
     if (mounted) {
       setState(() => _loadingPids = false);
       if (_pids.isNotEmpty && _usageData == null) {
@@ -154,9 +173,18 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
     });
     final ok = await BackendProcessManager.stopProcess(pid);
     if (mounted) {
+      if (ok) {
+        _usageData = null;
+        _activeCommandLine = null;
+        // Poll until the process is actually gone (up to ~5 s)
+        for (int i = 0; i < 10; i++) {
+          await Future.delayed(const Duration(milliseconds: 500));
+          final remaining = await BackendProcessManager.listPids();
+          if (!remaining.contains(pid)) break;
+        }
+      }
       setState(() {
         _stoppingPid = false;
-        if (ok) _usageData = null;
       });
       if (ok) {
         await _loadPids();
@@ -205,6 +233,8 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
     if (logFile.isNotEmpty) args.addAll(['--log-file', logFile]);
     final storageRoot = _rootPathController.text.trim();
     if (storageRoot.isNotEmpty) args.addAll(['--storage-root-path', storageRoot]);
+
+    _activeCommandLine = '${[binaryPath, ...args].map((a) => a.contains(' ') ? "'$a'" : a).join(' ')}';
 
     final ok = await BackendProcessManager.startProcess(binaryPath, args: args);
     if (mounted) {
@@ -597,28 +627,82 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
   }
 
   Widget _buildPidTile(int pid, AppLocalizations l10n, ThemeData theme) {
-    return ListTile(
-      dense: true,
-      leading: Container(
-        width: 10,
-        height: 10,
-        decoration: BoxDecoration(
-          color: Colors.green,
-          shape: BoxShape.circle,
-        ),
-      ),
-      title: Text('${l10n.pidLabel}: $pid'),
-      subtitle: Text(l10n.processRunning),
-      trailing: _stoppingPid
-          ? const SizedBox(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Container(
+              width: 10, height: 10,
+              decoration: const BoxDecoration(
+                color: Colors.green,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('${l10n.pidLabel}: $pid'),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        l10n.processRunning,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_activeCommandLine != null) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: SelectableText(
+                      _activeCommandLine!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (_stoppingPid)
+            const SizedBox(
               width: 20, height: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : IconButton(
+          else
+            IconButton(
               icon: Icon(Icons.stop_circle, color: theme.colorScheme.error),
               tooltip: l10n.stop,
               onPressed: () => _handleStop(pid),
             ),
+        ],
+      ),
     );
   }
 }

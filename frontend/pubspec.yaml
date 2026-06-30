@@ -23,6 +23,8 @@ dependencies:
   flutter_tts: ^4.2.5
   flutter_markdown: ^0.7.6
   device_info_plus: ^13.1.0
+  window_manager: ^0.4.3
+  tray_manager: ^0.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -30,3 +32,5 @@ dev_dependencies:
 flutter:
   generate: true
   uses-material-design: true
+  assets:
+    - assets/tray_icon.png

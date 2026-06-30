@@ -644,6 +644,9 @@ oatpp::Object<ApiResponseDto> FileService::copyFile(const oatpp::Object<CopyRequ
 
     LOG_INFO("copyFile: {} items -> targetDir=\"{}\"", sources.size(), targetDirRel);
 
+    response->files = oatpp::Vector<oatpp::String>::createShared();
+    response->sources = oatpp::Vector<oatpp::String>::createShared();
+
     std::error_code ec;
     std::filesystem::create_directories(targetDirPath, ec);
 
@@ -669,8 +672,11 @@ oatpp::Object<ApiResponseDto> FileService::copyFile(const oatpp::Object<CopyRequ
             LOG_ERROR("copyFile: failed to copy '{}': {}", src.relPath, ec.message());
             ec.clear();
         } else {
-            // Insert copied file metadata into DB
             auto newRel = normalizeRelative(targetDirRel + "/" + src.fullPath.filename().string());
+            response->files->push_back(oatpp::String(newRel));
+            response->sources->push_back(oatpp::String(src.relPath));
+
+            // Insert copied file metadata into DB
             if (!m_repo.findByPath(newRel)) {
                 std::error_code fec;
                 auto fsize = std::filesystem::file_size(dest, fec) ;

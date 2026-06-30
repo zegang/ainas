@@ -1,14 +1,18 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:logging/logging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:developer' as developer;
+import 'package:window_manager/window_manager.dart';
+import 'package:tray_manager/tray_manager.dart';
 import 'l10n/app_localizations.dart';
 import 'features/file_browser/presentation/widgets/nas_browser_page.dart';
 import 'features/mine/presentation/widgets/login_widget.dart';
 import 'features/mine/presentation/widgets/mine_page.dart';
 import './services/api_service.dart';
+import 'shared/utils/backend_process_manager.dart';
 import 'shared/themes/app_theme.dart';
 import 'shared/widgets/ad_splash_screen.dart';
 import 'features/home/presentation/widgets/home_page.dart';
@@ -17,6 +21,12 @@ import 'features/ai_assistant/presentation/widgets/ai_assistant_page.dart';
 void main() async {
   _setupLogging();
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (!kIsWeb) {
+    await windowManager.ensureInitialized();
+    await windowManager.setPreventClose(true);
+  }
+
   // Initialize the singleton and load saved settings
   final api = ApiService();
   await api.loadSettings();
@@ -97,13 +107,19 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends State<MainShell> with WindowListener, TrayListener {
   Timer? _statusSyncTimer;
   bool _navRailExtended = true;
 
   @override
   void initState() {
     super.initState();
+    if (!kIsWeb) {
+      windowManager.addListener(this);
+      trayManager.addListener(this);
+      _setupTray();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _updateTrayMenu());
+    }
     // Perform an immediate sync on startup
     _syncNasStatus();
     // Schedule periodic sync every 30 seconds to update storage usage and connection state
@@ -113,9 +129,89 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  Future<void> _setupTray() async {
+    try {
+      final byteData = await rootBundle.load('assets/tray_icon.png');
+      final tempDir = Directory.systemTemp;
+      final iconFile = File('${tempDir.path}/ainas_tray_icon.png');
+      await iconFile.writeAsBytes(byteData.buffer.asUint8List());
+      await trayManager.setIcon(iconFile.path);
+      await trayManager.setToolTip('AI-NAS');
+      // Menu will be set with localized text after first build
+      _updateTrayMenu();
+    } catch (e) {
+      developer.log('Tray setup failed: $e');
+    }
+  }
+
+  void _updateTrayMenu() {
+    final l10n = context.mounted ? AppLocalizations.of(context) : null;
+    trayManager.setContextMenu(Menu(
+      items: [
+        MenuItem(key: 'show', label: l10n?.showWindow ?? 'Show Window'),
+        MenuItem.separator(),
+        MenuItem(key: 'quit', label: l10n?.quitApp ?? 'Quit'),
+      ],
+    ));
+  }
+
+  @override
+  void onWindowClose() async {
+    await windowManager.hide();
+  }
+
+  @override
+  void onTrayIconMouseDown() {
+    windowManager.show();
+  }
+
+  @override
+  void onTrayMenuItemClick(MenuItem item) {
+    switch (item.key) {
+      case 'show':
+        windowManager.show();
+        break;
+      case 'quit':
+        _handleQuit();
+        break;
+    }
+  }
+
+  Future<void> _handleQuit() async {
+    if (!context.mounted) return;
+    await windowManager.show();
+    final pids = await BackendProcessManager.listPids();
+    if (pids.isNotEmpty && context.mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      final stopBackend = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(l10n.quitApp),
+          content: Text(l10n.quitBackendRunning),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancelButton)),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.stop)),
+          ],
+        ),
+      );
+      if (stopBackend == true) {
+        for (final pid in pids) {
+          await BackendProcessManager.stopProcess(pid);
+        }
+      }
+    }
+    if (context.mounted) {
+      await windowManager.destroy();
+    }
+  }
+
   @override
   void dispose() {
     _statusSyncTimer?.cancel();
+    if (!kIsWeb) {
+      windowManager.removeListener(this);
+      trayManager.removeListener(this);
+    }
     super.dispose();
   }
 
@@ -236,7 +332,7 @@ class _MainShellState extends State<MainShell> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(api.storageLabel, style: Theme.of(context).textTheme.labelSmall),
+                  Text(api.storageLabel.isEmpty ? l10n.loadingLabel : api.storageLabel, style: Theme.of(context).textTheme.labelSmall),
                   const SizedBox(height: 4),
                   SizedBox(
                     width: 120,

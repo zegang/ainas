@@ -2017,6 +2017,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Log File'**
   String get logFileLabel;
+
+  /// No description provided for @noFeaturesRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'No features registered.'**
+  String get noFeaturesRegistered;
+
+  /// No description provided for @showWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Window'**
+  String get showWindow;
+
+  /// No description provided for @quitApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit'**
+  String get quitApp;
+
+  /// No description provided for @quitBackendRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Backend process is still running. Stop it before quitting?'**
+  String get quitBackendRunning;
 }
 
 class _AppLocalizationsDelegate

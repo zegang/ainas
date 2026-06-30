@@ -359,7 +359,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev libstdc++-12-dev
+            libgtk-3-dev liblzma-dev libstdc++-12-dev \
+            libayatana-appindicator3-dev
 
       - working-directory: frontend
         run: |
@@ -464,9 +465,7 @@ jobs:
         run: cmake --build build --parallel --config Release
 
       - name: Package binary
-        run: |
-          cd backendcpp/build/src
-          tar czf ainas-backend-linux.tar.gz ainas-backend-cpp
+        run: tar czf ainas-backendcpp-linux.tar.gz -C backendcpp/build/src ainas-backend-cpp
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
@@ -507,9 +506,7 @@ jobs:
         run: cmake --build build --parallel --config Release
 
       - name: Package binary
-        run: |
-          cd backendcpp/build/src
-          tar czf ainas-backend-macos.tar.gz ainas-backend-cpp
+        run: tar czf ainas-backendcpp-macos.tar.gz -C backendcpp/build/src ainas-backend-cpp
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
@@ -738,6 +735,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - uses: actions/setup-java@v4
         with:
@@ -832,6 +831,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:

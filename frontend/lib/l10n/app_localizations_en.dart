@@ -1053,4 +1053,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get logFileLabel => 'Log File';
+
+  @override
+  String get noFeaturesRegistered => 'No features registered.';
+
+  @override
+  String get showWindow => 'Show Window';
+
+  @override
+  String get quitApp => 'Quit';
+
+  @override
+  String get quitBackendRunning =>
+      'Backend process is still running. Stop it before quitting?';
 }

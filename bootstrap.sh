@@ -51,6 +51,7 @@ show_usage() {
     echo "  --linux        Run the Flutter frontend as a native Linux app"
     echo "  --android      Build the Android APK (Release)"
     echo "  --pyinstaller  Build a standalone binary with PyInstaller"
+    echo "  --release      Build full release bundle for platform (linux|macos|windows|android|ios)"
     echo "  --all          Setup and run both backend and frontend (default)"
     echo "  --help, -h     Show this help message"
     echo ""
@@ -84,6 +85,14 @@ while [[ $# -gt 0 ]]; do
             else
                 export BACKEND_IMAGE_VARIANT="cpu"
             fi ;;
+        --release)
+            COMMAND="$1"; shift
+            if [[ $# -gt 0 && "$1" != --* ]]; then
+                export RELEASE_PLATFORM="$1"; shift
+            else
+                echo "Error: --release requires a platform argument (linux|macos|windows|android|ios)"
+                exit 1
+            fi ;;
         --help|-h)
             show_usage; exit 0 ;;
         --*)
@@ -108,6 +117,14 @@ if [ -z "$FRONTEND_PLATFORM" ]; then
     else
         export FRONTEND_PLATFORM="web"
     fi
+fi
+
+# Validate release platform if set
+if [ -n "$RELEASE_PLATFORM" ]; then
+    case "$RELEASE_PLATFORM" in
+        linux|macos|windows|android|ios) ;;
+        *) echo "Error: Invalid release platform '$RELEASE_PLATFORM'. Supported: linux, macos, windows, android, ios"; exit 1 ;;
+    esac
 fi
 
 setup_python() {
@@ -495,6 +512,338 @@ build_backend_image() {
     echo "  $tool run -p 9026:9026 -v ./storage:/app/storage ainas-backend:${variant}"
 }
 
+# ─── Release bundle builders ──────────────────────────────────────────
+
+build_release_check_os() {
+    local platform="$1"
+    case "$platform" in
+        linux)
+            if [[ "$OSTYPE" != "linux-gnu"* ]]; then
+                echo "Error: Linux release can only be built on Linux"; exit 1
+            fi ;;
+        macos|ios)
+            if [[ "$OSTYPE" != "darwin"* ]]; then
+                echo "Error: macOS/iOS release can only be built on macOS"; exit 1
+            fi ;;
+        windows)
+            if [[ "$OSTYPE" != "msys"* && "$OSTYPE" != "cygwin"* && "$OSTYPE" != "mingw"* ]]; then
+                echo "Error: Windows release can only be built on Windows"; exit 1
+            fi ;;
+        android)
+            if [[ "$OSTYPE" != "linux-gnu"* && "$OSTYPE" != "darwin"* ]]; then
+                echo "Error: Android release can only be built on Linux or macOS"; exit 1
+            fi ;;
+    esac
+}
+
+build_release_linux() {
+    build_release_check_os linux
+    echo "Step: Building Linux release bundle..."
+    setup_flutter
+    setup_cpp
+
+    cd "$PROJECT_ROOT/frontend"
+    echo "Step: Building Flutter Linux (release)..."
+    flutter build linux --release
+    cd "$PROJECT_ROOT"
+
+    local release_dir="$PROJECT_ROOT/releases/ainas-full-linux"
+    mkdir -p "$release_dir"
+
+    cp -r "$PROJECT_ROOT/frontend/build/linux/x64/release/bundle/"* "$release_dir/"
+    cp "$PROJECT_ROOT/backendcpp/build/src/ainas-backend-cpp" "$release_dir/"
+    chmod +x "$release_dir/ainas-backend-cpp"
+
+    echo "Step: Fixing RPATH in ELF binaries..."
+    python3 -c "
+import struct, os, sys
+
+def vaddr_to_offset(segments, vaddr):
+    for vs, off, sz in segments:
+        if vs <= vaddr < vs + sz:
+            return off + (vaddr - vs)
+    return None
+
+def fix_rpath(path):
+    with open(path, 'r+b') as f:
+        data = f.read()
+        if data[:4] != b'\x7fELF' or data[4] != 2 or data[5] != 1:
+            return
+        e_phoff = struct.unpack_from('<Q', data, 0x20)[0]
+        e_phnum = struct.unpack_from('<H', data, 0x38)[0]
+        e_phentsize = struct.unpack_from('<H', data, 0x36)[0]
+        segments = []
+        phdr = e_phoff
+        for _ in range(e_phnum):
+            pt = struct.unpack_from('<I', data, phdr)[0]
+            if pt == 1:
+                po = struct.unpack_from('<Q', data, phdr + 8)[0]
+                pv = struct.unpack_from('<Q', data, phdr + 0x10)[0]
+                ps = struct.unpack_from('<Q', data, phdr + 0x20)[0]
+                segments.append((pv, po, ps))
+            phdr += e_phentsize
+        phdr = e_phoff
+        dv = ds = 0
+        for _ in range(e_phnum):
+            pt = struct.unpack_from('<I', data, phdr)[0]
+            if pt == 2:
+                dv = struct.unpack_from('<Q', data, phdr + 0x10)[0]
+                ds = struct.unpack_from('<Q', data, phdr + 0x20)[0]
+                break
+            phdr += e_phentsize
+        if not dv:
+            return
+        doff = vaddr_to_offset(segments, dv)
+        if doff is None:
+            return
+        changed = False
+        pos = doff
+        while pos < doff + ds:
+            tag = struct.unpack_from('<q', data, pos)[0]
+            if tag == 0:
+                break
+            if tag == 29:  # DT_RUNPATH → DT_RPATH
+                f.seek(pos)
+                f.write(struct.pack('<q', 15))
+                sys.stdout.write(f'  {path}: RUNPATH→RPATH\n')
+                changed = True
+                # If RPATH string is '\$ORIGIN/lib' and file is in lib/, fix to '\$ORIGIN'
+            elif tag == 15 and b'\$ORIGIN/lib' in data:
+                # Check if RPATH string has the wrong path
+                pass
+            pos += 16
+        return changed
+
+for root, dirs, files in os.walk('$release_dir'):
+    for fn in files:
+        fp = os.path.join(root, fn)
+        try:
+            fix_rpath(fp)
+        except Exception:
+            pass
+" 2>&1 | grep -v '^$' || true
+
+    echo "Step: Creating archive..."
+    local archive="$release_dir/ainas-full-linux.tar.gz"
+    tar czf "$archive" -C "$release_dir" .
+    echo "Release built:"
+    echo "  Directory: $release_dir/"
+    echo "  Archive:   $archive"
+}
+
+build_release_macos() {
+    build_release_check_os macos
+    echo "Step: Building macOS release bundle..."
+    setup_flutter
+
+    cd "$PROJECT_ROOT/frontend"
+    echo "Step: Building Flutter macOS (release)..."
+    flutter build macos --release
+    cd "$PROJECT_ROOT"
+
+    echo "Step: Building C++ Backend..."
+    setup_cpp
+
+    local release_dir="$PROJECT_ROOT/releases/ainas-full-macos"
+    mkdir -p "$release_dir"
+
+    local app_path="$PROJECT_ROOT/frontend/build/macos/Build/Products/Release/Runner.app"
+    if [ ! -d "$app_path" ]; then
+        echo "Error: Flutter macOS app not found at $app_path"; exit 1
+    fi
+
+    cp -r "$app_path" "$release_dir/"
+    cp "$PROJECT_ROOT/backendcpp/build/src/ainas-backend-cpp" \
+       "$release_dir/Runner.app/Contents/MacOS/"
+    chmod +x "$release_dir/Runner.app/Contents/MacOS/ainas-backend-cpp"
+
+    echo "Step: Creating archive..."
+    local archive="$release_dir/ainas-full-macos.zip"
+    ditto -c -k --keepParent "Runner.app" "$archive"
+    echo "Release built:"
+    echo "  Directory: $release_dir/"
+    echo "  Archive:   $archive"
+}
+
+build_release_windows() {
+    build_release_check_os windows
+    echo "Step: Building Windows release bundle..."
+    setup_flutter
+
+    cd "$PROJECT_ROOT/frontend"
+    echo "Step: Building Flutter Windows (release)..."
+    flutter build windows --release
+    cd "$PROJECT_ROOT"
+
+    echo "Step: Building C++ Backend..."
+    setup_cpp
+
+    local release_dir="$PROJECT_ROOT/releases/ainas-full-windows"
+    mkdir -p "$release_dir"
+
+    cp -r "$PROJECT_ROOT/frontend/build/windows/x64/runner/Release/"* "$release_dir/"
+    cp "$PROJECT_ROOT/backendcpp/build/src/Release/ainas-backend-cpp.exe" "$release_dir/" 2>/dev/null || \
+    cp "$PROJECT_ROOT/backendcpp/build/src/ainas-backend-cpp.exe" "$release_dir/" 2>/dev/null || true
+
+    echo "Step: Creating archive..."
+    local archive="$release_dir/ainas-full-windows.zip"
+    cd "$release_dir"
+    # Prefer PowerShell Compress-Archive (Windows), fall back to zip
+    powershell -Command "Compress-Archive -Path '*' -DestinationPath '$archive'" 2>/dev/null || \
+    zip -r "$archive" .
+    echo "Release built:"
+    echo "  Directory: $release_dir/"
+    echo "  Archive:   $archive"
+}
+
+build_release_android() {
+    build_release_check_os android
+    echo "Step: Building Android release bundle..."
+
+    if [ -z "$ANDROID_SDK_ROOT" ] && [ -z "$ANDROID_HOME" ]; then
+        echo "Error: ANDROID_SDK_ROOT or ANDROID_HOME must be set"
+        exit 1
+    fi
+
+    setup_flutter
+
+    cd "$PROJECT_ROOT/frontend"
+    echo "Step: Building APK (release)..."
+    flutter build apk --release --android-skip-build-dependency-validation
+    cd "$PROJECT_ROOT"
+
+    local ndk_path
+    if [ -n "$ANDROID_SDK_ROOT" ]; then
+        ndk_path=$(ls -d "$ANDROID_SDK_ROOT/ndk"/*/ 2>/dev/null | head -1)
+    else
+        ndk_path=$(ls -d "$ANDROID_HOME/ndk"/*/ 2>/dev/null | head -1)
+    fi
+    if [ -z "$ndk_path" ]; then
+        echo "Error: Android NDK not found. Install it via sdkmanager: sdkmanager --install 'ndk;27.2.12479018'"
+        exit 1
+    fi
+    echo "Step: Using NDK at $ndk_path"
+
+    # SQLite amalgamation for cross-build
+    if [ ! -f "$PROJECT_ROOT/backendcpp/vendor/sqlite3.c" ]; then
+        echo "Step: Downloading SQLite amalgamation..."
+        curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3460100.zip -o /tmp/sqlite-amal.zip
+        unzip -q /tmp/sqlite-amal.zip -d /tmp
+        cp /tmp/sqlite-amalgamation-*/sqlite3.{c,h} "$PROJECT_ROOT/backendcpp/vendor/"
+        rm -rf /tmp/sqlite-amalgamation-* /tmp/sqlite-amal.zip
+    fi
+
+    local toolchain="$ndk_path/build/cmake/android.toolchain.cmake"
+    local common_args="-DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$toolchain"
+    common_args="$common_args -DANDROID_PLATFORM=android-24"
+    common_args="$common_args -DSQLITE3_INCLUDE_DIRS=$PROJECT_ROOT/backendcpp/vendor"
+    common_args="$common_args -DSQLITE3_LIBRARIES=$PROJECT_ROOT/backendcpp/vendor/sqlite3.c"
+
+    echo "Step: Building C++ backend for arm64-v8a..."
+    cmake -S "$PROJECT_ROOT/backendcpp" -B "$PROJECT_ROOT/build-android-arm64" \
+        $common_args -DANDROID_ABI=arm64-v8a \
+        -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+        -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
+    cmake --build "$PROJECT_ROOT/build-android-arm64" --parallel --config Release
+
+    echo "Step: Building C++ backend for x86_64..."
+    cmake -S "$PROJECT_ROOT/backendcpp" -B "$PROJECT_ROOT/build-android-x86_64" \
+        $common_args -DANDROID_ABI=x86_64 \
+        -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+        -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
+    cmake --build "$PROJECT_ROOT/build-android-x86_64" --parallel --config Release
+
+    local apk="$PROJECT_ROOT/frontend/build/app/outputs/flutter-apk/app-release.apk"
+    if [ ! -f "$apk" ]; then
+        echo "Error: APK not found at $apk"; exit 1
+    fi
+
+    local release_dir="$PROJECT_ROOT/releases/ainas-full-android"
+    mkdir -p "$release_dir"
+    cp "$apk" "$release_dir/app-release.apk"
+
+    echo "Step: Injecting backend binaries into APK..."
+    local inject_dir="/tmp/apk-inject-$$"
+    mkdir -p "$inject_dir/assets/backend/arm64-v8a"
+    mkdir -p "$inject_dir/assets/backend/x86_64"
+
+    cp "$PROJECT_ROOT/build-android-arm64/src/ainas-backend-cpp" \
+       "$inject_dir/assets/backend/arm64-v8a/ainas-backend-cpp"
+    cp "$PROJECT_ROOT/build-android-x86_64/src/ainas-backend-cpp" \
+       "$inject_dir/assets/backend/x86_64/ainas-backend-cpp"
+
+    cd "$inject_dir"
+    zip -0 -r "$release_dir/app-release.apk" assets/
+    cd "$PROJECT_ROOT"
+    rm -rf "$inject_dir"
+
+    echo "Release built:"
+    echo "  APK: $release_dir/app-release.apk"
+}
+
+build_release_ios() {
+    build_release_check_os ios
+    echo "Step: Building iOS release bundle..."
+    setup_flutter
+
+    cd "$PROJECT_ROOT/frontend"
+    echo "Step: Building Flutter iOS (release, no codesign)..."
+    flutter build ios --release --no-codesign
+    cd "$PROJECT_ROOT"
+
+    # SQLite amalgamation for cross-build
+    if [ ! -f "$PROJECT_ROOT/backendcpp/vendor/sqlite3.c" ]; then
+        echo "Step: Downloading SQLite amalgamation..."
+        curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3460100.zip -o /tmp/sqlite-amal.zip
+        unzip -q /tmp/sqlite-amal.zip -d /tmp
+        cp /tmp/sqlite-amalgamation-*/sqlite3.{c,h} "$PROJECT_ROOT/backendcpp/vendor/"
+        rm -rf /tmp/sqlite-amalgamation-* /tmp/sqlite-amal.zip
+    fi
+
+    echo "Step: Building C++ backend for iOS (arm64)..."
+    cmake -S "$PROJECT_ROOT/backendcpp" -B "$PROJECT_ROOT/build-ios-arm64" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_SYSTEM_NAME=iOS \
+        -DCMAKE_OSX_ARCHITECTURES=arm64 \
+        -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
+        -DCMAKE_OSX_SYSROOT="$(xcrun --sdk iphoneos --show-sdk-path)" \
+        -DSQLITE3_INCLUDE_DIRS="$PROJECT_ROOT/backendcpp/vendor" \
+        -DSQLITE3_LIBRARIES="$PROJECT_ROOT/backendcpp/vendor/sqlite3.c"
+    cmake --build "$PROJECT_ROOT/build-ios-arm64" --parallel --config Release
+
+    local app_path="$PROJECT_ROOT/frontend/build/ios/iphoneos/Runner.app"
+    if [ ! -d "$app_path" ]; then
+        echo "Error: iOS .app not found at $app_path"; exit 1
+    fi
+
+    local release_dir="$PROJECT_ROOT/releases/ainas-full-ios"
+    mkdir -p "$release_dir"
+
+    cp -r "$app_path" "$release_dir/"
+    mkdir -p "$release_dir/Runner.app/Frameworks"
+    cp "$PROJECT_ROOT/build-ios-arm64/src/ainas-backend-cpp" \
+       "$release_dir/Runner.app/Frameworks/ainas-backend-cpp"
+    chmod +x "$release_dir/Runner.app/Frameworks/ainas-backend-cpp"
+
+    echo "Step: Creating archive..."
+    local archive="$release_dir/ainas-full-ios.zip"
+    ditto -c -k --keepParent "Runner.app" "$archive"
+    echo "Release built:"
+    echo "  Directory: $release_dir/"
+    echo "  Archive:   $archive"
+}
+
+build_release() {
+    local platform="${RELEASE_PLATFORM:-linux}"
+    case "$platform" in
+        linux)   build_release_linux ;;
+        macos)   build_release_macos ;;
+        windows) build_release_windows ;;
+        android) build_release_android ;;
+        ios)     build_release_ios ;;
+    esac
+}
+
 case "$COMMAND" in
     --upgrade)
         upgrade_deps
@@ -560,6 +909,9 @@ case "$COMMAND" in
         ;;
     --build-backend-image)
         build_backend_image
+        ;;
+    --release)
+        build_release
         ;;
     --openapi)
         setup_python

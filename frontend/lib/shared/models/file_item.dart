@@ -34,8 +34,16 @@ class FileItem {
 
   // Helper getter for thumbnail URL
   String get thumbnailUrl {
-    final api = ApiService(); // Access the singleton ApiService
-    return '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(path)}&thumbnail=true';
+    final api = ApiService();
+    final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(cleanPath)}&thumbnail=true';
+  }
+
+  // Helper getter for download URL
+  String get downloadUrl {
+    final api = ApiService();
+    final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(cleanPath)}';
   }
 
   @override

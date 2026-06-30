@@ -152,7 +152,7 @@ class _AiConfigWidgetState extends State<AiConfigWidget> {
                   )
                 : Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text('No features registered.',
+                    child: Text(l10n.noFeaturesRegistered,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
                   );
     if (widget.showFeatureIcons) return body;

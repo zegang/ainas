@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/shared/themes/app_theme.dart';
-import 'package:ainas_frontend/services/api_service.dart';
 import 'package:ainas_frontend/shared/models/file_item.dart';
 import 'package:ainas_frontend/shared/widgets/file_action_menu.dart';
 
@@ -23,7 +22,6 @@ class FileListView extends StatelessWidget {
   final bool showDateColumn;
   final bool showActionMenu;
   final bool showOnlyDirs;
-  final ApiService api = ApiService();
 
   FileListView({
     super.key,
@@ -76,8 +74,8 @@ class FileListView extends StatelessWidget {
               return KeyedSubtree(
                 key: ValueKey(item.path),
                 child: isSmallScreen
-                    ? _buildMobileListRow(context, item, api)
-                    : _buildListRow(context, item, api),
+                    ? _buildMobileListRow(context, item)
+                    : _buildListRow(context, item),
               );
             },
           ),
@@ -125,7 +123,7 @@ class FileListView extends StatelessWidget {
     );
   }
 
-  Widget _buildListRow(BuildContext context, FileItem item, ApiService api) {
+  Widget _buildListRow(BuildContext context, FileItem item) {
     final l10n = AppLocalizations.of(context)!;
     final themeExt = Theme.of(context).extension<AppThemeExtension>()!;
     final dateStr = DateFormat.yMMMd().add_jm().format(item.updatedAt);
@@ -147,14 +145,14 @@ class FileListView extends StatelessWidget {
               flex: 4,
               child: Row(
                 children: [
-                  if (!item.isDir && _isImage(item.name))
-                    SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: CachedNetworkImage(
-                          imageUrl: '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}&thumbnail=true',
+                    if (!item.isDir && _isImage(item.name))
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: CachedNetworkImage(
+                            imageUrl: item.thumbnailUrl,
                           fit: BoxFit.cover,
                           width: 24,
                           height: 24,
@@ -223,7 +221,7 @@ class FileListView extends StatelessWidget {
     FileActionMenu(item: item, onActionSelected: onActionSelected).showSheet(context);
   }
 
-  Widget _buildMobileListRow(BuildContext context, FileItem item, ApiService api) {
+  Widget _buildMobileListRow(BuildContext context, FileItem item) {
     final l10n = AppLocalizations.of(context)!;
     final themeExt = Theme.of(context).extension<AppThemeExtension>()!;
     final dateStr = DateFormat.yMMMd().add_jm().format(item.updatedAt);
@@ -241,13 +239,13 @@ class FileListView extends StatelessWidget {
           children: [
             // First column: image/file icon
             if (!item.isDir && _isImage(item.name))
-              SizedBox(
-                width: 48,
-                height: 48,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: CachedNetworkImage(
-                    imageUrl: '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}&thumbnail=true',
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: item.thumbnailUrl,
                     fit: BoxFit.cover,
                     width: 48,
                     height: 48,

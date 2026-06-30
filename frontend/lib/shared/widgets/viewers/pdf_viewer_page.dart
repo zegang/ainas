@@ -84,7 +84,7 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
                   if (action == 'pdf_to_images') {
                     _splitToImages(context, item);
                   } else if (action == 'download') {
-                    final uri = Uri.parse('${_api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}');
+                    final uri = Uri.parse(item.downloadUrl);
                     if (await canLaunchUrl(uri)) {
                       await launchUrl(uri, mode: LaunchMode.externalApplication);
                     }

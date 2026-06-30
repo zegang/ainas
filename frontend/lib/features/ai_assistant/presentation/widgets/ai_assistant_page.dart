@@ -273,8 +273,8 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
   }
 
   String _getFileUrl(String filePath, {bool thumbnail = false}) {
-    // Assuming a standard download endpoint on your NAS backend
-    return '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(filePath)}${thumbnail ? "&thumbnail=true" : ""}';
+    final cleanPath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
+    return '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(cleanPath)}${thumbnail ? "&thumbnail=true" : ""}';
   }
 
   bool _isMarkdown(String text) {

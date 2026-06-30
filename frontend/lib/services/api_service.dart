@@ -52,7 +52,7 @@ class ApiService with ChangeNotifier {
   bool isServerConnected = false;
   String aiStatus = 'disabled'; // 'disabled', 'initializing', 'ready'
   double storagePercent = 0.0; // 0.0 to 1.0
-  String storageLabel = "Loading...";
+  String storageLabel = '';
 
   // Navigation state to control the app shell tabs
   int currentTabIndex = 0; // 0: Home, 1: Files, 2: AI, 3: Mine

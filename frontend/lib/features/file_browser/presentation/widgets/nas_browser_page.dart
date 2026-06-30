@@ -1006,7 +1006,7 @@ class _NASBrowserState extends State<NASBrowser> {
       }
       return;
     }
-    final downloadUrl = '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}';
+    final downloadUrl = item.downloadUrl;
     final uri = Uri.parse(downloadUrl);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -1025,7 +1025,7 @@ class _NASBrowserState extends State<NASBrowser> {
       _refresh();
     } else {
       final ext = item.name.toLowerCase();
-      final downloadUrl = '${api.baseUrl}/api/files/download?path=${Uri.encodeComponent(item.path)}';
+      final downloadUrl = item.downloadUrl;
 
       if (ext.endsWith('.pdf') || ext.endsWith('.docx')) {
         // Show a loading indicator immediately

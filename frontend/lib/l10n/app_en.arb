@@ -486,6 +486,10 @@
   "homePageTitle": "AI-NAS Home",
   "listenAddressLabel": "Listen Address",
   "logLevelLabel": "Log Level",
-  "logFileLabel": "Log File"
+  "logFileLabel": "Log File",
+  "noFeaturesRegistered": "No features registered.",
+  "showWindow": "Show Window",
+  "quitApp": "Quit",
+  "quitBackendRunning": "Backend process is still running. Stop it before quitting?"
 }
 

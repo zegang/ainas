@@ -24,6 +24,9 @@ public:
     bool move(const std::filesystem::path& oldRelPath,
               const std::filesystem::path& newRelPath);
 
+    bool copy(const std::filesystem::path& srcRelPath,
+              const std::filesystem::path& dstRelPath);
+
     static bool isSupportedImage(const std::filesystem::path& path);
 
 private:

@@ -145,6 +145,26 @@ bool ThumbnailService::move(const std::filesystem::path& oldRelPath,
     return !ec;
 }
 
+bool ThumbnailService::copy(const std::filesystem::path& srcRelPath,
+                            const std::filesystem::path& dstRelPath) {
+    auto srcThumb = thumbnailPath(srcRelPath);
+    auto dstThumb = thumbnailPath(dstRelPath);
+    std::error_code ec;
+
+    if (std::filesystem::exists(srcThumb, ec)) {
+        std::filesystem::create_directories(dstThumb.parent_path(), ec);
+        std::filesystem::copy(srcThumb, dstThumb,
+            std::filesystem::copy_options::overwrite_existing, ec);
+        if (!ec) {
+            LOG_DEBUG("Thumbnail copied: {} -> {}", srcThumb.string(), dstThumb.string());
+            return true;
+        }
+    }
+
+    // If source thumbnail doesn't exist or copy failed, fall back to generate
+    return generate(dstRelPath);
+}
+
 bool ThumbnailService::isSupportedImage(const std::filesystem::path& path) {
     auto ext = path.extension().string();
     // Case-insensitive comparison

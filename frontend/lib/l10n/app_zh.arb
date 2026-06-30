@@ -468,5 +468,9 @@
   "homePageTitle": "AI-NAS 首页",
   "listenAddressLabel": "监听地址",
   "logLevelLabel": "日志级别",
-  "logFileLabel": "日志文件"
+  "logFileLabel": "日志文件",
+  "noFeaturesRegistered": "暂无可用的 AI 功能",
+  "showWindow": "显示窗口",
+  "quitApp": "退出",
+  "quitBackendRunning": "后端进程仍在运行，是否在退出前停止它？"
 }
