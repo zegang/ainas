@@ -84,7 +84,7 @@ public:
 
         LOG_INFO("Storage root updated: {} -> {}", oldDb, m_config->dbPath.string());
         if (m_config->dbPath.string() != oldDb) {
-            LOG_WARN("DB path changed from {} to {} — restart required to pick up new database",
+            LOG_WARN("DB path changed from {} to {} - restart required to pick up new database",
                      oldDb, m_config->dbPath.string());
         }
 

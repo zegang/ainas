@@ -50,9 +50,12 @@ std::filesystem::path FileService::resolvePath(const std::string& relativePath) 
     auto rootStr = m_config->dataPath.lexically_normal().string();
     auto fullStr = fullPath.string();
 
+    LOG_INFO("resolvePath: relativePath {}, rootStr {}, fullStr {}",
+              relativePath, rootStr, fullStr);
     if (fullStr.size() < rootStr.size() ||
         fullStr.compare(0, rootStr.size(), rootStr) != 0 ||
-        (fullStr.size() > rootStr.size() && fullStr[rootStr.size()] != '/')) {
+        (fullStr.size() > rootStr.size() &&
+         fullStr[rootStr.size()] != '/' && fullStr[rootStr.size()] != '\\')) {
         throw FileServiceError(FileServiceError::Kind::BadRequest,
                                "Path traversal detected");
     }
@@ -347,7 +350,7 @@ oatpp::Object<UploadResponseDto> FileService::uploadFile(
         rec.parentId = parentId;
 
         // If a record with the same path already exists, update it instead of
-        // inserting — avoids SQLITE_CONSTRAINT on the UNIQUE path column when
+        // inserting - avoids SQLITE_CONSTRAINT on the UNIQUE path column when
         // re-uploading a file with the same name.
         auto existing = m_repo.findByPath(uploadRelPath);
         if (existing) {
@@ -418,7 +421,7 @@ oatpp::Object<ApiResponseDto> FileService::deleteFile(const oatpp::String& pathS
 oatpp::Object<ApiResponseDto> FileService::moveFile(const oatpp::Object<MoveRequestDto>& body) {
     auto response = ApiResponseDto::createShared();
 
-    // Resolve source path — by id, id string, or path
+    // Resolve source path - by id, id string, or path
     std::filesystem::path srcPath;
     std::string srcRel;
     std::string fileName;
@@ -473,7 +476,7 @@ oatpp::Object<ApiResponseDto> FileService::moveFile(const oatpp::Object<MoveRequ
 
     if (!resolveSource()) return response;
 
-    // Resolve destination — by target_parent_id, target_parent_path, or newPath
+    // Resolve destination - by target_parent_id, target_parent_path, or newPath
     std::filesystem::path dstPath;
     std::string dstRel;
 
@@ -577,7 +580,7 @@ oatpp::Object<ApiResponseDto> FileService::moveFile(const oatpp::Object<MoveRequ
 oatpp::Object<ApiResponseDto> FileService::copyFile(const oatpp::Object<CopyRequestDto>& body) {
     auto response = ApiResponseDto::createShared();
 
-    // Resolve target directory — by id or path
+    // Resolve target directory - by id or path
     std::filesystem::path targetDirPath;
     std::string targetDirRel;
 
@@ -611,7 +614,7 @@ oatpp::Object<ApiResponseDto> FileService::copyFile(const oatpp::Object<CopyRequ
 
     if (!resolveTarget()) return response;
 
-    // Collect source paths — by ids or paths
+    // Collect source paths - by ids or paths
     struct SourceItem {
         std::filesystem::path fullPath;
         std::string relPath;

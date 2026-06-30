@@ -167,6 +167,11 @@ class _MainShellState extends State<MainShell> with WindowListener, TrayListener
   }
 
   @override
+  void onTrayIconRightMouseDown() {
+    trayManager.popUpContextMenu(bringAppToFront: true);
+  }
+
+  @override
   void onTrayMenuItemClick(MenuItem item) {
     switch (item.key) {
       case 'show':
@@ -180,9 +185,9 @@ class _MainShellState extends State<MainShell> with WindowListener, TrayListener
 
   Future<void> _handleQuit() async {
     if (!context.mounted) return;
-    await windowManager.show();
     final pids = await BackendProcessManager.listPids();
     if (pids.isNotEmpty && context.mounted) {
+      await windowManager.show();
       final l10n = AppLocalizations.of(context)!;
       final stopBackend = await showDialog<bool>(
         context: context,
@@ -204,6 +209,7 @@ class _MainShellState extends State<MainShell> with WindowListener, TrayListener
     if (context.mounted) {
       await windowManager.destroy();
     }
+    exit(0);
   }
 
   @override

@@ -35,7 +35,7 @@ public:
     void setLogFile(std::string_view path);
     LogLevel level() const noexcept { return m_config.level; }
 
-    // Core log — source_location passed first (by macro), then format-string + args
+    // Core log - source_location passed first (by macro), then format-string + args
     template<typename... Args>
     void log(LogLevel level,
              std::source_location loc,
@@ -69,7 +69,7 @@ private:
 };
 
 //===----------------------------------------------------------------------===//
-//  Macros — convenience wrappers that capture source_location at call site
+//  Macros - convenience wrappers that capture source_location at call site
 //  and forward everything to the matching Logger::log() overload
 //===----------------------------------------------------------------------===//
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:path/path.dart' as path;
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -67,9 +68,19 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
     }
   }
 
+  String _defaultBackendBinaryPath() {
+    try {
+      final exeDir = File(Platform.resolvedExecutable).parent.path;
+      final candidate = '$exeDir/ainas-backend-cpp.exe';
+      if (FileSystemEntity.isFileSync(candidate)) return candidate;
+    } catch (_) {}
+    return '';
+  }
+
   String _defaultLogFilePath() {
     try {
-      return '${File(Platform.resolvedExecutable).parent.path}/ainas_frontend.log';
+      final executableDir = File(Platform.resolvedExecutable).parent.path;
+      return path.join(executableDir, 'ainas_backend.log');
     } catch (_) {
       return 'ainas_backend.log';
     }
@@ -80,7 +91,7 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
     final savedRoot = prefs.getString(_storageRootPathKey);
     final savedBinary = prefs.getString(_backendBinaryPathKey);
     _rootPathController.text = savedRoot ?? _defaultStorageRoot();
-    if (savedBinary != null) _binaryPathController.text = savedBinary;
+    _binaryPathController.text = savedBinary ?? _defaultBackendBinaryPath();
 
     final savedAddr = prefs.getString(_listenAddrKey);
     _addrController.text = savedAddr ?? '0.0.0.0';

@@ -1,12 +1,8 @@
-param(
-    [string]$Platform = "",
-    [string]$ContainerTool = "docker",
-    [string]$ReleasePlatform = "",
-    [string]$BackendImageVariant = "cpu",
-    [string]$Command = ""
-)
-
 $ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+$ContainerTool = "docker"
+$ReleasePlatform = ""
+$BackendImageVariant = "cpu"
 
 # Load .env
 $envFile = "$ProjectRoot\.env"
@@ -75,26 +71,30 @@ Environment Variables:
 
 # Parse arguments (manual, since we need --* style)
 $cmdArgs = @()
+$Command = ""
 $i = 0
 while ($i -lt $args.Count) {
     switch -Wildcard ($args[$i]) {
         "--platform" {
             $i++
             $env:FRONTEND_PLATFORM = $args[$i]
+            break
         }
         "--container-tool" {
             $i++
             $ContainerTool = $args[$i]
+            break
         }
         "--build-backend-image" {
-            $Command = $args[$i-1]
+            $Command = $args[$i]
             $i++
             if ($i -lt $args.Count -and $args[$i] -notlike "--*") {
                 $BackendImageVariant = $args[$i]
             }
+            break
         }
         "--release" {
-            $Command = $args[$i-1]
+            $Command = $args[$i]
             $i++
             if ($i -lt $args.Count -and $args[$i] -notlike "--*") {
                 $ReleasePlatform = $args[$i]
@@ -102,11 +102,13 @@ while ($i -lt $args.Count) {
                 Write-Host "Error: --release requires a platform argument (windows|android)"
                 exit 1
             }
+            break
         }
         "--help" { Show-Usage; exit 0 }
         "-h" { Show-Usage; exit 0 }
         "--*" {
             if (-not $Command) { $Command = $args[$i] } else { Write-Host "Error: Only one command allowed"; exit 1 }
+            break
         }
         default { Write-Host "Error: Invalid option '$($args[$i])'"; Show-Usage; exit 1 }
     }
@@ -144,11 +146,18 @@ function Setup-Flutter {
     Write-Host "Step: Flutter..."
 
     $FlutterHome = "$ProjectRoot/vendor/flutter"
-    $env:Path = "$FlutterHome/bin;$env:Path"
+    $NuGetDir = "$ProjectRoot/vendor/nuget"
+    $env:Path = "$FlutterHome/bin;$NuGetDir;$env:Path"
 
     if (-not (Test-Path "$FlutterHome/bin")) {
         Write-Host "Step: Initializing Flutter SDK submodule..."
         git submodule update --init --recursive vendor/flutter
+    }
+
+    if (-not (Test-Path "$NuGetDir/nuget.exe")) {
+        Write-Host "Step: Downloading NuGet (required by flutter_tts plugin)..."
+        New-Item -ItemType Directory -Force -Path $NuGetDir | Out-Null
+        Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile "$NuGetDir/nuget.exe"
     }
 
     Set-Location "$ProjectRoot/frontend"
@@ -257,10 +266,50 @@ function Run-Backend {
 function Setup-Cpp {
     param([string]$BuildType = "Release")
     Write-Host "Step: Building C++ Backend with CMake..."
+
+    if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
+        Write-Host "Error: cmake not found. Install CMake and ensure it is in PATH."
+        exit 1
+    }
+
+    # Ensure oatpp submodule is initialized
+    if (-not (Test-Path "$ProjectRoot/vendor/oatpp/CMakeLists.txt")) {
+        Write-Host "Step: Initializing oatpp submodule..."
+        git submodule update --init --recursive vendor/oatpp
+    }
+
     $src = "$ProjectRoot/backendcpp"
     $build = "$ProjectRoot/backendcpp/build"
-    cmake -S $src -B $build -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    $cmakeArgs = @("-S", $src, "-B", $build, "-DCMAKE_BUILD_TYPE=$BuildType", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON")
+
+    # SQLite amalgamation fallback for Windows (where sqlite3-dev is typically unavailable)
+    if (-not (Test-Path "$ProjectRoot/backendcpp/vendor/sqlite3.c")) {
+        Write-Host "Step: Downloading SQLite amalgamation..."
+        $sqliteUrl = "https://www.sqlite.org/2024/sqlite-amalgamation-3460100.zip"
+        $zipPath = "$ProjectRoot/backendcpp/vendor/sqlite-amalgamation.zip"
+        New-Item -ItemType Directory -Force -Path "$ProjectRoot/backendcpp/vendor" | Out-Null
+        Invoke-WebRequest -Uri $sqliteUrl -OutFile $zipPath
+        Expand-Archive -Path $zipPath -DestinationPath "$ProjectRoot/backendcpp/vendor/" -Force
+        Remove-Item -Path $zipPath -Force
+        $extracted = Get-ChildItem "$ProjectRoot/backendcpp/vendor/sqlite-amalgamation-*" | Select-Object -First 1
+        if ($extracted) {
+            Copy-Item "$($extracted.FullName)/sqlite3.c" "$ProjectRoot/backendcpp/vendor/sqlite3.c"
+            Copy-Item "$($extracted.FullName)/sqlite3.h" "$ProjectRoot/backendcpp/vendor/sqlite3.h"
+            Remove-Item -Path $extracted.FullName -Recurse -Force
+        }
+    }
+
+    # If amalgamation files exist, pass sqlite3.c as SQLite source.
+    # CMakeLists.txt will detect the .c extension and compile it into a static library.
+    if (Test-Path "$ProjectRoot/backendcpp/vendor/sqlite3.c") {
+        $cmakeArgs += "-DSQLITE3_LIBRARIES=$ProjectRoot/backendcpp/vendor/sqlite3.c"
+    }
+
+    cmake @cmakeArgs
+    if ($LASTEXITCODE -ne 0) { Write-Host "Error: CMake configuration failed"; exit 1 }
+
     cmake --build $build --config $BuildType
+    if ($LASTEXITCODE -ne 0) { Write-Host "Error: CMake build failed"; exit 1 }
 }
 
 function Run-BackendCpp {
@@ -374,7 +423,7 @@ function Build-ReleaseWindows {
 
     Set-Location "$ProjectRoot/frontend"
     Write-Host "Step: Building Flutter Windows (release)..."
-    flutter build windows --release
+    flutter build windows --release; if (-not $?) { Write-Host "Error: Flutter Windows build failed"; exit 1 }
     Set-Location $ProjectRoot
 
     Write-Host "Step: Building C++ Backend..."

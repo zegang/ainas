@@ -34,6 +34,15 @@ build/
 release/
 coverage/
 
+# Windows (Flutter) auto-generated artifacts
+**/windows/flutter/ephemeral/
+**/windows/flutter/generated_*
+**/windows/runner/GeneratedPluginRegistrant.*
+*.vcxproj.user
+*.vcxproj.filters
+*.sln.DotSettings
+*.sln.DotSettings.user
+
 # Symbolication related
 app.*.symbols
 

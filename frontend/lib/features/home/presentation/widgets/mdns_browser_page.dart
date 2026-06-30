@@ -5,6 +5,7 @@ import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/services/mdns_service.dart';
 import 'package:ainas_frontend/services/api_service.dart';
 import 'package:ainas_frontend/shared/models/nas_server.dart';
+import 'package:ainas_frontend/shared/utils/backend_process_manager.dart';
 import 'package:ainas_frontend/features/home/presentation/widgets/mdns_server_detail_page.dart';
 
 class MdnsBrowserPage extends StatefulWidget {
@@ -37,6 +38,28 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
     setState(() => _isScanning = true);
     _subscription?.cancel();
     _servers.clear();
+
+    // Check for a running local backend process and add it as a discovered server
+    BackendProcessManager.listPids().then((pids) {
+      if (pids.isNotEmpty && mounted) {
+        final uri = Uri.tryParse(_api.baseUrl);
+        final host = uri?.host ?? '127.0.0.1';
+        final port = uri?.port ?? 9026;
+        setState(() {
+          _servers.insert(0, NasServer(
+            name: 'Local',
+            host: host,
+            addresses: [host, '127.0.0.1'],
+            port: port,
+            priority: 0,
+            weight: 0,
+            txtRecords: [],
+            serviceType: '_http._tcp.local',
+          ));
+        });
+      }
+    });
+
     _subscription = MdnsService.scanForServers().listen((server) {
       if (!mounted) return;
       setState(() {

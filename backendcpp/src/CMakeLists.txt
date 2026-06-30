@@ -1,4 +1,4 @@
-# ── Platform-specific mDNS source file ─────────────────────────────
+# -- Platform-specific mDNS source file ------------------------------
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_path(DNS_SD_INCLUDE_DIRS dns_sd.h)
     find_library(DNS_SD_LIBRARIES dns_sd)
@@ -33,7 +33,7 @@ if(NOT SQLITE3_FOUND)
     # If the user passed a .c file as SQLITE3_LIBRARIES (Windows CI fallback),
     # compile it into a static library. Must check BEFORE find_library below,
     # because find_library treats an already-set cache variable as valid and
-    # would pass the .c path directly to MSVC → LNK1136.
+    # would pass the .c path directly to MSVC -> LNK1136.
     if(DEFINED SQLITE3_LIBRARIES AND SQLITE3_LIBRARIES MATCHES "\\.c$")
         get_filename_component(SQLITE3_C_FILE "${SQLITE3_LIBRARIES}" ABSOLUTE)
         get_filename_component(SQLITE3_DIR "${SQLITE3_C_FILE}" DIRECTORY)
