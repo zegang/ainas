@@ -20,6 +20,15 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
   bool _isScanning = false;
   final List<NasServer> _servers = [];
   StreamSubscription<NasServer>? _subscription;
+  String? _selectedServiceType;
+
+  Set<String> get _serviceTypes =>
+      _servers.map((s) => s.serviceType).where((t) => t.isNotEmpty).toSet();
+
+  List<NasServer> get _filteredServers {
+    if (_selectedServiceType == null) return _servers;
+    return _servers.where((s) => s.serviceType == _selectedServiceType).toList();
+  }
 
   @override
   void initState() {
@@ -60,7 +69,7 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
       }
     });
 
-    _subscription = MdnsService.scanForServers().listen((server) {
+    _subscription = MdnsService.scanForAllServices().listen((server) {
       if (!mounted) return;
       setState(() {
         _servers.removeWhere(
@@ -118,20 +127,51 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
                     ],
                   ),
                 )
-              : RefreshIndicator(
-                  onRefresh: () async => _startScan(),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: _servers.length + (_isScanning ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _servers.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
-                      final server = _servers[index];
-                      final isTarget = _api.baseUrl == server.url;
+              : Column(
+                  children: [
+                    if (_serviceTypes.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        child: SizedBox(
+                          height: 36,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              FilterChip(
+                                label: Text(l10n.mdnsFilterAllTypes, style: const TextStyle(fontSize: 12)),
+                                selected: _selectedServiceType == null,
+                                onSelected: (_) => setState(() => _selectedServiceType = null),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              const SizedBox(width: 6),
+                              ..._serviceTypes.map((type) => Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: FilterChip(
+                                  label: Text(type, style: const TextStyle(fontSize: 12)),
+                                  selected: _selectedServiceType == type,
+                                  onSelected: (_) => setState(() => _selectedServiceType = type),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              )),
+                            ],
+                          ),
+                        ),
+                      ),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: () async => _startScan(),
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: _filteredServers.length + (_isScanning ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == _filteredServers.length) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(child: CircularProgressIndicator()),
+                              );
+                            }
+                            final server = _filteredServers[index];
+                            final isTarget = _api.baseUrl == server.url;
                       return ListTile(
                         leading: Icon(
                           isTarget ? Icons.check_circle : Icons.dns_outlined,
@@ -139,8 +179,15 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
                         ),
                         title: Text(server.name,
                             style: isTarget ? const TextStyle(fontWeight: FontWeight.bold) : null),
-                        subtitle: Text(server.displayUrl,
-                            style: TextStyle(fontSize: 12, color: isTarget ? Colors.green : null)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(server.displayUrl,
+                                style: TextStyle(fontSize: 12, color: isTarget ? Colors.green : null)),
+                            Text(server.serviceType,
+                                style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                          ],
+                        ),
                         trailing: const Icon(Icons.chevron_right),
                         tileColor: isTarget ? Colors.green.withOpacity(0.08) : null,
                         shape: isTarget
@@ -154,6 +201,9 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
                     },
                   ),
                 ),
+              ),
+            ],
+          ),
     );
   }
 }

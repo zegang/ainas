@@ -151,6 +151,9 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
     } catch (_) {
       _pids = [];
     }
+    if (_pids.isNotEmpty && _activeCommandLine == null) {
+      _activeCommandLine = _reconstructCommandLine();
+    }
     if (_pids.isEmpty) _activeCommandLine = null;
     if (mounted) {
       setState(() => _loadingPids = false);
@@ -297,6 +300,23 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
         });
       }
     } catch (_) {}
+  }
+
+  String _reconstructCommandLine() {
+    final binaryPath = _binaryPathController.text.trim();
+    if (binaryPath.isEmpty) return '';
+    final List<String> args = [];
+    final addr = _addrController.text.trim();
+    if (addr.isNotEmpty) args.addAll(['--addr', addr]);
+    final port = _portController.text.trim();
+    if (port.isNotEmpty) args.addAll(['--port', port]);
+    if (_runAsDaemon) args.add('--daemon');
+    if (_logLevel != 'info') args.addAll(['--log-level', _logLevel]);
+    final logFile = _logFileController.text.trim();
+    if (logFile.isNotEmpty) args.addAll(['--log-file', logFile]);
+    final storageRoot = _rootPathController.text.trim();
+    if (storageRoot.isNotEmpty) args.addAll(['--storage-root-path', storageRoot]);
+    return [binaryPath, ...args].map((a) => a.contains(' ') ? "'$a'" : a).join(' ');
   }
 
   Future<void> _pickBinaryFile() async {
@@ -679,7 +699,7 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
                     ),
                   ],
                 ),
-                if (_activeCommandLine != null) ...[
+                if (_activeCommandLine != null && _activeCommandLine!.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Container(
                     width: double.infinity,

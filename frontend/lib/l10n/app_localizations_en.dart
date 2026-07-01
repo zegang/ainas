@@ -861,6 +861,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mdnsScanningServers => 'Scanning for servers...';
 
   @override
+  String mdnsScanningForType(Object type) {
+    return 'Scanning for $type...';
+  }
+
+  @override
   String get mdnsAvailableServers => 'Available AI NAS Servers';
 
   @override
@@ -911,6 +916,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mdnsServiceTypeLabel => 'Service Type';
+
+  @override
+  String get mdnsFilterAllTypes => 'All';
 
   @override
   String mdnsTargetSet(Object url) {

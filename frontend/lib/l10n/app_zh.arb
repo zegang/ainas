@@ -369,6 +369,12 @@
   "mdnsNoServicesFound": "未找到 mDNS 服务",
   "mdnsScanAgain": "重新扫描",
   "mdnsScanningServers": "正在扫描服务器...",
+  "mdnsScanningForType": "正在扫描 {type}...",
+  "@mdnsScanningForType": {
+    "placeholders": {
+      "type": {}
+    }
+  },
   "mdnsAvailableServers": "可用 AI NAS 服务器",
   "mdnsBrowseAll": "浏览所有 mDNS 服务",
   "mdnsNoServers": "本地网络未找到服务器",
@@ -386,6 +392,7 @@
   "mdnsSetAsTarget": "设为目标",
   "mdnsSetAsTargetButton": "设为目标 AI NAS",
   "mdnsServiceTypeLabel": "服务类型",
+  "mdnsFilterAllTypes": "全部",
   "mdnsTargetSet": "目标 AI NAS 已设为 {url}",
   "@mdnsTargetSet": {
     "placeholders": {

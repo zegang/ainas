@@ -853,6 +853,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mdnsScanningServers => '正在扫描服务器...';
 
   @override
+  String mdnsScanningForType(Object type) {
+    return '正在扫描 $type...';
+  }
+
+  @override
   String get mdnsAvailableServers => '可用 AI NAS 服务器';
 
   @override
@@ -903,6 +908,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mdnsServiceTypeLabel => '服务类型';
+
+  @override
+  String get mdnsFilterAllTypes => '全部';
 
   @override
   String mdnsTargetSet(Object url) {

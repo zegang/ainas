@@ -1664,6 +1664,12 @@ abstract class AppLocalizations {
   /// **'Scanning for servers...'**
   String get mdnsScanningServers;
 
+  /// No description provided for @mdnsScanningForType.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning for {type}...'**
+  String mdnsScanningForType(Object type);
+
   /// No description provided for @mdnsAvailableServers.
   ///
   /// In en, this message translates to:
@@ -1765,6 +1771,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Service Type'**
   String get mdnsServiceTypeLabel;
+
+  /// No description provided for @mdnsFilterAllTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get mdnsFilterAllTypes;
 
   /// No description provided for @mdnsTargetSet.
   ///

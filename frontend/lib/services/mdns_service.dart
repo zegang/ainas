@@ -89,7 +89,56 @@ class MdnsService {
       _log.severe('Error during mDNS discovery', e, stack);
     } finally {
       client.stop();
-      _log.info('mDNS scan completed.');
+      _log.info('mDNS scan for $serviceType completed.');
     }
+  }
+
+  /// Scans the local network for all registered mDNS service types.
+  /// First discovers available service types via DNS-SD meta-query,
+  /// then resolves instances for each type.
+  static Stream<NasServer> scanForAllServices({
+    Duration timeout = const Duration(seconds: 5),
+  }) async* {
+    if (kIsWeb) {
+      _log.warning('mDNS discovery is not supported on Web.');
+      return;
+    }
+
+    _log.info('Starting mDNS scan for all services...');
+
+    // Step 1: Discover service types via DNS-SD meta-query
+    final serviceTypes = await _discoverServiceTypes(timeout: timeout);
+
+    // Step 2: Always include _http._tcp as a fallback
+    serviceTypes.add('_http._tcp.local');
+
+    // Step 3: Scan each discovered service type
+    for (final type in serviceTypes) {
+      _log.info('Scanning service type: $type');
+      yield* scanForServers(serviceType: type, timeout: timeout);
+    }
+  }
+
+  /// Queries the DNS-SD meta-query name to discover all registered service types.
+  static Future<Set<String>> _discoverServiceTypes({
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
+    final types = <String>{};
+    final client = MDnsClient();
+    try {
+      await client.start();
+      await for (final PtrResourceRecord ptr in client.lookup<PtrResourceRecord>(
+        ResourceRecordQuery.serverPointer('_services._dns-sd._udp.local'),
+        timeout: timeout,
+      )) {
+        types.add(ptr.domainName);
+        _log.fine('Discovered service type: ${ptr.domainName}');
+      }
+    } catch (e) {
+      _log.warning('Failed to discover service types: $e');
+    } finally {
+      client.stop();
+    }
+    return types;
   }
 }

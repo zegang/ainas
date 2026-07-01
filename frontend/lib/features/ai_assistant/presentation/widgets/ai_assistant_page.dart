@@ -193,7 +193,8 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
       _speakingMessageId = null;
     } else {
       _flutterTts.stop();
-      _flutterTts.setLanguage("en-US");
+      final locale = Localizations.localeOf(context);
+      _flutterTts.setLanguage(locale.languageCode == 'zh' ? 'zh-CN' : 'en-US');
       _flutterTts.speak(text);
       _speakingMessageId = messageId;
     }

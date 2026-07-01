@@ -32,6 +32,51 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
 
+# Configurable Windows target version (default: 0x0A00 = Windows 10/11).
+# Override with -DTARGET_WINDOWS_VER=0x0601 to target Windows 7.
+set(TARGET_WINDOWS_VER "0x0A00" CACHE STRING
+    "Minimum Windows version to target (e.g. 0x0601=Win7, 0x0A00=Win10/11)")
+string(SUBSTRING "${TARGET_WINDOWS_VER}" 2 -1 WIN_VER_HEX)
+set(NTDDI_VERSION "0x${WIN_VER_HEX}0000")
+add_definitions(-DWINVER=${TARGET_WINDOWS_VER})
+add_definitions(-D_WIN32_WINNT=${TARGET_WINDOWS_VER})
+add_definitions(-DNTDDI_VERSION=${NTDDI_VERSION})
+
+# GUIDs for the application manifest based on target version.
+# Include all versions from the target upward (the app is compatible with
+# newer Windows versions, and each GUID prevents the corresponding
+# compatibility shim from being applied).
+string(SUBSTRING "${TARGET_WINDOWS_VER}" 2 -1 WIN_VER_NUM)
+
+# Always include Win10 GUID (covers both Windows 10 and 11).
+# Conditionally include older GUIDs only when targeting those versions.
+set(WIN10_GUID "      <supportedOS Id=\"{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}\"/>")
+
+if(WIN_VER_NUM STREQUAL "0601" OR WIN_VER_NUM STREQUAL "0602" OR WIN_VER_NUM STREQUAL "0603")
+  set(WIN81_GUID "      <supportedOS Id=\"{1f676c76-80e1-4239-95bb-83d0f6d0da78}\"/>")
+else()
+  set(WIN81_GUID "")
+endif()
+
+if(WIN_VER_NUM STREQUAL "0601" OR WIN_VER_NUM STREQUAL "0602")
+  set(WIN8_GUID  "      <supportedOS Id=\"{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}\"/>")
+else()
+  set(WIN8_GUID  "")
+endif()
+
+if(WIN_VER_NUM STREQUAL "0601")
+  set(WIN7_GUID  "      <supportedOS Id=\"{35138b9a-5d96-4fbd-8e2d-a2440225f93a}\"/>")
+else()
+  set(WIN7_GUID  "")
+endif()
+
+# Generate the manifest from the template.
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/runner/runner.exe.manifest.in"
+  "${CMAKE_BINARY_DIR}/runner/runner.exe.manifest"
+  @ONLY
+)
+
 # Compilation settings that should be applied to most targets.
 #
 # Be cautious about adding new options here, as plugins use this function by
@@ -43,6 +88,7 @@ function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_options(${TARGET} PRIVATE /EHsc)
   target_compile_definitions(${TARGET} PRIVATE "_HAS_EXCEPTIONS=0")
   target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_DEBUG>")
+  target_compile_definitions(${TARGET} PRIVATE WINVER=${TARGET_WINDOWS_VER} _WIN32_WINNT=${TARGET_WINDOWS_VER} NTDDI_VERSION=${NTDDI_VERSION})
 endfunction()
 
 # Flutter library and tool build rules.

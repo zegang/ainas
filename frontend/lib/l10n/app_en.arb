@@ -387,6 +387,12 @@
   "mdnsNoServicesFound": "No mDNS services found",
   "mdnsScanAgain": "Scan Again",
   "mdnsScanningServers": "Scanning for servers...",
+  "mdnsScanningForType": "Scanning for {type}...",
+  "@mdnsScanningForType": {
+    "placeholders": {
+      "type": {}
+    }
+  },
   "mdnsAvailableServers": "Available AI NAS Servers",
   "mdnsBrowseAll": "Browse all mDNS services",
   "mdnsNoServers": "No servers found on local network",
@@ -404,6 +410,7 @@
   "mdnsSetAsTarget": "Set as Target",
   "mdnsSetAsTargetButton": "Set as Target AI NAS",
   "mdnsServiceTypeLabel": "Service Type",
+  "mdnsFilterAllTypes": "All",
   "mdnsTargetSet": "Target AI NAS set to {url}",
   "@mdnsTargetSet": {
     "placeholders": {

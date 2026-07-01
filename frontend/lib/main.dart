@@ -132,9 +132,11 @@ class _MainShellState extends State<MainShell> with WindowListener, TrayListener
 
   Future<void> _setupTray() async {
     try {
-      final byteData = await rootBundle.load('assets/tray_icon.png');
+      final ext = Platform.isWindows ? 'ico' : 'png';
+      final assetPath = 'assets/tray_icon.$ext';
+      final byteData = await rootBundle.load(assetPath);
       final tempDir = Directory.systemTemp;
-      final iconFile = File('${tempDir.path}/ainas_tray_icon.png');
+      final iconFile = File('${tempDir.path}/ainas_tray_icon.$ext');
       await iconFile.writeAsBytes(byteData.buffer.asUint8List());
       await trayManager.setIcon(iconFile.path);
       await trayManager.setToolTip('AI-NAS');

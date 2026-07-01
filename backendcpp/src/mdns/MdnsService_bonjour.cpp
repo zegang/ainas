@@ -11,6 +11,7 @@
 #else
 #include <dns_sd.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <unistd.h>
 #endif
 
@@ -204,9 +205,14 @@ bool MdnsService::start() {
     m_running = true;
 
     m_thread = std::thread([this]() {
+        auto sdRef = static_cast<DNSServiceRef>(m_client);
+        int sockFd = DNSServiceRefSockFD(sdRef);
+        struct pollfd pfd = {sockFd, POLLIN, 0};
         while (m_running) {
-            auto ret = DNSServiceProcessResult(static_cast<DNSServiceRef>(m_client));
-            if (ret != kDNSServiceErr_NoError) break;
+            int ret = poll(&pfd, 1, 500);
+            if (ret > 0 && m_running) {
+                DNSServiceProcessResult(sdRef);
+            }
         }
     });
 
@@ -218,6 +224,9 @@ bool MdnsService::start() {
 void MdnsService::stop() {
     if (!m_running) return;
     m_running = false;
+    if (m_thread.joinable()) {
+        m_thread.join();
+    }
     if (m_client) {
 #ifdef _WIN32
         s_bonjour.DNSServiceRefDeallocate(m_client);
@@ -227,9 +236,6 @@ void MdnsService::stop() {
         DNSServiceRefDeallocate(static_cast<DNSServiceRef>(m_client));
 #endif
         m_client = nullptr;
-    }
-    if (m_thread.joinable()) {
-        m_thread.join();
     }
     LOG_INFO("mDNS: Stopped");
 }

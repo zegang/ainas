@@ -10,6 +10,7 @@ class MdnsDiscoveryWidget extends StatelessWidget {
   final VoidCallback onRefresh;
   final VoidCallback? onOpenBrowser;
   final String? currentTargetUrl;
+  final String? serviceType;
 
   const MdnsDiscoveryWidget({
     super.key,
@@ -19,6 +20,7 @@ class MdnsDiscoveryWidget extends StatelessWidget {
     required this.onRefresh,
     this.onOpenBrowser,
     this.currentTargetUrl,
+    this.serviceType,
   });
 
   @override
@@ -91,7 +93,10 @@ class MdnsDiscoveryWidget extends StatelessWidget {
                   children: [
                     const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                     const SizedBox(width: 12),
-                    Text(l10n.mdnsScanningServers, style: TextStyle(color: Colors.grey.shade600)),
+                    Text(
+                      serviceType != null ? l10n.mdnsScanningForType(serviceType!) : l10n.mdnsScanningServers,
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
                   ],
                 ),
               )

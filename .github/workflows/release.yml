@@ -25,7 +25,7 @@ jobs:
           publish_branch: gh-pages
 
   # ─── Flutter Web build (shared by all backend Docker variants) ─────
-  ainas-front-web:
+  ainas-frontend-web:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -63,12 +63,12 @@ jobs:
 
       - uses: actions/upload-artifact@v5
         with:
-          name: ainas-front-web
+          name: ainas-frontend-web
           path: frontend/build/web
 
   # ─── Backend Docker images: CPU ────────────────────────────────
   backend-image-cpu:
-    needs: ainas-front-web
+    needs: ainas-frontend-web
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -79,7 +79,7 @@ jobs:
 
       - uses: actions/download-artifact@v5
         with:
-          name: ainas-front-web
+          name: ainas-frontend-web
           path: frontend/build/web
 
       - name: Log in to GitHub Container Registry
@@ -115,7 +115,7 @@ jobs:
 
   # ─── Backend Docker images: CUDA ───────────────────────────────
   backend-image-cuda:
-    needs: ainas-front-web
+    needs: ainas-frontend-web
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -126,7 +126,7 @@ jobs:
 
       - uses: actions/download-artifact@v5
         with:
-          name: ainas-front-web
+          name: ainas-frontend-web
           path: frontend/build/web
 
       - name: Log in to GitHub Container Registry
@@ -162,7 +162,7 @@ jobs:
 
   # ─── Backend Docker images: ROCm ───────────────────────────────
   backend-image-rocm:
-    needs: ainas-front-web
+    needs: ainas-frontend-web
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -173,7 +173,7 @@ jobs:
 
       - uses: actions/download-artifact@v5
         with:
-          name: ainas-front-web
+          name: ainas-frontend-web
           path: frontend/build/web
 
       - name: Log in to GitHub Container Registry
@@ -208,7 +208,7 @@ jobs:
           labels: ${{ steps.tags.outputs.labels }}
 
   # ─── Android APK ───────────────────────────────────────────────────
-  ainas-front-android:
+  ainas-frontend-android:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -253,11 +253,11 @@ jobs:
 
       - uses: actions/upload-artifact@v5
         with:
-          name: ainas-front-android
+          name: ainas-frontend-android
           path: frontend/build/app/outputs/flutter-apk/app-release.apk
 
   # ─── iOS (unsigned archive) ────────────────────────────────────────
-  ainas-front-ios:
+  ainas-frontend-ios:
     runs-on: macos-latest
     permissions:
       contents: write
@@ -286,24 +286,24 @@ jobs:
         run: flutter build ios --release --no-codesign
 
       - name: Archive .app
-        run: ditto -c -k --keepParent frontend/build/ios/iphoneos/Runner.app ainas-front-ios.zip
+        run: ditto -c -k --keepParent frontend/build/ios/iphoneos/Runner.app ainas-frontend-ios.zip
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          files: ainas-front-ios.zip
+          files: ainas-frontend-ios.zip
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v5
         with:
-          name: ainas-front-ios
-          path: ainas-front-ios.zip
+          name: ainas-frontend-ios
+          path: ainas-frontend-ios.zip
 
   # ─── macOS ─────────────────────────────────────────────────────────
-  ainas-front-macos:
+  ainas-frontend-macos:
     runs-on: macos-latest
     permissions:
       contents: write
@@ -328,24 +328,24 @@ jobs:
         run: flutter build macos --release
 
       - name: Archive .app
-        run: ditto -c -k --keepParent frontend/build/macos/Build/Products/Release/Runner.app ainas-front-macos.zip
+        run: ditto -c -k --keepParent frontend/build/macos/Build/Products/Release/Runner.app ainas-frontend-macos.zip
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          files: ainas-front-macos.zip
+          files: ainas-frontend-macos.zip
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v5
         with:
-          name: ainas-front-macos
-          path: ainas-front-macos.zip
+          name: ainas-frontend-macos
+          path: ainas-frontend-macos.zip
 
   # ─── Linux ─────────────────────────────────────────────────────────
-  ainas-front-linux:
+  ainas-frontend-linux:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -380,24 +380,24 @@ jobs:
         run: cp frontend/linux/run.sh frontend/build/linux/x64/release/bundle/run.sh
 
       - name: Create tar.gz
-        run: tar czf ainas-front-linux.tar.gz -C frontend/build/linux/x64/release/bundle .
+        run: tar czf ainas-frontend-linux.tar.gz -C frontend/build/linux/x64/release/bundle .
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          files: ainas-front-linux.tar.gz
+          files: ainas-frontend-linux.tar.gz
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v5
         with:
-          name: ainas-front-linux
-          path: ainas-front-linux.tar.gz
+          name: ainas-frontend-linux
+          path: ainas-frontend-linux.tar.gz
 
   # ─── Windows ───────────────────────────────────────────────────────
-  ainas-front-windows:
+  ainas-frontend-windows:
     runs-on: windows-latest
     permissions:
       contents: write
@@ -425,21 +425,73 @@ jobs:
       - name: Create zip
         working-directory: frontend\build\windows\x64\runner\Release
         run: |
-          Compress-Archive -Path * -DestinationPath ${{ github.workspace }}/ainas-front-windows.zip
+          Compress-Archive -Path * -DestinationPath ${{ github.workspace }}/ainas-frontend-windows.zip
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          files: ainas-front-windows.zip
+          files: ainas-frontend-windows.zip
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v5
         with:
-          name: ainas-front-windows
-          path: ainas-front-windows.zip
+           name: ainas-frontend-windows
+           path: ainas-frontend-windows.zip
+
+  # ─── Windows (Win7 target) ──────────────────────────────────────────
+  ainas-frontend-windows7:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.3"
+          channel: stable
+
+      - name: Pin Win7 target in CMakeLists.txt
+        working-directory: frontend
+        shell: bash
+        run: |
+          sed -i 's/set(TARGET_WINDOWS_VER "[^"]*"/set(TARGET_WINDOWS_VER "0x0601"/' \
+            windows/CMakeLists.txt
+
+      - working-directory: frontend
+        shell: bash
+        run: |
+          if [[ ! -d "windows" ]]; then
+            flutter create --platforms windows .
+          fi
+          flutter pub get
+
+      - name: Build Windows (Win7 target)
+        working-directory: frontend
+        run: flutter build windows --release
+
+      - name: Create zip
+        working-directory: frontend\build\windows\x64\runner\Release
+        run: |
+          Compress-Archive -Path * -DestinationPath ${{ github.workspace }}/ainas-frontend-windows7.zip
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ainas-frontend-windows7.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ainas-frontend-windows7
+          path: ainas-frontend-windows7.zip
 
   # ─── C++ Backend: Linux ─────────────────────────────────────────────
   ainas-backendcpp-linux:
@@ -586,12 +638,71 @@ jobs:
 
       - uses: actions/upload-artifact@v5
         with:
-          name: ainas-backendcpp-windows
-          path: ainas-backendcpp-windows.tar.gz
-  
+           name: ainas-backendcpp-windows
+           path: ainas-backendcpp-windows.tar.gz
+
+  # ─── C++ Backend: Windows (Win7) ────────────────────────────────────
+  ainas-backendcpp-windows7:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - name: Install SQLite amalgamation
+        run: |
+          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3460100.zip \
+            -o sqlite-amal.zip
+          unzip -q sqlite-amal.zip
+          cp sqlite-amalgamation-*/sqlite3.{c,h} backendcpp/vendor/
+
+      - name: Configure CMake (Win7 target)
+        working-directory: backendcpp
+        run: |
+          mkdir -p build
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+            -DTARGET_WINDOWS_VER=0x0601 \
+            -DSQLITE3_INCLUDE_DIRS="$GITHUB_WORKSPACE/backendcpp/vendor" \
+            -DSQLITE3_LIBRARIES="$GITHUB_WORKSPACE/backendcpp/vendor/sqlite3.c"
+
+      - name: Build
+        working-directory: backendcpp
+        run: cmake --build build --parallel --config Release
+
+      - name: Package binary
+        run: |
+          cd backendcpp/build/src/Release
+          echo "Current Path: $(pwd)"
+          ls -la
+          tar czf ainas-backendcpp-windows7.tar.gz ainas-backend-cpp.exe
+          cd ../../../../
+          echo "Current Path: $(pwd)"
+          ls -la
+          mv backendcpp/build/src/Release/ainas-backendcpp-windows7.tar.gz ainas-backendcpp-windows7.tar.gz
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ainas-backendcpp-windows7.tar.gz
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ainas-backendcpp-windows7
+          path: ainas-backendcpp-windows7.tar.gz
+
   # ─── Full bundles: Flutter frontend + C++ backend ──────────────────
   ainas-full-linux:
-    needs: [ainas-front-linux, ainas-backendcpp-linux]
+    needs: [ainas-frontend-linux, ainas-backendcpp-linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -604,7 +715,7 @@ jobs:
       - name: Download Flutter Linux bundle
         uses: actions/download-artifact@v5
         with:
-          name: ainas-front-linux
+          name: ainas-frontend-linux
           path: dl/linux
 
       - name: Download C++ backend (Linux)
@@ -616,7 +727,7 @@ jobs:
       - name: Assemble bundle
         run: |
           mkdir -p bundle
-          tar xzf dl/linux/ainas-front-linux.tar.gz -C bundle
+          tar xzf dl/linux/ainas-frontend-linux.tar.gz -C bundle
           tar xzf dl/backend-linux/ainas-backendcpp-linux.tar.gz -C bundle
           chmod +x bundle/ainas_frontend bundle/run.sh bundle/ainas-backend-cpp 2>/dev/null || true
 
@@ -639,7 +750,7 @@ jobs:
 
   # ── macOS full bundle ──────────────────────────────────────────────
   ainas-full-macos:
-    needs: [ainas-front-macos, ainas-backendcpp-macos]
+    needs: [ainas-frontend-macos, ainas-backendcpp-macos]
     runs-on: macos-latest
     permissions:
       contents: write
@@ -648,7 +759,7 @@ jobs:
       - name: Download Flutter macOS app
         uses: actions/download-artifact@v5
         with:
-          name: ainas-front-macos
+          name: ainas-frontend-macos
           path: dl/macos
 
       - name: Download C++ backend (macOS)
@@ -660,7 +771,7 @@ jobs:
       - name: Assemble bundle
         run: |
           mkdir -p staging
-          unzip -q dl/macos/ainas-front-macos.zip -d staging
+          unzip -q dl/macos/ainas-frontend-macos.zip -d staging
           APP=$(find staging -maxdepth 1 -name "*.app" | head -1)
           MACOS_DIR="$APP/Contents/MacOS"
           tar xzf dl/backend-macos/ainas-backendcpp-macos.tar.gz -C "$MACOS_DIR"
@@ -687,7 +798,7 @@ jobs:
 
   # ── Windows full bundle ────────────────────────────────────────────
   ainas-full-windows:
-    needs: [ainas-front-windows, ainas-backendcpp-windows]
+    needs: [ainas-frontend-windows, ainas-backendcpp-windows]
     runs-on: windows-latest
     defaults:
       run:
@@ -699,7 +810,7 @@ jobs:
       - name: Download Flutter Windows bundle
         uses: actions/download-artifact@v5
         with:
-          name: ainas-front-windows
+          name: ainas-frontend-windows
           path: dl/windows
 
       - name: Download C++ backend (Windows)
@@ -711,7 +822,7 @@ jobs:
       - name: Assemble bundle
         run: |
           mkdir -p bundle
-          unzip -q dl/windows/ainas-front-windows.zip -d bundle
+          unzip -q dl/windows/ainas-frontend-windows.zip -d bundle
           tar xzf dl/backend-windows/ainas-backendcpp-windows.tar.gz -C bundle
 
       - name: Create zip
@@ -734,9 +845,58 @@ jobs:
           name: ainas-full-windows
           path: ainas-full-windows.zip
 
+  # ── Windows full bundle (Win7) ─────────────────────────────────────
+  ainas-full-windows7:
+    needs: [ainas-frontend-windows7, ainas-backendcpp-windows7]
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Flutter Windows bundle (Win7)
+        uses: actions/download-artifact@v5
+        with:
+          name: ainas-frontend-windows7
+          path: dl/windows
+
+      - name: Download C++ backend (Win7)
+        uses: actions/download-artifact@v5
+        with:
+          name: ainas-backendcpp-windows7
+          path: dl/backend-windows
+
+      - name: Assemble bundle
+        run: |
+          mkdir -p bundle
+          unzip -q dl/windows/ainas-frontend-windows7.zip -d bundle
+          tar xzf dl/backend-windows/ainas-backendcpp-windows7.tar.gz -C bundle
+
+      - name: Create zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path bundle\* `
+            -DestinationPath "${{ github.workspace }}\ainas-full-windows7.zip"
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ainas-full-windows7.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ainas-full-windows7
+          path: ainas-full-windows7.zip
+
   # ── Android full bundle (APK + embedded backend binaries) ──────────
   ainas-full-android:
-    needs: [ainas-front-android]
+    needs: [ainas-frontend-android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -801,7 +961,7 @@ jobs:
       - name: Download Flutter APK
         uses: actions/download-artifact@v5
         with:
-          name: ainas-front-android
+          name: ainas-frontend-android
           path: dl/android
 
       - name: Inject backend binaries into APK
@@ -836,7 +996,7 @@ jobs:
 
   # ── iOS full bundle (.app + embedded backend binary) ───────────────
   ainas-full-ios:
-    needs: [ainas-front-ios]
+    needs: [ainas-frontend-ios]
     runs-on: macos-latest
     permissions:
       contents: write
@@ -872,12 +1032,12 @@ jobs:
       - name: Download Flutter iOS app
         uses: actions/download-artifact@v5
         with:
-          name: ainas-front-ios
+          name: ainas-frontend-ios
           path: dl/ios
 
       - name: Inject backend binary into .app bundle
         run: |
-          unzip -q dl/ios/ainas-front-ios.zip -d staging-ios
+          unzip -q dl/ios/ainas-frontend-ios.zip -d staging-ios
           APP=$(find staging-ios -maxdepth 1 -name "*.app" | head -1)
 
           DEST="$APP/Frameworks"
