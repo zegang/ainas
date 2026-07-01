@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ainas_frontend/l10n/app_localizations.dart';
@@ -91,6 +92,124 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
     );
   }
 
+  Future<List<String>> _getLocalAddresses() async {
+    if (kIsWeb) return [];
+    try {
+      final interfaces = await NetworkInterface.list(includeLoopback: false);
+      final ips = <String>{};
+      for (final iface in interfaces) {
+        for (final addr in iface.addresses) {
+          if (addr.type == InternetAddressType.IPv4) {
+            ips.add(addr.address);
+          }
+        }
+      }
+      final sorted = ips.toList()..sort();
+      sorted.insert(0, '127.0.0.1');
+      return sorted;
+    } catch (_) {
+      return ['127.0.0.1'];
+    }
+  }
+
+  Future<void> _showAddManualDialog() async {
+    final l10n = AppLocalizations.of(context)!;
+    final localIps = await _getLocalAddresses();
+    final nameCtl = TextEditingController();
+    final hostCtl = TextEditingController(text: localIps.first);
+    final portCtl = TextEditingController(text: '9026');
+    final typeCtl = TextEditingController(text: '_http._tcp.local');
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Add Local Service'),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameCtl,
+                    decoration: const InputDecoration(labelText: 'Name', hintText: 'My Service'),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: hostCtl,
+                    decoration: const InputDecoration(
+                      labelText: 'Host / IP',
+                      hintText: '0.0.0.0',
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  ),
+                  if (localIps.length > 1) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 2,
+                      children: localIps.map((ip) => ActionChip(
+                        label: Text(ip, style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                        onPressed: () => hostCtl.text = ip,
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      )).toList(),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: portCtl,
+                    decoration: const InputDecoration(labelText: 'Port'),
+                    keyboardType: TextInputType.number,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Required';
+                      final p = int.tryParse(v.trim());
+                      if (p == null || p < 1 || p > 65535) return 'Invalid port';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: typeCtl,
+                    decoration: const InputDecoration(
+                      labelText: 'Service Type',
+                      hintText: '_http._tcp.local',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.cancelButton),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (!formKey.currentState!.validate()) return;
+                setState(() {
+                  _servers.insert(0, NasServer(
+                    name: nameCtl.text.trim(),
+                    host: hostCtl.text.trim(),
+                    port: int.parse(portCtl.text.trim()),
+                    addresses: [hostCtl.text.trim(), '127.0.0.1'],
+                    serviceType: typeCtl.text.trim(),
+                  ));
+                });
+                Navigator.pop(ctx);
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -105,6 +224,7 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
             )
           else
             IconButton(icon: const Icon(Icons.refresh), onPressed: _startScan),
+          IconButton(icon: const Icon(Icons.add), onPressed: _showAddManualDialog),
         ],
       ),
       body: kIsWeb
