@@ -3,6 +3,7 @@ $ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ContainerTool = "docker"
 $ReleasePlatform = ""
 $BackendImageVariant = "cpu"
+$TargetWindowsVer = "0x0A00"
 
 # Load .env
 $envFile = "$ProjectRoot\.env"
@@ -28,6 +29,7 @@ if ($env:NAS_HOST -eq "0.0.0.0") {
 }
 
 if (-not $env:ENABLE_AI) { $env:ENABLE_AI = "false" }
+if ($env:TARGET_WINDOWS_VER) { $TargetWindowsVer = $env:TARGET_WINDOWS_VER }
 
 function Show-Usage {
     Write-Host @"
@@ -44,6 +46,7 @@ Options:
   --platform     Frontend target (web, windows; default: auto)
   --openapi      Export the backend OpenAPI spec to openapi.json
   --container-tool Tool for services (docker; default: docker)
+  --winver       Windows target version (0x0A00=Win10/11, 0x0601=Win7; default: 0x0A00)
   --frontend     Setup and run only the Flutter frontend
   --build-web    Compile the Flutter Web GUI for production
   --build-backend-image [cpu|cuda|rocm] Build frontend web + backend Docker image (default: cpu)
@@ -57,15 +60,16 @@ Options:
   --web          Run the Flutter frontend as a web application
   --windows      Run the Flutter frontend as a native Windows app
   --android      Build the Android APK (Release)
-  --release      Build full release bundle for platform (windows|android)
+  --release      Build full release bundle for platform (windows|android); use --winver to set Windows target version
   --all          Setup and run both backend and frontend (default)
   --help, -h     Show this help message
 
 Environment Variables:
-  NAS_HOST     Listening IP (default: 0.0.0.0)
-  NAS_PORT     Listening port (default: 9026)
-  FRONTEND_PORT Listening port for GUI (default: 8080)
-  ENABLE_AI    Enable AI features (true/false, default: false)
+   NAS_HOST     Listening IP (default: 0.0.0.0)
+   NAS_PORT     Listening port (default: 9026)
+   FRONTEND_PORT Listening port for GUI (default: 8080)
+   ENABLE_AI    Enable AI features (true/false, default: false)
+   TARGET_WINDOWS_VER Windows target version (0x0A00=Win10/11, 0x0601=Win7; default: 0x0A00)
 "@
 }
 
@@ -83,6 +87,15 @@ while ($i -lt $args.Count) {
         "--container-tool" {
             $i++
             $ContainerTool = $args[$i]
+            break
+        }
+        "--winver" {
+            $i++
+            if ($args[$i] -notmatch '^0x[0-9a-fA-F]{4}$') {
+                Write-Host "Error: Invalid Windows version '$($args[$i])'. Use format 0x0A00 (Win10/11) or 0x0601 (Win7)."
+                exit 1
+            }
+            $TargetWindowsVer = $args[$i]
             break
         }
         "--build-backend-image" {
@@ -280,7 +293,7 @@ function Setup-Cpp {
 
     $src = "$ProjectRoot/backendcpp"
     $build = "$ProjectRoot/backendcpp/build"
-    $cmakeArgs = @("-S", $src, "-B", $build, "-DCMAKE_BUILD_TYPE=$BuildType", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON")
+    $cmakeArgs = @("-S", $src, "-B", $build, "-DCMAKE_BUILD_TYPE=$BuildType", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON", "-DTARGET_WINDOWS_VER=$TargetWindowsVer")
 
     # SQLite amalgamation fallback for Windows (where sqlite3-dev is typically unavailable)
     if (-not (Test-Path "$ProjectRoot/backendcpp/vendor/sqlite3.c")) {
@@ -418,11 +431,14 @@ function Build-BackendImage {
 }
 
 function Build-ReleaseWindows {
-    Write-Host "Step: Building Windows release bundle..."
+    Write-Host "Step: Building Windows release bundle (WinVer=$TargetWindowsVer)..."
     Setup-Flutter
 
     Set-Location "$ProjectRoot/frontend"
     Write-Host "Step: Building Flutter Windows (release)..."
+    if ($TargetWindowsVer -ne "0x0A00") {
+        (Get-Content windows/CMakeLists.txt) -replace 'set\(TARGET_WINDOWS_VER "[^"]*"', 'set(TARGET_WINDOWS_VER "' + $TargetWindowsVer + '"' | Set-Content windows/CMakeLists.txt
+    }
     flutter build windows --release; if (-not $?) { Write-Host "Error: Flutter Windows build failed"; exit 1 }
     Set-Location $ProjectRoot
 

@@ -21,6 +21,7 @@ fi
 
 export ENABLE_AI=${ENABLE_AI:-false}
 export CONTAINER_TOOL=${CONTAINER_TOOL:-podman}
+export TARGET_WINDOWS_VER=${TARGET_WINDOWS_VER:-0x0A00}
 COMMAND=""
 
 show_usage() {
@@ -37,6 +38,7 @@ show_usage() {
     echo "  --platform     Frontend target (web, linux; default: web)"
     echo "  --openapi      Export the backend OpenAPI spec to openapi.json"
     echo "  --container-tool Tool for services (podman, docker; default: podman)"
+    echo "  --winver       Windows target version (0x0A00=Win10/11, 0x0601=Win7; default: 0x0A00)"
     echo "  --frontend     Setup and run only the Flutter frontend"
     echo "  --build-web    Compile the Flutter Web GUI for production"
     echo "  --build-backend-image [cpu|cuda|rocm] Build frontend web + backend Docker image (default: cpu)"
@@ -51,7 +53,7 @@ show_usage() {
     echo "  --linux        Run the Flutter frontend as a native Linux app"
     echo "  --android      Build the Android APK (Release)"
     echo "  --pyinstaller  Build a standalone binary with PyInstaller"
-    echo "  --release      Build full release bundle for platform (linux|macos|windows|android|ios)"
+    echo "  --release      Build full release bundle for platform (linux|macos|windows|android|ios); use --winver to set Windows target version"
     echo "  --all          Setup and run both backend and frontend (default)"
     echo "  --help, -h     Show this help message"
     echo ""
@@ -60,6 +62,7 @@ show_usage() {
     echo "  NAS_PORT     Listening port (default: 9026)"
     echo "  FRONTEND_PORT Listening port for GUI (default: 8080)"
     echo "  ENABLE_AI    Enable AI features (true/false, default: false)"
+    echo "  TARGET_WINDOWS_VER Windows target version (0x0A00=Win10/11, 0x0601=Win7; default: 0x0A00)"
 }
 
 # Parse Arguments
@@ -77,6 +80,12 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             export CONTAINER_TOOL="$2"; shift 2 ;;
+        --winver)
+            if [[ ! "$2" =~ ^0x[0-9a-fA-F]{4}$ ]]; then
+                echo "Error: Invalid Windows version '$2'. Use format 0x0A00 (Win10/11) or 0x0601 (Win7)."
+                exit 1
+            fi
+            export TARGET_WINDOWS_VER="$2"; shift 2 ;;
         --build-backend-image)
             COMMAND="$1"; shift
             # Optional: cpu, cuda, rocm (default: cpu)
@@ -353,9 +362,14 @@ run_backend() {
 setup_cpp() {
     local build_type="${1:-Release}"
     echo "Step: Building C++ Backend with CMake..."
+    local win_arg=()
+    if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "mingw"* ]]; then
+        win_arg=(-DTARGET_WINDOWS_VER="$TARGET_WINDOWS_VER")
+    fi
     cmake -S "$PROJECT_ROOT/backendcpp" -B "$PROJECT_ROOT/backendcpp/build" \
         -DCMAKE_BUILD_TYPE="$build_type" \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        "${win_arg[@]}"
     cmake --build "$PROJECT_ROOT/backendcpp/build" -j"$(nproc)"
 }
 
@@ -667,11 +681,16 @@ build_release_macos() {
 
 build_release_windows() {
     build_release_check_os windows
-    echo "Step: Building Windows release bundle..."
+    echo "Step: Building Windows release bundle (WinVer=$TARGET_WINDOWS_VER)..."
+
     setup_flutter
 
     cd "$PROJECT_ROOT/frontend"
     echo "Step: Building Flutter Windows (release)..."
+    if [[ "$TARGET_WINDOWS_VER" != "0x0A00" ]]; then
+        sed -i 's/set(TARGET_WINDOWS_VER "[^"]*"/set(TARGET_WINDOWS_VER "'"$TARGET_WINDOWS_VER"'"/' \
+            windows/CMakeLists.txt
+    fi
     flutter build windows --release
     cd "$PROJECT_ROOT"
 
