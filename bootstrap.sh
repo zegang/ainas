@@ -362,11 +362,20 @@ run_backend() {
 setup_cpp() {
     local build_type="${1:-Release}"
     echo "Step: Building C++ Backend with CMake..."
+
+    # Ensure all Git submodules (including nested ones like vendor/cllama/third_party/oatpp-swagger) are initialized
+    local needs_reconfigure=false
+    if [ ! -f "$PROJECT_ROOT/vendor/oatpp/CMakeLists.txt" ] || [ ! -f "$PROJECT_ROOT/vendor/cllama/third_party/oatpp-swagger/CMakeLists.txt" ]; then
+        echo "Step: Initializing Git submodules (recursive)..."
+        git submodule update --init --recursive
+        needs_reconfigure=true
+    fi
+
     local win_arg=()
     if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "mingw"* ]]; then
         win_arg=(-DTARGET_WINDOWS_VER="$TARGET_WINDOWS_VER")
     fi
-    if [ ! -d "$PROJECT_ROOT/backendcpp/build" ]; then
+    if [ ! -d "$PROJECT_ROOT/backendcpp/build" ] || [ "$needs_reconfigure" = true ]; then
         cmake -S "$PROJECT_ROOT/backendcpp" -B "$PROJECT_ROOT/backendcpp/build" \
             -DCMAKE_BUILD_TYPE="$build_type" \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \

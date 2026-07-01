@@ -499,6 +499,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiStatusError => 'AI Error';
 
   @override
+  String get aiEnableTitle => 'Enable AI';
+
+  @override
+  String get aiEnableHint => 'Start the AI engine and load models';
+
+  @override
+  String get aiDisableTitle => 'Disable AI';
+
+  @override
+  String get aiDisableHint => 'Stop the AI engine and free resources';
+
+  @override
+  String get aiEnablingProgress => 'Starting AI Engine...';
+
+  @override
+  String get aiDisablingProgress => 'Stopping AI Engine...';
+
+  @override
   String get modelsAvailable => 'Models available';
 
   @override

@@ -9,7 +9,7 @@ class MdnsService {
   /// Scans the local network for services of a specific type.
   /// Returns a [Stream] of [NasServer] as they are discovered.
   static Stream<NasServer> scanForServers({
-    String serviceType = '_http._tcp.local',
+    String serviceType = '_http._tcp.local.',
     Duration timeout = const Duration(seconds: 5),
   }) async* {
     if (kIsWeb) {
@@ -110,7 +110,7 @@ class MdnsService {
     final serviceTypes = await _discoverServiceTypes(timeout: timeout);
 
     // Step 2: Always include _http._tcp as a fallback
-    serviceTypes.add('_http._tcp.local');
+    serviceTypes.add('_http._tcp.local.');
 
     // Step 3: Scan each discovered service type
     for (final type in serviceTypes) {

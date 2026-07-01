@@ -107,7 +107,7 @@ class _HomePageState extends State<HomePage> {
               MaterialPageRoute(builder: (_) => const MdnsBrowserPage()),
             ),
             currentTargetUrl: _api.baseUrl,
-            serviceType: '_http._tcp.local',
+            serviceType: '_http._tcp.local.',
           ),
           const SizedBox(height: 16),
           GestureDetector(

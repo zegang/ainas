@@ -448,6 +448,26 @@ class ApiService with ChangeNotifier {
     }
   }
 
+  /// Enables the AI engine (starts the AI backend process).
+  Future<Map<String, dynamic>> enableAi() async {
+    final url = '$baseUrl/api/ai/enable';
+    final response = await http.post(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Failed to enable AI');
+  }
+
+  /// Disables the AI engine (stops the AI backend process).
+  Future<Map<String, dynamic>> disableAi() async {
+    final url = '$baseUrl/api/ai/disable';
+    final response = await http.post(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Failed to disable AI');
+  }
+
   /// Fetches all registered AI features with their assigned models.
   /// Returns a map: `{"features": [...], "status": "loading"|"ready"}`.
   Future<Map<String, dynamic>> getFeatures() async {

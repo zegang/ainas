@@ -172,6 +172,30 @@
   "aiStatusTooltipDisabled": "AI features are currently turned off in the backend configuration or the necessary models are missing.",
   "aiStatusTooltipEnabled": "The AI system is active but its full capabilities are still being verified.",
   "aiStatusError": "AI Error",
+  "aiEnableTitle": "Enable AI",
+  "@aiEnableTitle": {
+    "description": "Title for the toggle to enable the AI engine"
+  },
+  "aiEnableHint": "Start the AI engine and load models",
+  "@aiEnableHint": {
+    "description": "Subtitle hint below the Enable AI toggle"
+  },
+  "aiDisableTitle": "Disable AI",
+  "@aiDisableTitle": {
+    "description": "Title for the toggle to disable the AI engine"
+  },
+  "aiDisableHint": "Stop the AI engine and free resources",
+  "@aiDisableHint": {
+    "description": "Subtitle hint below the Disable AI toggle"
+  },
+  "aiEnablingProgress": "Starting AI Engine...",
+  "@aiEnablingProgress": {
+    "description": "Shown while the AI engine is being enabled"
+  },
+  "aiDisablingProgress": "Stopping AI Engine...",
+  "@aiDisablingProgress": {
+    "description": "Shown while the AI engine is being disabled"
+  },
   "modelsAvailable": "Models available",
   "backendUnreachable": "Backend server unreachable",
   "backendUnreachableHint": "Make sure the C++ backend is running to configure AI.",

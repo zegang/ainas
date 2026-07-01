@@ -83,15 +83,17 @@ target_link_libraries(ainas-backend-cpp PRIVATE
 
 add_dependencies(ainas-backend-cpp cllama_external)
 
-# Copy cllama binary and runner next to the backend binary for runtime discovery
+# Copy cllama binary and runner into bin/ subdirectory alongside the backend binary.
+# The backend resolves cllama as "<self-dir>/bin/cllama" by default.
 add_custom_command(TARGET ainas-backend-cpp POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:ainas-backend-cpp>/bin"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_BINARY_DIR}/cllama/bin/cllama$<IF:$<PLATFORM_ID:Windows>,.exe,>"
-        "$<TARGET_FILE_DIR:ainas-backend-cpp>/"
+        "$<TARGET_FILE_DIR:ainas-backend-cpp>/bin/"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_BINARY_DIR}/cllama/bin/cllama_runner$<IF:$<PLATFORM_ID:Windows>,.exe,>"
-        "$<TARGET_FILE_DIR:ainas-backend-cpp>/"
-    COMMENT "Copying cllama and cllama_runner to output directory"
+        "$<TARGET_FILE_DIR:ainas-backend-cpp>/bin/"
+    COMMENT "Copying cllama and cllama_runner to output bin/"
 )
 
 if(DNS_SD_LIBRARIES)

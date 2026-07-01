@@ -154,6 +154,30 @@
   "aiStatusTooltipDisabled": "AI 功能当前已在后端配置中关闭，或缺少必要的模型。",
   "aiStatusTooltipEnabled": "AI 系统已激活，但其完整功能仍在验证中。",
   "aiStatusError": "AI 错误",
+  "aiEnableTitle": "启用 AI",
+  "@aiEnableTitle": {
+    "description": "启用 AI 引擎的开关标题"
+  },
+  "aiEnableHint": "启动 AI 引擎并加载模型",
+  "@aiEnableHint": {
+    "description": "启用 AI 开关下方的提示文字"
+  },
+  "aiDisableTitle": "禁用 AI",
+  "@aiDisableTitle": {
+    "description": "禁用 AI 引擎的开关标题"
+  },
+  "aiDisableHint": "停止 AI 引擎并释放资源",
+  "@aiDisableHint": {
+    "description": "禁用 AI 开关下方的提示文字"
+  },
+  "aiEnablingProgress": "正在启动 AI 引擎...",
+  "@aiEnablingProgress": {
+    "description": "启用 AI 引擎时显示"
+  },
+  "aiDisablingProgress": "正在停止 AI 引擎...",
+  "@aiDisablingProgress": {
+    "description": "禁用 AI 引擎时显示"
+  },
   "modelsAvailable": "可用模型",
   "backendUnreachable": "后端服务器无法访问",
   "backendUnreachableHint": "请确保 C++ 后端正在运行以配置 AI。",

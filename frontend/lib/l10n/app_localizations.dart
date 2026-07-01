@@ -1022,6 +1022,42 @@ abstract class AppLocalizations {
   /// **'AI Error'**
   String get aiStatusError;
 
+  /// Title for the toggle to enable the AI engine
+  ///
+  /// In en, this message translates to:
+  /// **'Enable AI'**
+  String get aiEnableTitle;
+
+  /// Subtitle hint below the Enable AI toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Start the AI engine and load models'**
+  String get aiEnableHint;
+
+  /// Title for the toggle to disable the AI engine
+  ///
+  /// In en, this message translates to:
+  /// **'Disable AI'**
+  String get aiDisableTitle;
+
+  /// Subtitle hint below the Disable AI toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the AI engine and free resources'**
+  String get aiDisableHint;
+
+  /// Shown while the AI engine is being enabled
+  ///
+  /// In en, this message translates to:
+  /// **'Starting AI Engine...'**
+  String get aiEnablingProgress;
+
+  /// Shown while the AI engine is being disabled
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping AI Engine...'**
+  String get aiDisablingProgress;
+
   /// No description provided for @modelsAvailable.
   ///
   /// In en, this message translates to:

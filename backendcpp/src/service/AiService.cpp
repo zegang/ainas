@@ -29,24 +29,24 @@ AiService::AiService(std::shared_ptr<Config> config)
     : m_config(std::move(config))
     , m_aiState(std::make_shared<AiState>())
 {
-    // Resolve cllama binary to absolute path if not already absolute.
+    // Resolve cllama binary relative to own location.
+    // Config default is "bin/cllama", so this becomes <backend-dir>/bin/cllama.
     auto& binary = m_config->cllamaBinary;
     if (binary.is_relative()) {
+        auto selfDir = [&]() -> std::filesystem::path {
 #if defined(_WIN32)
-        char exePath[MAX_PATH];
-        DWORD len = GetModuleFileNameA(nullptr, exePath, MAX_PATH);
-        if (len > 0) {
-            binary = std::filesystem::path(exePath).parent_path() / binary;
-        }
+            char exePath[MAX_PATH];
+            DWORD len = GetModuleFileNameA(nullptr, exePath, MAX_PATH);
+            if (len > 0) return std::filesystem::path(exePath).parent_path();
 #else
-        std::error_code ec;
-        auto absPath = std::filesystem::canonical("/proc/self/exe", ec).parent_path() / binary;
-        if (!ec) {
-            binary = absPath;
-        } else {
-            LOG_WARN("Cannot resolve own executable path: {}", ec.message());
-        }
+            std::error_code ec;
+            auto p = std::filesystem::canonical("/proc/self/exe", ec);
+            if (!ec) return p.parent_path();
 #endif
+            return {};
+        }();
+        if (!selfDir.empty())
+            binary = selfDir / binary;
     }
     LOG_INFO("Cllama binary resolved to: {}", binary.string());
 }
@@ -493,8 +493,6 @@ bool AiService::spawnCllama() {
         std::string binary = m_config->cllamaBinary.string();
 
         LOG_INFO("Starting cllama binary: {}", binary);
-        // Ensure child dies if the parent (backend) terminates.
-        prctl(PR_SET_PDEATHSIG, SIGTERM);
         // Place child in its own process group so signals don't propagate back.
         setpgid(0, 0);
 

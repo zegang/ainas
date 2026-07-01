@@ -15,7 +15,13 @@ class _AiConfigPageState extends State<AiConfigPage> {
   Map<String, dynamic>? _ragStatus;
   Map<String, dynamic>? _aiStatus;
   bool _loading = true;
+  bool _toggling = false;
   String? _error;
+
+  bool get _isAiEnabled {
+    final status = _aiStatus?['status'] as String?;
+    return status != 'disabled' && status != 'unknown' && status != null;
+  }
 
   Widget _buildStatusCard() {
     final l10n = AppLocalizations.of(context)!;
@@ -99,11 +105,90 @@ class _AiConfigPageState extends State<AiConfigPage> {
     );
   }
 
-  Future<void> _loadData() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Widget _buildToggleSection() {
+    final l10n = AppLocalizations.of(context)!;
+    return Card(
+      child: _toggling
+          ? Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _isAiEnabled ? l10n.aiDisablingProgress : l10n.aiEnablingProgress,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _isAiEnabled ? l10n.aiDisableHint : l10n.aiEnableHint,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : SwitchListTile(
+              secondary: Icon(_isAiEnabled ? Icons.power_settings_new : Icons.power_off),
+              title: Text(_isAiEnabled ? l10n.aiDisableTitle : l10n.aiEnableTitle),
+              subtitle: Text(_isAiEnabled ? l10n.aiDisableHint : l10n.aiEnableHint),
+              value: _isAiEnabled,
+              onChanged: _onToggleAi,
+            ),
+    );
+  }
+
+  Future<void> _onToggleAi(bool enable) async {
+    setState(() => _toggling = true);
+    try {
+      Map<String, dynamic> result;
+      if (enable) {
+        result = await _api.enableAi();
+      } else {
+        result = await _api.disableAi();
+      }
+      if (!mounted) return;
+      final success = result['success'] == true;
+      final message = result['message'] as String? ?? (success ? 'Done' : 'Failed');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: success ? Colors.green.shade700 : Colors.red.shade700,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$e'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
+    if (!mounted) return;
+    setState(() => _toggling = false);
+    await _loadData();
+  }
+
+  Future<void> _loadData({bool isRefresh = false}) async {
+    if (!isRefresh) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final results = await Future.wait([
         _api.getRagStatus(),
@@ -114,13 +199,20 @@ class _AiConfigPageState extends State<AiConfigPage> {
         _ragStatus = results[0] as Map<String, dynamic>;
         _aiStatus = results[1] as Map<String, dynamic>;
         _loading = false;
+        _error = null;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (isRefresh) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$e')),
+        );
+      } else {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -136,7 +228,7 @@ class _AiConfigPageState extends State<AiConfigPage> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.aiConfigTitle)),
       body: RefreshIndicator(
-        onRefresh: _loadData,
+        onRefresh: () => _loadData(isRefresh: true),
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
@@ -174,16 +266,20 @@ class _AiConfigPageState extends State<AiConfigPage> {
                       ),
                     ),
                   )
-                : ListView(
+                  : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      _buildStatusCard(),
+                      _buildToggleSection(),
                       const SizedBox(height: 16),
-                      AiConfigWidget(
-                        ragStatus: _ragStatus,
-                        aiStatus: _aiStatus,
-                        onRefresh: _loadData,
-                      ),
+                      _buildStatusCard(),
+                      if (_isAiEnabled) ...[
+                        const SizedBox(height: 16),
+                        AiConfigWidget(
+                          ragStatus: _ragStatus,
+                          aiStatus: _aiStatus,
+                          onRefresh: () => _loadData(isRefresh: true),
+                        ),
+                      ],
                     ],
                   ),
       ),

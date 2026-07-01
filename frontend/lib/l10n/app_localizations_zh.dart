@@ -492,6 +492,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiStatusError => 'AI 错误';
 
   @override
+  String get aiEnableTitle => '启用 AI';
+
+  @override
+  String get aiEnableHint => '启动 AI 引擎并加载模型';
+
+  @override
+  String get aiDisableTitle => '禁用 AI';
+
+  @override
+  String get aiDisableHint => '停止 AI 引擎并释放资源';
+
+  @override
+  String get aiEnablingProgress => '正在启动 AI 引擎...';
+
+  @override
+  String get aiDisablingProgress => '正在停止 AI 引擎...';
+
+  @override
   String get modelsAvailable => '可用模型';
 
   @override

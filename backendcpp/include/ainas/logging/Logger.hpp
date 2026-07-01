@@ -34,6 +34,7 @@ public:
     void setLevel(LogLevel level) noexcept { m_config.level = level; }
     void setLogFile(std::string_view path);
     LogLevel level() const noexcept { return m_config.level; }
+    std::string getLogFilePath() const noexcept { return m_config.filePath; }
 
     // Core log - source_location passed first (by macro), then format-string + args
     template<typename... Args>

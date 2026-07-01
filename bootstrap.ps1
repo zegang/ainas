@@ -285,10 +285,11 @@ function Setup-Cpp {
         exit 1
     }
 
-    # Ensure oatpp submodule is initialized
-    if (-not (Test-Path "$ProjectRoot/vendor/oatpp/CMakeLists.txt")) {
-        Write-Host "Step: Initializing oatpp submodule..."
-        git submodule update --init --recursive vendor/oatpp
+    # Ensure all required Git submodules (including nested ones like vendor/cllama/third_party/oatpp-swagger) are initialized
+    if (-not (Test-Path "$ProjectRoot/vendor/oatpp/CMakeLists.txt") -or
+        -not (Test-Path "$ProjectRoot/vendor/cllama/third_party/oatpp-swagger/CMakeLists.txt")) {
+        Write-Host "Step: Initializing Git submodules (recursive)..."
+        git submodule update --init --recursive
     }
 
     $src = "$ProjectRoot/backendcpp"

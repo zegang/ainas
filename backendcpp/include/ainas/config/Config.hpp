@@ -18,7 +18,7 @@ struct Config {
     bool aiEnabled{false};
     int cllamaPort{9027};
     std::filesystem::path cllamaModelsFolder{"./models"};
-    std::filesystem::path cllamaBinary{"cllama"};
+    std::filesystem::path cllamaBinary{"bin/cllama"};
 
     std::filesystem::path thumbnailPath() const { return nasmetadataPath / "thumbnails"; }
     std::filesystem::path aiPath() const { return nasmetadataPath / "ai"; }

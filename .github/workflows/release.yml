@@ -422,6 +422,20 @@ jobs:
         working-directory: frontend
         run: flutter build windows --release
 
+      - name: Bundle MSVC runtime DLLs
+        shell: pwsh
+        run: |
+          $outDir = "${{ github.workspace }}\frontend\build\windows\x64\runner\Release"
+          $redistDir = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Redist\MSVC" -ErrorAction SilentlyContinue `
+            | Sort-Object Name -Descending | Select-Object -First 1
+          if ($redistDir) {
+            $crtDir = Join-Path $redistDir.FullName "x64\Microsoft.VC143.CRT"
+            Copy-Item "$crtDir\*.dll" $outDir -ErrorAction SilentlyContinue
+            Write-Host "Copied MSVC DLLs from $crtDir to $outDir"
+          } else {
+            Write-Host "MSVC redist directory not found, skipping DLL copy"
+          }
+
       - name: Create zip
         working-directory: frontend\build\windows\x64\runner\Release
         run: |
@@ -474,6 +488,20 @@ jobs:
         working-directory: frontend
         run: flutter build windows --release
 
+      - name: Bundle MSVC runtime DLLs
+        shell: pwsh
+        run: |
+          $outDir = "${{ github.workspace }}\frontend\build\windows\x64\runner\Release"
+          $redistDir = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Redist\MSVC" -ErrorAction SilentlyContinue `
+            | Sort-Object Name -Descending | Select-Object -First 1
+          if ($redistDir) {
+            $crtDir = Join-Path $redistDir.FullName "x64\Microsoft.VC143.CRT"
+            Copy-Item "$crtDir\*.dll" $outDir -ErrorAction SilentlyContinue
+            Write-Host "Copied MSVC DLLs from $crtDir to $outDir"
+          } else {
+            Write-Host "MSVC redist directory not found, skipping DLL copy"
+          }
+
       - name: Create zip
         working-directory: frontend\build\windows\x64\runner\Release
         run: |
@@ -505,7 +533,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Install dependencies
         run: |
@@ -522,8 +550,37 @@ jobs:
         working-directory: backendcpp
         run: cmake --build build --parallel --config Release
 
-      - name: Package binary
-        run: tar czf ainas-backendcpp-linux.tar.gz -C backendcpp/build/src ainas-backend-cpp
+      - name: Bundle runtime libraries & package binary
+        run: |
+          # Install patchelf for rpath manipulation
+          sudo apt-get install -y -qq patchelf
+
+          # Stage binaries
+          mkdir -p staging/lib staging/bin
+          cp backendcpp/build/src/ainas-backend-cpp staging/
+          cp backendcpp/build/src/bin/cllama staging/bin/
+          cp backendcpp/build/src/bin/cllama_runner staging/bin/
+          chmod +x staging/bin/cllama staging/bin/cllama_runner
+
+          # Collect all non-system shared library dependencies
+          for bin in ainas-backend-cpp bin/cllama bin/cllama_runner; do
+            ldd "staging/$bin" 2>/dev/null | awk '/=> \/.*\.so/ {print $3}' >> /tmp/deps.txt
+          done
+          sort -u /tmp/deps.txt | while read lib; do
+            name=$(basename "$lib")
+            case "$name" in
+              ld-linux-*|libc.so*|libm.so*|libpthread.so*|libdl.so*|librt.so*|libstdc++.so*|libgcc_s.so*|linux-vdso*)
+                continue ;;
+            esac
+            cp -n "$lib" staging/lib/ 2>/dev/null || true
+          done
+
+          # Set rpath on all binaries so they find bundled libs
+          for bin in ainas-backend-cpp bin/cllama bin/cllama_runner; do
+            patchelf --set-rpath '$ORIGIN/lib' "staging/$bin" 2>/dev/null || true
+          done
+
+          tar czf ainas-backendcpp-linux.tar.gz -C staging .
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
@@ -551,7 +608,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Configure CMake
         working-directory: backendcpp
@@ -563,8 +620,37 @@ jobs:
         working-directory: backendcpp
         run: cmake --build build --parallel --config Release
 
-      - name: Package binary
-        run: tar czf ainas-backendcpp-macos.tar.gz -C backendcpp/build/src ainas-backend-cpp
+      - name: Bundle runtime libraries & package binary
+        run: |
+          # Stage binaries
+          mkdir -p staging/lib staging/bin
+          cp backendcpp/build/src/ainas-backend-cpp staging/
+          cp backendcpp/build/src/bin/cllama staging/bin/
+          cp backendcpp/build/src/bin/cllama_runner staging/bin/
+          chmod +x staging/bin/cllama staging/bin/cllama_runner
+
+          # Collect non-system shared library dependencies
+          for bin in ainas-backend-cpp bin/cllama bin/cllama_runner; do
+            otool -L "staging/$bin" 2>/dev/null | \
+              grep -v ':' | grep -v '/usr/lib/' | grep -v '/System/' | \
+              grep -v 'libstdc++' | grep -v 'libgcc_s' | grep -v 'libc++' | \
+              awk '!/@rpath|@executable_path|@loader_path/ {print $1}' >> /tmp/deps.txt
+          done
+          sort -u /tmp/deps.txt | while read lib; do
+            [ -z "$lib" ] && continue
+            cp -n "$lib" staging/lib/ 2>/dev/null || true
+          done
+
+          # Add rpath so binaries find bundled libs
+          for bin in ainas-backend-cpp bin/cllama bin/cllama_runner; do
+            install_name_tool -add_rpath '@executable_path/../lib' "staging/$bin" 2>/dev/null || true
+          done
+          # Fix library identification names for bundled dylibs
+          for lib in staging/lib/*.dylib; do
+            [ -f "$lib" ] && install_name_tool -id "@rpath/$(basename $lib)" "$lib" 2>/dev/null || true
+          done
+
+          tar czf ainas-backendcpp-macos.tar.gz -C staging .
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
@@ -590,10 +676,10 @@ jobs:
       contents: write
 
     steps:
-      # Fix 1: Add submodules: true so vendor/oatpp actually gets checked out
+      # Fix 1: Recursive submodules so vendor/cllama/third_party/* is also checked out
       - uses: actions/checkout@v5
         with:
-          submodules: true
+          submodules: recursive
 
       # Fix 2: Download and drop SQLite amalgamation source into vendor
       - name: Install SQLite amalgamation
@@ -616,16 +702,54 @@ jobs:
         working-directory: backendcpp
         run: cmake --build build --parallel --config Release
 
+      - name: Bundle runtime DLLs (MSVC, vcpkg, etc.)
+        shell: pwsh
+        run: |
+          $relDir = "backendcpp\build\src\Release"
+          $binDir = "$relDir\bin"
+          New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+
+          # 1. MSVC CRT from Visual Studio redist
+          $redistDir = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Redist\MSVC" -ErrorAction SilentlyContinue `
+            | Sort-Object Name -Descending | Select-Object -First 1
+          if ($redistDir) {
+            $crtDir = Join-Path $redistDir.FullName "x64\Microsoft.VC143.CRT"
+            Copy-Item "$crtDir\*.dll" $relDir -ErrorAction SilentlyContinue
+            Copy-Item "$crtDir\*.dll" $binDir -ErrorAction SilentlyContinue
+            Write-Host "Copied MSVC DLLs from $crtDir"
+          } else {
+            Write-Host "MSVC redist not found, trying Windows SDK fallback"
+            # Fallback: copy from C:\Windows\System32 (likely present on any Windows)
+            @("vcruntime140.dll","vcruntime140_1.dll","msvcp140.dll","msvcp140_1.dll","msvcp140_2.dll","concrt140.dll") | ForEach-Object {
+              $src = "C:\Windows\System32\$_"
+              if (Test-Path $src) {
+                Copy-Item $src $relDir -ErrorAction SilentlyContinue
+                Copy-Item $src $binDir -ErrorAction SilentlyContinue
+              }
+            }
+          }
+
+          # 2. Optional vcpkg DLLs (libssl, libcrypto, zlib, brotli) if the build found them
+          $vcpkgBin = "C:\vcpkg\installed\x64-windows\bin"
+          if (Test-Path $vcpkgBin) {
+            @("libssl-3*.dll","libcrypto-3*.dll","zlib*.dll","libbrotli*.dll","libgomp*.dll") | ForEach-Object {
+              Copy-Item (Join-Path $vcpkgBin $_) $relDir -ErrorAction SilentlyContinue
+              Copy-Item (Join-Path $vcpkgBin $_) $binDir -ErrorAction SilentlyContinue
+            }
+            Write-Host "Checked vcpkg bin ($vcpkgBin) for additional DLLs"
+          }
+
       - name: Package binary
         run: |
-          cd backendcpp/build/src/Release   # MSVC outputs to a build configuration subfolder
-          echo "Current Path: $(pwd)"
-          ls -la
-          tar czf ainas-backendcpp-windows.tar.gz ainas-backend-cpp.exe
-          cd ../../../../
-          echo "Current Path: $(pwd)"
-          ls -la
-          mv backendcpp/build/src/Release/ainas-backendcpp-windows.tar.gz ainas-backendcpp-windows.tar.gz
+          REL=backendcpp/build/src/Release
+          mkdir -p staging/bin
+          cp "$REL"/ainas-backend-cpp.exe staging/
+          cp "$REL"/bin/cllama.exe staging/bin/
+          cp "$REL"/bin/cllama_runner.exe staging/bin/
+          cp "$REL"/*.dll staging/ 2>/dev/null || true
+          cp "$REL"/bin/*.dll staging/bin/ 2>/dev/null || true
+          tar czf ainas-backendcpp-windows.tar.gz -C staging .
+          rm -rf staging
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
@@ -653,7 +777,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Install SQLite amalgamation
         run: |
@@ -675,16 +799,53 @@ jobs:
         working-directory: backendcpp
         run: cmake --build build --parallel --config Release
 
+      - name: Bundle runtime DLLs (MSVC, vcpkg, etc.)
+        shell: pwsh
+        run: |
+          $relDir = "backendcpp\build\src\Release"
+          $binDir = "$relDir\bin"
+          New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+
+          # 1. MSVC CRT from Visual Studio redist
+          $redistDir = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Redist\MSVC" -ErrorAction SilentlyContinue `
+            | Sort-Object Name -Descending | Select-Object -First 1
+          if ($redistDir) {
+            $crtDir = Join-Path $redistDir.FullName "x64\Microsoft.VC143.CRT"
+            Copy-Item "$crtDir\*.dll" $relDir -ErrorAction SilentlyContinue
+            Copy-Item "$crtDir\*.dll" $binDir -ErrorAction SilentlyContinue
+            Write-Host "Copied MSVC DLLs from $crtDir"
+          } else {
+            Write-Host "MSVC redist not found, trying Windows SDK fallback"
+            @("vcruntime140.dll","vcruntime140_1.dll","msvcp140.dll","msvcp140_1.dll","msvcp140_2.dll","concrt140.dll") | ForEach-Object {
+              $src = "C:\Windows\System32\$_"
+              if (Test-Path $src) {
+                Copy-Item $src $relDir -ErrorAction SilentlyContinue
+                Copy-Item $src $binDir -ErrorAction SilentlyContinue
+              }
+            }
+          }
+
+          # 2. Optional vcpkg DLLs if the build found them
+          $vcpkgBin = "C:\vcpkg\installed\x64-windows\bin"
+          if (Test-Path $vcpkgBin) {
+            @("libssl-3*.dll","libcrypto-3*.dll","zlib*.dll","libbrotli*.dll","libgomp*.dll") | ForEach-Object {
+              Copy-Item (Join-Path $vcpkgBin $_) $relDir -ErrorAction SilentlyContinue
+              Copy-Item (Join-Path $vcpkgBin $_) $binDir -ErrorAction SilentlyContinue
+            }
+            Write-Host "Checked vcpkg bin ($vcpkgBin) for additional DLLs"
+          }
+
       - name: Package binary
         run: |
-          cd backendcpp/build/src/Release
-          echo "Current Path: $(pwd)"
-          ls -la
-          tar czf ainas-backendcpp-windows7.tar.gz ainas-backend-cpp.exe
-          cd ../../../../
-          echo "Current Path: $(pwd)"
-          ls -la
-          mv backendcpp/build/src/Release/ainas-backendcpp-windows7.tar.gz ainas-backendcpp-windows7.tar.gz
+          REL=backendcpp/build/src/Release
+          mkdir -p staging/bin
+          cp "$REL"/ainas-backend-cpp.exe staging/
+          cp "$REL"/bin/cllama.exe staging/bin/
+          cp "$REL"/bin/cllama_runner.exe staging/bin/
+          cp "$REL"/*.dll staging/ 2>/dev/null || true
+          cp "$REL"/bin/*.dll staging/bin/ 2>/dev/null || true
+          tar czf ainas-backendcpp-windows7.tar.gz -C staging .
+          rm -rf staging
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
@@ -697,8 +858,8 @@ jobs:
 
       - uses: actions/upload-artifact@v5
         with:
-          name: ainas-backendcpp-windows7
-          path: ainas-backendcpp-windows7.tar.gz
+           name: ainas-backendcpp-windows7
+           path: ainas-backendcpp-windows7.tar.gz
 
   # ─── Full bundles: Flutter frontend + C++ backend ──────────────────
   ainas-full-linux:
@@ -729,7 +890,9 @@ jobs:
           mkdir -p bundle
           tar xzf dl/linux/ainas-frontend-linux.tar.gz -C bundle
           tar xzf dl/backend-linux/ainas-backendcpp-linux.tar.gz -C bundle
-          chmod +x bundle/ainas_frontend bundle/run.sh bundle/ainas-backend-cpp 2>/dev/null || true
+          chmod +x bundle/ainas_frontend bundle/run.sh bundle/ainas-backend-cpp \
+            bundle/bin/cllama bundle/bin/cllama_runner 2>/dev/null || true
+          find bundle/lib -type f -exec chmod 644 {} \; 2>/dev/null || true
 
       - name: Create archive
         run: tar czf ainas-full-linux.tar.gz -C bundle .
@@ -775,7 +938,9 @@ jobs:
           APP=$(find staging -maxdepth 1 -name "*.app" | head -1)
           MACOS_DIR="$APP/Contents/MacOS"
           tar xzf dl/backend-macos/ainas-backendcpp-macos.tar.gz -C "$MACOS_DIR"
-          chmod +x "$MACOS_DIR/ainas-backend-cpp" || true
+          chmod +x "$MACOS_DIR/ainas-backend-cpp" \
+            "$MACOS_DIR/bin/cllama" "$MACOS_DIR/bin/cllama_runner" 2>/dev/null || true
+          find "$MACOS_DIR/lib" -type f -exec chmod 644 {} \; 2>/dev/null || true
 
       - name: Create archive
         run: |
@@ -908,7 +1073,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          submodules: true
+          submodules: recursive
 
       - uses: actions/setup-java@v5
         with:
@@ -1004,7 +1169,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          submodules: true
+          submodules: recursive
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:

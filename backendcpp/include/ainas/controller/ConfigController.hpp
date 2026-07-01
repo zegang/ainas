@@ -57,8 +57,23 @@ public:
         auto k = std::string(key->data(), key->size());
         auto entry = m_repo->get(k);
         if (!entry) {
-            response->success = false;
-            return createDtoResponse(Status::CODE_404, response);
+            // Fall back to runtime defaults for well-known keys
+            std::string value;
+            if (k == "log_file") {
+                value = Logger::instance().getLogFilePath();
+            }
+            if (value.empty()) {
+                response->success = false;
+                return createDtoResponse(Status::CODE_404, response);
+            }
+            response->success = true;
+            auto dto = ConfigEntryDto::createShared();
+            dto->key = oatpp::String(k);
+            dto->value = oatpp::String(value);
+            auto configs = oatpp::Vector<oatpp::Object<ConfigEntryDto>>::createShared();
+            configs->push_back(dto);
+            response->configs = configs;
+            return createDtoResponse(Status::CODE_200, response);
         }
 
         response->success = true;
