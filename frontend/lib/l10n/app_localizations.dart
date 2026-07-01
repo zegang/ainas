@@ -1844,6 +1844,72 @@ abstract class AppLocalizations {
   /// **'Target AI NAS set to {url}'**
   String mdnsTargetSet(Object url);
 
+  /// No description provided for @mdnsScanTimedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan timed out'**
+  String get mdnsScanTimedOut;
+
+  /// No description provided for @mdnsPageScanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning for mDNS services...'**
+  String get mdnsPageScanning;
+
+  /// No description provided for @mdnsAddServiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Local Service'**
+  String get mdnsAddServiceTitle;
+
+  /// No description provided for @mdnsNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'My Service'**
+  String get mdnsNameHint;
+
+  /// No description provided for @mdnsHostIpLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Host / IP'**
+  String get mdnsHostIpLabel;
+
+  /// No description provided for @mdnsHostIpHint.
+  ///
+  /// In en, this message translates to:
+  /// **'0.0.0.0'**
+  String get mdnsHostIpHint;
+
+  /// No description provided for @mdnsPortLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get mdnsPortLabel;
+
+  /// No description provided for @mdnsInvalidPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid port'**
+  String get mdnsInvalidPort;
+
+  /// No description provided for @mdnsServiceTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'_http._tcp.local.'**
+  String get mdnsServiceTypeHint;
+
+  /// No description provided for @mdnsAddButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get mdnsAddButton;
+
+  /// No description provided for @mdnsAddServiceRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get mdnsAddServiceRequired;
+
   /// No description provided for @mergeToPdf.
   ///
   /// In en, this message translates to:

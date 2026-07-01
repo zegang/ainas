@@ -957,6 +957,39 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get mdnsScanTimedOut => 'Scan timed out';
+
+  @override
+  String get mdnsPageScanning => 'Scanning for mDNS services...';
+
+  @override
+  String get mdnsAddServiceTitle => 'Add Local Service';
+
+  @override
+  String get mdnsNameHint => 'My Service';
+
+  @override
+  String get mdnsHostIpLabel => 'Host / IP';
+
+  @override
+  String get mdnsHostIpHint => '0.0.0.0';
+
+  @override
+  String get mdnsPortLabel => 'Port';
+
+  @override
+  String get mdnsInvalidPort => 'Invalid port';
+
+  @override
+  String get mdnsServiceTypeHint => '_http._tcp.local.';
+
+  @override
+  String get mdnsAddButton => 'Add';
+
+  @override
+  String get mdnsAddServiceRequired => 'Required';
+
+  @override
   String get mergeToPdf => 'Merge to PDF';
 
   @override

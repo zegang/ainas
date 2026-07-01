@@ -6,6 +6,8 @@ import 'package:ainas_frontend/shared/models/nas_server.dart';
 class MdnsDiscoveryWidget extends StatelessWidget {
   final List<NasServer> discoveredServers;
   final bool isScanning;
+  final bool timedOut;
+  final int elapsedSeconds;
   final void Function(NasServer) onServiceSelected;
   final VoidCallback onRefresh;
   final VoidCallback? onOpenBrowser;
@@ -16,6 +18,8 @@ class MdnsDiscoveryWidget extends StatelessWidget {
     super.key,
     required this.discoveredServers,
     required this.isScanning,
+    this.timedOut = false,
+    this.elapsedSeconds = 0,
     required this.onServiceSelected,
     required this.onRefresh,
     this.onOpenBrowser,
@@ -77,25 +81,52 @@ class MdnsDiscoveryWidget extends StatelessWidget {
                         padding: EdgeInsets.zero,
                       ),
                     if (isScanning)
-                      const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      Text('${elapsedSeconds}s',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600))
                     else
                       IconButton(icon: const Icon(Icons.refresh), onPressed: onRefresh),
+                    if (isScanning) ...[
+                      const SizedBox(width: 6),
+                      const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                    ],
                   ],
                 ),
               ],
             ),
             const Divider(),
             if (isScanning && discoveredServers.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 16),
+                      Text(
+                        '${serviceType != null ? l10n.mdnsScanningForType(serviceType!) : l10n.mdnsScanningServers} (${elapsedSeconds}s)',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (discoveredServers.isEmpty && timedOut)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Column(
                   children: [
-                    const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                    const SizedBox(width: 12),
+                    Center(child: Text(l10n.mdnsNoServers, style: TextStyle(color: Colors.grey.shade600))),
+                    const SizedBox(height: 8),
                     Text(
-                      serviceType != null ? l10n.mdnsScanningForType(serviceType!) : l10n.mdnsScanningServers,
-                      style: TextStyle(color: Colors.grey.shade600),
+                      '${l10n.mdnsScanTimedOut} ($elapsedSeconds s)',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    ),
+                    const SizedBox(height: 8),
+                    FilledButton.tonalIcon(
+                      onPressed: onRefresh,
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: Text(l10n.mdnsScanAgain),
                     ),
                   ],
                 ),
@@ -106,41 +137,62 @@ class MdnsDiscoveryWidget extends StatelessWidget {
                 child: Center(child: Text(l10n.mdnsNoServers)),
               )
             else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: discoveredServers.length,
-                itemBuilder: (context, index) {
-                  final server = discoveredServers[index];
-                  final isTarget = currentTargetUrl != null && server.url == currentTargetUrl;
-                  return ListTile(
-                    leading: Icon(
-                      isTarget ? Icons.check_circle : Icons.dns_outlined,
-                      color: isTarget ? Colors.green : null,
-                    ),
-                    title: Text(
-                      server.name,
-                      style: isTarget ? const TextStyle(fontWeight: FontWeight.bold) : null,
-                    ),
-                    subtitle: Text(
-                      server.displayUrl,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isTarget ? Colors.green : null,
+              Column(
+                children: [
+                  if (isScanning)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5)),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${l10n.mdnsScanningServers} (${discoveredServers.length} found, ${elapsedSeconds}s)',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    trailing: Icon(isTarget ? Icons.check_circle : Icons.chevron_right,
-                        color: isTarget ? Colors.green : null),
-                    tileColor: isTarget ? Colors.green.withOpacity(0.08) : null,
-                    shape: isTarget
-                        ? RoundedRectangleBorder(
-                            side: BorderSide(color: Colors.green.withOpacity(0.3)),
-                            borderRadius: BorderRadius.circular(8),
-                          )
-                        : null,
-                    onTap: () => onServiceSelected(server),
-                  );
-                },
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: discoveredServers.length,
+                    itemBuilder: (context, index) {
+                      final server = discoveredServers[index];
+                      final isTarget = currentTargetUrl != null && server.url == currentTargetUrl;
+                      return ListTile(
+                        leading: Icon(
+                          isTarget ? Icons.check_circle : Icons.dns_outlined,
+                          color: isTarget ? Colors.green : null,
+                        ),
+                        title: Text(
+                          server.name,
+                          style: isTarget ? const TextStyle(fontWeight: FontWeight.bold) : null,
+                        ),
+                        subtitle: Text(
+                          server.displayUrl,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isTarget ? Colors.green : null,
+                          ),
+                        ),
+                        trailing: Icon(isTarget ? Icons.check_circle : Icons.chevron_right,
+                            color: isTarget ? Colors.green : null),
+                        tileColor: isTarget ? Colors.green.withOpacity(0.08) : null,
+                        shape: isTarget
+                            ? RoundedRectangleBorder(
+                                side: BorderSide(color: Colors.green.withOpacity(0.3)),
+                                borderRadius: BorderRadius.circular(8),
+                              )
+                            : null,
+                        onTap: () => onServiceSelected(server),
+                      );
+                    },
+                  ),
+                ],
               ),
           ],
         ),

@@ -28,6 +28,32 @@ endif()
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
     pkg_check_modules(SQLITE3 sqlite3)
+    pkg_check_modules(POPPLER poppler-cpp)
+    pkg_check_modules(QPDF libqpdf)
+endif()
+
+# Warn if Poppler is missing (pdf-to-images won't work)
+if(NOT POPPLER_FOUND)
+    find_path(POPPLER_INCLUDE_DIRS poppler/cpp/poppler-document.h)
+    find_library(POPPLER_LIBRARIES poppler-cpp)
+    if(POPPLER_INCLUDE_DIRS AND POPPLER_LIBRARIES)
+        set(POPPLER_FOUND TRUE)
+    endif()
+endif()
+if(NOT POPPLER_FOUND)
+    message(WARNING "libpoppler-cpp not found — install libpoppler-cpp-dev (Debian/Ubuntu) or poppler (brew/macports)")
+endif()
+
+# Warn if QPDF is missing (merge-to-pdf won't work)
+if(NOT QPDF_FOUND)
+    find_path(QPDF_INCLUDE_DIRS qpdf/QPDF.hh)
+    find_library(QPDF_LIBRARIES qpdf)
+    if(QPDF_INCLUDE_DIRS AND QPDF_LIBRARIES)
+        set(QPDF_FOUND TRUE)
+    endif()
+endif()
+if(NOT QPDF_FOUND)
+    message(WARNING "libqpdf not found — install libqpdf-dev (Debian/Ubuntu) or qpdf (brew/macports)")
 endif()
 if(NOT SQLITE3_FOUND)
     # If the user passed a .c file as SQLITE3_LIBRARIES (Windows CI fallback),
@@ -64,6 +90,7 @@ add_executable(ainas-backend-cpp
     logging/Logger.cpp
     service/FileService.cpp
     service/ThumbnailService.cpp
+    service/PdfService.cpp
     service/AiService.cpp
     controller/AiController.cpp
     controller/ConfigController.cpp
@@ -79,9 +106,11 @@ target_link_libraries(ainas-backend-cpp PRIVATE
     ${SQLITE3_LIBRARIES}
     httplib::httplib
     nlohmann_json::nlohmann_json
+    ${POPPLER_LIBRARIES}
+    ${QPDF_LIBRARIES}
 )
 
-add_dependencies(ainas-backend-cpp cllama_external)
+add_dependencies(ainas-backend-cpp cllama)
 
 # Copy cllama binary and runner into bin/ subdirectory alongside the backend binary.
 # The backend resolves cllama as "<self-dir>/bin/cllama" by default.
@@ -109,4 +138,6 @@ target_include_directories(ainas-backend-cpp PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/stb
     ${SQLITE3_INCLUDE_DIRS}
+    ${POPPLER_INCLUDE_DIRS}
+    ${QPDF_INCLUDE_DIRS}
 )

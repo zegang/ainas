@@ -190,9 +190,20 @@ check_outdated() {
 ensure_linux_deps() {
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         if command -v dpkg >/dev/null 2>&1; then
-            if ! dpkg -s libnm-dev libgtk-3-dev >/dev/null 2>&1; then
+            if ! dpkg -s libnm-dev libgtk-3-dev libpoppler-cpp-dev libqpdf-dev libboost-all-dev >/dev/null 2>&1; then
                 echo "Step: Installing missing Linux development libraries..."
-                sudo apt update && sudo apt install -y libnm-dev libgtk-3-dev
+                sudo apt update && sudo apt install -y libnm-dev libgtk-3-dev libpoppler-cpp-dev libqpdf-dev libboost-all-dev
+            fi
+        fi
+    fi
+}
+
+ensure_macos_deps() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        if command -v brew >/dev/null 2>&1; then
+            if ! brew list poppler &>/dev/null || ! brew list qpdf &>/dev/null; then
+                echo "Step: Installing PDF and Boost libraries via Homebrew..."
+                brew install poppler qpdf boost
             fi
         fi
     fi
@@ -362,6 +373,9 @@ run_backend() {
 setup_cpp() {
     local build_type="${1:-Release}"
     echo "Step: Building C++ Backend with CMake..."
+
+    ensure_linux_deps
+    ensure_macos_deps
 
     # Ensure all Git submodules (including nested ones like vendor/cllama/third_party/oatpp-swagger) are initialized
     local needs_reconfigure=false

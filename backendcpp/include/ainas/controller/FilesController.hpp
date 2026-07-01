@@ -4,6 +4,7 @@
 #include "ainas/dto/DTOs.hpp"
 #include "ainas/logging/Logger.hpp"
 #include "ainas/service/FileService.hpp"
+#include "ainas/service/PdfService.hpp"
 #include "ainas/service/ThumbnailService.hpp"
 
 #include <memory>
@@ -99,16 +100,19 @@ class FilesController : public oatpp::web::server::api::ApiController {
 private:
     std::shared_ptr<FileService> m_fileService;
     std::shared_ptr<Config> m_config;
+    std::shared_ptr<PdfService> m_pdfService;
     std::shared_ptr<ThumbnailService> m_thumbnailService;
 
 public:
     FilesController(const std::shared_ptr<ObjectMapper>& objectMapper,
                     const std::shared_ptr<FileService>& fileService,
                     std::shared_ptr<Config> config,
+                    std::shared_ptr<PdfService> pdfService,
                     std::shared_ptr<ThumbnailService> thumbnailService)
         : oatpp::web::server::api::ApiController(objectMapper)
         , m_fileService(fileService)
         , m_config(std::move(config))
+        , m_pdfService(std::move(pdfService))
         , m_thumbnailService(std::move(thumbnailService))
     {}
 
@@ -116,10 +120,11 @@ public:
         const std::shared_ptr<ObjectMapper>& objectMapper,
         const std::shared_ptr<FileService>& fileService,
         std::shared_ptr<Config> config,
+        std::shared_ptr<PdfService> pdfService,
         std::shared_ptr<ThumbnailService> thumbnailService)
     {
         return std::make_shared<FilesController>(objectMapper, fileService, std::move(config),
-                                                 std::move(thumbnailService));
+                                                 std::move(pdfService), std::move(thumbnailService));
     }
 
     ENDPOINT("GET", "/api/files", listFiles,
@@ -403,6 +408,90 @@ public:
         }
         auto status = result->success ? Status::CODE_200 : Status::CODE_404;
         return createDtoResponse(status, result);
+    }
+
+    ENDPOINT("POST", "/api/files/pdf-to-images", pdfToImages,
+             BODY_DTO(Object<PdfToImageRequestDto>, body)) {
+        LOG_INFO("POST /api/files/pdf-to-images (path=\"{}\")", detail::str(body->path));
+        try {
+            auto source = m_fileService->resolveExistingPath(detail::str(body->path));
+            auto outStr = detail::str(body->outputDir);
+            while (!outStr.empty() && outStr.front() == '/') outStr.erase(0, 1);
+            auto outputDir = m_config->dataPath / outStr;
+            std::filesystem::create_directories(outputDir);
+            auto pages = m_pdfService->pdfToImages(source, outputDir);
+            auto dto = PdfToImageResponseDto::createShared();
+            dto->totalPages = static_cast<Int32>(pages.size());
+            auto imgList = oatpp::Vector<oatpp::Object<PdfToImagePageDto>>::createShared();
+            for (const auto& p : pages) {
+                auto pageDto = PdfToImagePageDto::createShared();
+                pageDto->page = p.page;
+                pageDto->filename = oatpp::String(p.filename);
+                // Return path relative to data dir
+                auto rel = std::filesystem::relative(p.path, m_config->dataPath);
+                pageDto->path = oatpp::String("/" + rel.string());
+                imgList->push_back(pageDto);
+            }
+            dto->images = imgList;
+            return createDtoResponse(Status::CODE_200, dto);
+        } catch (const FileServiceError& e) {
+            auto status = e.kind == FileServiceError::Kind::NotFound
+                          ? Status::CODE_404 : Status::CODE_400;
+            LOG_ERROR("POST /api/files/pdf-to-images: FileServiceError (status={}): {}", status.code, e.what());
+            auto error = ApiResponseDto::createShared();
+            error->success = false;
+            error->message = oatpp::String(e.what());
+            return createDtoResponse(status, error);
+        } catch (const std::exception& e) {
+            LOG_ERROR("POST /api/files/pdf-to-images: exception: {}", e.what());
+            auto error = ApiResponseDto::createShared();
+            error->success = false;
+            error->message = oatpp::String(e.what());
+            return createDtoResponse(Status::CODE_500, error);
+        }
+    }
+
+    ENDPOINT("POST", "/api/files/merge-to-pdf", mergeToPdf,
+             BODY_DTO(Object<MergeToPdfRequestDto>, body)) {
+        LOG_INFO("POST /api/files/merge-to-pdf ({} files)", body->filePaths ? body->filePaths->size() : 0);
+        try {
+            std::vector<std::filesystem::path> validPaths;
+            if (body->filePaths) {
+                for (const auto& relPath : *body->filePaths) {
+                    auto full = m_fileService->resolveExistingPath(detail::str(relPath));
+                    validPaths.push_back(full);
+                }
+            }
+            if (validPaths.empty()) {
+                auto error = ApiResponseDto::createShared();
+                error->success = false;
+                error->message = "No valid input files";
+                return createDtoResponse(Status::CODE_400, error);
+            }
+            auto outPathStr = detail::str(body->outputPath);
+            while (!outPathStr.empty() && outPathStr.front() == '/') outPathStr.erase(0, 1);
+            auto outputFull = m_config->dataPath / outPathStr;
+            std::filesystem::create_directories(outputFull.parent_path());
+            m_pdfService->mergeToPdf(validPaths, outputFull);
+            auto dto = MergeToPdfResponseDto::createShared();
+            dto->pdfPath = body->outputPath;
+            dto->fileCount = static_cast<Int32>(validPaths.size());
+            return createDtoResponse(Status::CODE_200, dto);
+        } catch (const FileServiceError& e) {
+            auto status = e.kind == FileServiceError::Kind::NotFound
+                          ? Status::CODE_404 : Status::CODE_400;
+            LOG_ERROR("POST /api/files/merge-to-pdf: FileServiceError (status={}): {}", status.code, e.what());
+            auto error = ApiResponseDto::createShared();
+            error->success = false;
+            error->message = oatpp::String(e.what());
+            return createDtoResponse(status, error);
+        } catch (const std::exception& e) {
+            LOG_ERROR("POST /api/files/merge-to-pdf: exception: {}", e.what());
+            auto error = ApiResponseDto::createShared();
+            error->success = false;
+            error->message = oatpp::String(e.what());
+            return createDtoResponse(Status::CODE_500, error);
+        }
     }
 };
 

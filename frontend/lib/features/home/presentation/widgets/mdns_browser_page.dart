@@ -22,6 +22,9 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
   final List<NasServer> _servers = [];
   StreamSubscription<NasServer>? _subscription;
   String? _selectedServiceType;
+  DateTime? _scanStartTime;
+  Duration _elapsed = Duration.zero;
+  Timer? _elapsedTimer;
 
   Set<String> get _serviceTypes =>
       _servers.map((s) => s.serviceType).where((t) => t.isNotEmpty).toSet();
@@ -40,12 +43,21 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
   @override
   void dispose() {
     _subscription?.cancel();
+    _elapsedTimer?.cancel();
     super.dispose();
   }
 
   void _startScan() {
     if (kIsWeb) return;
-    setState(() => _isScanning = true);
+    setState(() {
+      _isScanning = true;
+      _scanStartTime = DateTime.now();
+      _elapsed = Duration.zero;
+    });
+    _elapsedTimer?.cancel();
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _elapsed = DateTime.now().difference(_scanStartTime!));
+    });
     _subscription?.cancel();
     _servers.clear();
 
@@ -79,8 +91,10 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
         _servers.add(server);
       });
     }, onDone: () {
+      _elapsedTimer?.cancel();
       if (mounted) setState(() => _isScanning = false);
     }, onError: (_) {
+      _elapsedTimer?.cancel();
       if (mounted) setState(() => _isScanning = false);
     });
   }
@@ -125,7 +139,7 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: const Text('Add Local Service'),
+          title: Text(l10n.mdnsAddServiceTitle),
           content: Form(
             key: formKey,
             child: SingleChildScrollView(
@@ -134,17 +148,20 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
                 children: [
                   TextFormField(
                     controller: nameCtl,
-                    decoration: const InputDecoration(labelText: 'Name', hintText: 'My Service'),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    decoration: InputDecoration(
+                      labelText: l10n.mdnsNameLabel,
+                      hintText: l10n.mdnsNameHint,
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? l10n.mdnsAddServiceRequired : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: hostCtl,
-                    decoration: const InputDecoration(
-                      labelText: 'Host / IP',
-                      hintText: '0.0.0.0',
+                    decoration: InputDecoration(
+                      labelText: l10n.mdnsHostIpLabel,
+                      hintText: l10n.mdnsHostIpHint,
                     ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? l10n.mdnsAddServiceRequired : null,
                   ),
                   if (localIps.length > 1) ...[
                     const SizedBox(height: 6),
@@ -162,21 +179,21 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: portCtl,
-                    decoration: const InputDecoration(labelText: 'Port'),
+                    decoration: InputDecoration(labelText: l10n.mdnsPortLabel),
                     keyboardType: TextInputType.number,
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Required';
+                      if (v == null || v.trim().isEmpty) return l10n.mdnsAddServiceRequired;
                       final p = int.tryParse(v.trim());
-                      if (p == null || p < 1 || p > 65535) return 'Invalid port';
+                      if (p == null || p < 1 || p > 65535) return l10n.mdnsInvalidPort;
                       return null;
                     },
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: typeCtl,
-                    decoration: const InputDecoration(
-                      labelText: 'Service Type',
-                      hintText: '_http._tcp.local.',
+                    decoration: InputDecoration(
+                      labelText: l10n.mdnsServiceTypeLabel,
+                      hintText: l10n.mdnsServiceTypeHint,
                     ),
                   ),
                 ],
@@ -202,7 +219,7 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
                 });
                 Navigator.pop(ctx);
               },
-              child: const Text('Add'),
+              child: Text(l10n.mdnsAddButton),
             ),
           ],
         );
@@ -218,9 +235,17 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
         title: Text(l10n.mdnsPageTitle),
         actions: [
           if (_isScanning)
-            const Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('${_elapsed.inSeconds}s',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                  const SizedBox(width: 6),
+                  const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                ],
+              ),
             )
           else
             IconButton(icon: const Icon(Icons.refresh), onPressed: _startScan),
@@ -229,25 +254,37 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
       ),
       body: kIsWeb
           ? Center(child: Text(l10n.mdnsWebUnsupported))
-          : _servers.isEmpty && !_isScanning
+          : _servers.isEmpty && _isScanning
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.dns_outlined, size: 64, color: Colors.grey.shade400),
+                      const CircularProgressIndicator(),
                       const SizedBox(height: 16),
-                      Text(l10n.mdnsNoServicesFound,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey)),
-                      const SizedBox(height: 8),
-                      FilledButton.tonalIcon(
-                        onPressed: _startScan,
-                        icon: const Icon(Icons.refresh),
-                        label: Text(l10n.mdnsScanAgain),
-                      ),
+                      Text('${l10n.mdnsPageScanning} (${_elapsed.inSeconds}s)',
+                          style: TextStyle(color: Colors.grey.shade600)),
                     ],
                   ),
                 )
-              : Column(
+              : _servers.isEmpty && !_isScanning
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.dns_outlined, size: 64, color: Colors.grey.shade400),
+                          const SizedBox(height: 16),
+                          Text(l10n.mdnsNoServicesFound,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey)),
+                          const SizedBox(height: 8),
+                          FilledButton.tonalIcon(
+                            onPressed: _startScan,
+                            icon: const Icon(Icons.refresh),
+                            label: Text(l10n.mdnsScanAgain),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Column(
                   children: [
                     if (_serviceTypes.isNotEmpty)
                       Padding(

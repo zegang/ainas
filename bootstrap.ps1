@@ -292,6 +292,16 @@ function Setup-Cpp {
         git submodule update --init --recursive
     }
 
+    # Install PDF libraries (poppler, qpdf) via vcpkg if available
+    $vcpkg = Get-Command vcpkg -ErrorAction SilentlyContinue
+    if ($vcpkg) {
+        Write-Host "Step: Installing PDF dependencies via vcpkg..."
+        & vcpkg install poppler qpdf --triplet x64-windows
+        $env:CMAKE_PREFIX_PATH = "C:\vcpkg\installed\x64-windows;$env:CMAKE_PREFIX_PATH"
+    } else {
+        Write-Host "Warning: vcpkg not found. PDF operations (pdf-to-images, merge-to-pdf) will be unavailable."
+    }
+
     $src = "$ProjectRoot/backendcpp"
     $build = "$ProjectRoot/backendcpp/build"
     $cmakeArgs = @("-S", $src, "-B", $build, "-DCMAKE_BUILD_TYPE=$BuildType", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON", "-DTARGET_WINDOWS_VER=$TargetWindowsVer")

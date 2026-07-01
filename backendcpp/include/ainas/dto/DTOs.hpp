@@ -167,6 +167,37 @@ class RagStatusDto : public oatpp::DTO {
     DTO_FIELD(Int32, usage_docs);
 };
 
+class PdfToImagePageDto : public oatpp::DTO {
+    DTO_INIT(PdfToImagePageDto, DTO)
+    DTO_FIELD(Int32, page);
+    DTO_FIELD(String, filename);
+    DTO_FIELD(String, path);
+};
+
+class PdfToImageRequestDto : public oatpp::DTO {
+    DTO_INIT(PdfToImageRequestDto, DTO)
+    DTO_FIELD(String, path);
+    DTO_FIELD(String, outputDir, "output_dir");
+};
+
+class MergeToPdfRequestDto : public oatpp::DTO {
+    DTO_INIT(MergeToPdfRequestDto, DTO)
+    DTO_FIELD(Vector<String>, filePaths, "file_paths");
+    DTO_FIELD(String, outputPath, "output_path");
+};
+
+class PdfToImageResponseDto : public oatpp::DTO {
+    DTO_INIT(PdfToImageResponseDto, DTO)
+    DTO_FIELD(Int32, totalPages, "total_pages");
+    DTO_FIELD(Vector<Object<PdfToImagePageDto>>, images);
+};
+
+class MergeToPdfResponseDto : public oatpp::DTO {
+    DTO_INIT(MergeToPdfResponseDto, DTO)
+    DTO_FIELD(String, pdfPath, "pdf_path");
+    DTO_FIELD(Int32, fileCount, "file_count");
+};
+
 } // namespace ainas
 
 #include OATPP_CODEGEN_END(DTO)

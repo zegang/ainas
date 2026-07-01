@@ -12,6 +12,8 @@ import 'package:ainas_frontend/services/api_service.dart';
 import 'package:ainas_frontend/services/mdns_service.dart';
 import 'package:ainas_frontend/shared/models/nas_server.dart';
 
+const Duration _mdnsScanTimeout = Duration(seconds: 20);
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -22,8 +24,12 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final ApiService _api = ApiService();
   bool _isScanning = false;
+  bool _mdnsTimedOut = false;
   List<NasServer> _discoveredServers = [];
   StreamSubscription<NasServer>? _mdnsSubscription;
+  DateTime? _mdnsScanStart;
+  Duration _mdnsElapsed = Duration.zero;
+  Timer? _mdnsElapsedTimer;
   Map<String, dynamic>? _storageUsage;
   Map<String, dynamic>? _ragStatus;
   Map<String, dynamic>? _aiStatus;
@@ -38,26 +44,51 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _mdnsSubscription?.cancel();
+    _mdnsElapsedTimer?.cancel();
     super.dispose();
   }
 
   void _startMdnsScan() {
     if (kIsWeb) return;
     _mdnsSubscription?.cancel();
-    _mdnsSubscription = MdnsService.scanForServers().listen((server) {
-      if (!mounted) return;
-      setState(() {
-        _discoveredServers.removeWhere(
-          (s) => s.host == server.host && s.port == server.port,
-        );
-        _discoveredServers.add(server);
-      });
+    _mdnsElapsedTimer?.cancel();
+    setState(() {
+      _isScanning = true;
+      _mdnsTimedOut = false;
+      _discoveredServers.clear();
+      _mdnsScanStart = DateTime.now();
+      _mdnsElapsed = Duration.zero;
     });
+    _mdnsElapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _mdnsElapsed = DateTime.now().difference(_mdnsScanStart!));
+    });
+    _mdnsSubscription = MdnsService.scanForServers(timeout: _mdnsScanTimeout).listen(
+      (server) {
+        if (!mounted) return;
+        setState(() {
+          _discoveredServers.removeWhere(
+            (s) => s.host == server.host && s.port == server.port,
+          );
+          _discoveredServers.add(server);
+        });
+      },
+      onDone: () {
+        _mdnsElapsedTimer?.cancel();
+        if (mounted) {
+          setState(() {
+            _isScanning = false;
+            if (_discoveredServers.isEmpty) _mdnsTimedOut = true;
+          });
+        }
+      },
+      onError: (_) {
+        _mdnsElapsedTimer?.cancel();
+        if (mounted) setState(() => _isScanning = false);
+      },
+    );
   }
 
   Future<void> _refreshAll() async {
-    setState(() => _isScanning = true);
-
     try {
       final results = await Future.wait([
         _api.getSystemUsage(),
@@ -77,8 +108,6 @@ class _HomePageState extends State<HomePage> {
         _ragStatus = null;
         _aiStatus = null;
       });
-    } finally {
-      setState(() => _isScanning = false);
     }
   }
 
@@ -100,7 +129,12 @@ class _HomePageState extends State<HomePage> {
           MdnsDiscoveryWidget(
             discoveredServers: _discoveredServers,
             isScanning: _isScanning,
-            onRefresh: _refreshAll,
+            timedOut: _mdnsTimedOut,
+            elapsedSeconds: _mdnsElapsed.inSeconds,
+            onRefresh: () {
+              _startMdnsScan();
+              _refreshAll();
+            },
             onServiceSelected: _onServiceSelected,
             onOpenBrowser: () => Navigator.push(
               context,

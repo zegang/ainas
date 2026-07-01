@@ -445,6 +445,17 @@
       "url": {}
     }
   },
+  "mdnsScanTimedOut": "Scan timed out",
+  "mdnsPageScanning": "Scanning for mDNS services...",
+  "mdnsAddServiceTitle": "Add Local Service",
+  "mdnsNameHint": "My Service",
+  "mdnsHostIpLabel": "Host / IP",
+  "mdnsHostIpHint": "0.0.0.0",
+  "mdnsPortLabel": "Port",
+  "mdnsInvalidPort": "Invalid port",
+  "mdnsServiceTypeHint": "_http._tcp.local.",
+  "mdnsAddButton": "Add",
+  "mdnsAddServiceRequired": "Required",
   "mergeToPdf": "Merge to PDF",
   "mergeToPdfDialogTitle": "Merge to PDF",
   "mergeToPdfCount": "Merging {count} files",

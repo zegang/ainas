@@ -948,6 +948,39 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get mdnsScanTimedOut => '扫描超时';
+
+  @override
+  String get mdnsPageScanning => '正在扫描 mDNS 服务...';
+
+  @override
+  String get mdnsAddServiceTitle => '添加本地服务';
+
+  @override
+  String get mdnsNameHint => '我的服务';
+
+  @override
+  String get mdnsHostIpLabel => '主机 / IP';
+
+  @override
+  String get mdnsHostIpHint => '0.0.0.0';
+
+  @override
+  String get mdnsPortLabel => '端口';
+
+  @override
+  String get mdnsInvalidPort => '无效端口';
+
+  @override
+  String get mdnsServiceTypeHint => '_http._tcp.local.';
+
+  @override
+  String get mdnsAddButton => '添加';
+
+  @override
+  String get mdnsAddServiceRequired => '必填';
+
+  @override
   String get mergeToPdf => '合并为 PDF';
 
   @override

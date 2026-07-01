@@ -5,6 +5,7 @@
 #include "ainas/dto/DTOs.hpp"
 #include "ainas/logging/Logger.hpp"
 #include "ainas/service/FileService.hpp"
+#include "ainas/service/PdfService.hpp"
 #include "ainas/service/ThumbnailService.hpp"
 #include "ainas/service/AiService.hpp"
 #include "ainas/controller/ConfigController.hpp"
@@ -183,8 +184,9 @@ int main(int argc, const char* argv[]) {
     auto router = oatpp::web::server::HttpRouter::createShared();
 
     auto thumbnailService = std::make_shared<ainas::ThumbnailService>(config);
+    auto pdfService = std::make_shared<ainas::PdfService>(config);
     auto filesController = ainas::FilesController::createShared(
-        objectMapper, fileService, config, thumbnailService);
+        objectMapper, fileService, config, pdfService, thumbnailService);
 
     auto aiService = std::make_shared<ainas::AiService>(config);
     aiService->start();
