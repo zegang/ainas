@@ -402,6 +402,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get filterTypeDocx => 'DOCX';
 
   @override
+  String get filterTypeVideos => '视频';
+
+  @override
   String get filterTypeOthers => '其他';
 
   @override
@@ -1050,13 +1053,45 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noFeaturesRegistered => '暂无可用的 AI 功能';
 
   @override
+  String get versionTitle => '版本';
+
+  @override
+  String get versionSubtitle => '应用版本和日志';
+
+  @override
   String get logViewerTitle => '前端日志';
 
   @override
   String get logViewerSubtitle => '查看和分享应用日志';
 
   @override
+  String get backendLogViewerTitle => '后端日志';
+
+  @override
+  String get backendLogViewerSubtitle => '查看后端服务器日志';
+
+  @override
   String get logTruncated => '日志文件已截断至最后 500 KB 以提升性能。';
+
+  @override
+  String get logFileNotFound => '未找到日志文件，请先使用应用。';
+
+  @override
+  String get logWebUnavailable => '日志文件在网页上不可用，日志会打印到浏览器控制台。';
+
+  @override
+  String logReadFailed(Object error) {
+    return '读取日志文件失败：$error';
+  }
+
+  @override
+  String get logSearchHint => '搜索日志...';
+
+  @override
+  String get zoomOut => '缩小';
+
+  @override
+  String get zoomIn => '放大';
 
   @override
   String get uploadEmpty => '暂无上传任务';
@@ -1071,8 +1106,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get quitBackendRunning => '后端进程仍在运行，是否在退出前停止它？';
 
   @override
-  String uploadTitle(int count) {
-    return '上传 ($count)';
+  String uploadTitle(int completed, int total) {
+    return '上传 ($completed/$total)';
   }
 
   @override

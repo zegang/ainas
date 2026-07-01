@@ -125,6 +125,7 @@
   "filterTypeImages": "图片",
   "filterTypePdf": "PDF",
   "filterTypeDocx": "DOCX",
+  "filterTypeVideos": "视频",
   "filterTypeOthers": "其他",
   "hostLabel": "服务器地址",
   "portLabel": "端口",
@@ -470,17 +471,35 @@
   "logLevelLabel": "日志级别",
   "logFileLabel": "日志文件",
   "noFeaturesRegistered": "暂无可用的 AI 功能",
+  "versionTitle": "版本",
+  "versionSubtitle": "应用版本和日志",
   "logViewerTitle": "前端日志",
   "logViewerSubtitle": "查看和分享应用日志",
+  "backendLogViewerTitle": "后端日志",
+  "backendLogViewerSubtitle": "查看后端服务器日志",
   "logTruncated": "日志文件已截断至最后 500 KB 以提升性能。",
+  "logFileNotFound": "未找到日志文件，请先使用应用。",
+  "logWebUnavailable": "日志文件在网页上不可用，日志会打印到浏览器控制台。",
+  "logReadFailed": "读取日志文件失败：{error}",
+  "@logReadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "logSearchHint": "搜索日志...",
+  "zoomOut": "缩小",
+  "zoomIn": "放大",
   "uploadEmpty": "暂无上传任务",
   "showWindow": "显示窗口",
   "quitApp": "退出",
   "quitBackendRunning": "后端进程仍在运行，是否在退出前停止它？",
-  "uploadTitle": "上传 ({count})",
+  "uploadTitle": "上传 ({completed}/{total})",
   "@uploadTitle": {
     "placeholders": {
-      "count": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
         "type": "int"
       }
     }

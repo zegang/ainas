@@ -104,7 +104,7 @@ class _NASBrowserState extends State<NASBrowser> {
           }
         }
         if (entries.isNotEmpty) {
-          api.enqueueUploads(entries);
+          api.enqueueUploads(entries, parentPath: pathStack.last);
           _openTransfers();
         }
       }
@@ -139,7 +139,7 @@ class _NASBrowserState extends State<NASBrowser> {
 
         if (entries.isNotEmpty) {
           _log.info('Enqueuing ${entries.length} files for sequential upload from $selectedDirectory');
-          api.enqueueUploads(entries);
+          api.enqueueUploads(entries, parentPath: pathStack.last);
           _openTransfers();
         }
       }
@@ -913,11 +913,15 @@ class _NASBrowserState extends State<NASBrowser> {
                     if (!item.isDir) {
                       final ext = item.name.contains('.') ? item.name.split('.').last.toLowerCase() : '';
                       final Set types = (_fileFilter['types'] as Set).cast<String>();
+                      const videoExts = ['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv', 'wmv', 'm4v', '3gp'];
+                      const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+                      const knownExts = [...imageExts, 'pdf', 'docx', ...videoExts];
                       bool typeMatch = false;
-                      if (types.contains('images') && ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(ext)) typeMatch = true;
+                      if (types.contains('images') && imageExts.contains(ext)) typeMatch = true;
                       if (types.contains('pdf') && ext == 'pdf') typeMatch = true;
                       if (types.contains('docx') && ext == 'docx') typeMatch = true;
-                      if (types.contains('others') && !['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'pdf', 'docx'].contains(ext)) typeMatch = true;
+                      if (types.contains('videos') && videoExts.contains(ext)) typeMatch = true;
+                      if (types.contains('others') && !knownExts.contains(ext)) typeMatch = true;
                       if (!typeMatch) return false;
                     }
                   }

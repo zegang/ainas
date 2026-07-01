@@ -33,6 +33,7 @@ typedef uint32_t (*DNSServiceRegister_t)(
     const char* host, uint16_t port, uint16_t txtLen,
     const void* txtRecord, void* callBack, void* context);
 
+typedef uint32_t (*DNSServiceProcessResult_t)(void* ref);
 typedef void (*DNSServiceRefDeallocate_t)(void* ref);
 typedef void (*TXTRecordCreate_t)(BonjourTXTRecord*, uint16_t, void*);
 typedef void (*TXTRecordSetValue_t)(BonjourTXTRecord*, const char*, uint8_t, const void*);
@@ -43,6 +44,7 @@ typedef void (*TXTRecordDeallocate_t)(BonjourTXTRecord*);
 struct BonjourApi {
     HMODULE dll;
     DNSServiceRegister_t DNSServiceRegister;
+    DNSServiceProcessResult_t DNSServiceProcessResult;
     DNSServiceRefDeallocate_t DNSServiceRefDeallocate;
     TXTRecordCreate_t TXTRecordCreate;
     TXTRecordSetValue_t TXTRecordSetValue;
@@ -56,6 +58,8 @@ struct BonjourApi {
 
         DNSServiceRegister = reinterpret_cast<DNSServiceRegister_t>(
             GetProcAddress(dll, "DNSServiceRegister"));
+        DNSServiceProcessResult = reinterpret_cast<DNSServiceProcessResult_t>(
+            GetProcAddress(dll, "DNSServiceProcessResult"));
         DNSServiceRefDeallocate = reinterpret_cast<DNSServiceRefDeallocate_t>(
             GetProcAddress(dll, "DNSServiceRefDeallocate"));
         TXTRecordCreate = reinterpret_cast<TXTRecordCreate_t>(
@@ -69,7 +73,7 @@ struct BonjourApi {
         TXTRecordDeallocate = reinterpret_cast<TXTRecordDeallocate_t>(
             GetProcAddress(dll, "TXTRecordDeallocate"));
 
-        if (!DNSServiceRegister || !DNSServiceRefDeallocate) {
+        if (!DNSServiceRegister || !DNSServiceProcessResult || !DNSServiceRefDeallocate) {
             FreeLibrary(dll);
             dll = nullptr;
             return false;
@@ -165,6 +169,14 @@ bool MdnsService::start() {
     }
     m_client = ref;
     m_running = true;
+
+    m_thread = std::thread([this]() {
+        while (m_running) {
+            auto ret = s_bonjour.DNSServiceProcessResult(m_client);
+            if (ret != kDNSServiceErr_NoError) break;
+        }
+    });
+
     LOG_INFO("mDNS: Publishing via Bonjour (Windows) on port {}", m_port);
     return true;
 
@@ -190,7 +202,15 @@ bool MdnsService::start() {
     }
     m_client = ref;
     m_running = true;
-    LOG_INFO("mDNS: Publishing via Bonjour (macOS) on port {}", m_port);
+
+    m_thread = std::thread([this]() {
+        while (m_running) {
+            auto ret = DNSServiceProcessResult(static_cast<DNSServiceRef>(m_client));
+            if (ret != kDNSServiceErr_NoError) break;
+        }
+    });
+
+    LOG_INFO("mDNS: Publishing via Bonjour on port {}", m_port);
     return true;
 #endif
 }
@@ -207,6 +227,9 @@ void MdnsService::stop() {
         DNSServiceRefDeallocate(static_cast<DNSServiceRef>(m_client));
 #endif
         m_client = nullptr;
+    }
+    if (m_thread.joinable()) {
+        m_thread.join();
     }
     LOG_INFO("mDNS: Stopped");
 }

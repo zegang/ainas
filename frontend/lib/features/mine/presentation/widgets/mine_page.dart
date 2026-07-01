@@ -6,7 +6,7 @@ import 'package:ainas_frontend/features/mine/presentation/widgets/settings_widge
 import 'package:ainas_frontend/features/mine/presentation/widgets/storage_page.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/user_info_widget.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/ai_config_page.dart';
-import 'package:ainas_frontend/features/mine/presentation/widgets/log_viewer_page.dart';
+import 'package:ainas_frontend/features/mine/presentation/widgets/version_page.dart';
 
 class MinePage extends StatelessWidget {
   const MinePage({super.key});
@@ -172,12 +172,12 @@ class MinePage extends StatelessWidget {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.article_outlined),
-                    title: Text(l10n.logViewerTitle),
-                    subtitle: Text(l10n.logViewerSubtitle),
+                    leading: const Icon(Icons.info_outline),
+                    title: Text(l10n.versionTitle),
+                    subtitle: Text(l10n.versionSubtitle),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const LogViewerPage()),
+                      MaterialPageRoute(builder: (_) => const VersionPage()),
                     ),
                   ),
                 ],

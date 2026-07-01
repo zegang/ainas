@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <string>
+#include <thread>
 
 namespace ainas {
 
@@ -25,6 +26,7 @@ private:
 
     void* m_client;
     std::atomic<bool> m_running;
+    std::thread m_thread;
 };
 
 } // namespace ainas

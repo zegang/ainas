@@ -848,6 +848,12 @@ abstract class AppLocalizations {
   /// **'DOCX'**
   String get filterTypeDocx;
 
+  /// No description provided for @filterTypeVideos.
+  ///
+  /// In en, this message translates to:
+  /// **'Videos'**
+  String get filterTypeVideos;
+
   /// No description provided for @filterTypeOthers.
   ///
   /// In en, this message translates to:
@@ -2024,6 +2030,18 @@ abstract class AppLocalizations {
   /// **'No features registered.'**
   String get noFeaturesRegistered;
 
+  /// No description provided for @versionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get versionTitle;
+
+  /// No description provided for @versionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App version and logs'**
+  String get versionSubtitle;
+
   /// No description provided for @logViewerTitle.
   ///
   /// In en, this message translates to:
@@ -2036,11 +2054,59 @@ abstract class AppLocalizations {
   /// **'View and share app logs'**
   String get logViewerSubtitle;
 
+  /// No description provided for @backendLogViewerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backend Log'**
+  String get backendLogViewerTitle;
+
+  /// No description provided for @backendLogViewerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View backend server logs'**
+  String get backendLogViewerSubtitle;
+
   /// No description provided for @logTruncated.
   ///
   /// In en, this message translates to:
   /// **'Log file truncated to the last 500 KB for performance.'**
   String get logTruncated;
+
+  /// No description provided for @logFileNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Log file not found. Please start using the app first.'**
+  String get logFileNotFound;
+
+  /// No description provided for @logWebUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Log file is not available on web. Logs are printed to the browser console instead.'**
+  String get logWebUnavailable;
+
+  /// No description provided for @logReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to read log file: {error}'**
+  String logReadFailed(Object error);
+
+  /// No description provided for @logSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search log...'**
+  String get logSearchHint;
+
+  /// No description provided for @zoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get zoomOut;
+
+  /// No description provided for @zoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get zoomIn;
 
   /// No description provided for @uploadEmpty.
   ///
@@ -2069,8 +2135,8 @@ abstract class AppLocalizations {
   /// No description provided for @uploadTitle.
   ///
   /// In en, this message translates to:
-  /// **'Uploads ({count})'**
-  String uploadTitle(int count);
+  /// **'Uploads ({completed}/{total})'**
+  String uploadTitle(int completed, int total);
 
   /// No description provided for @uploadToPath.
   ///

@@ -5,7 +5,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 
 class LogViewerPage extends StatefulWidget {
-  const LogViewerPage({super.key});
+  final String logFileName;
+  const LogViewerPage({super.key, this.logFileName = 'ainas_frontend.log'});
 
   @override
   State<LogViewerPage> createState() => _LogViewerPageState();
@@ -16,19 +17,42 @@ class _LogViewerPageState extends State<LogViewerPage> {
   String? _error;
   bool _loading = true;
   bool _truncated = false;
+  String _logFilePath = '';
   static const int _maxChars = 500 * 1024;
-  static const String _logFileName = 'ainas_frontend.log';
+
+  double _fontSize = 11;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  final List<int> _matchStarts = [];
+  int _currentMatchIndex = -1;
+  final ScrollController _scrollController = ScrollController();
+
+  static const double _minFontSize = 8;
+  static const double _maxFontSize = 32;
+  static const double _fontStep = 2;
+
+  String get _logFileName => widget.logFileName;
 
   @override
   void initState() {
     super.initState();
-    _loadLog();
+    Future.microtask(_loadLog);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadLog() async {
     if (kIsWeb) {
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
-        _error = 'Log file is not available on web. Logs are printed to the browser console instead.';
+        _logFilePath = '$_logFileName (${l10n.logWebUnavailable})';
+        _error = l10n.logWebUnavailable;
         _loading = false;
       });
       return;
@@ -36,9 +60,11 @@ class _LogViewerPageState extends State<LogViewerPage> {
 
     try {
       final file = File(_logFileName);
+      final l10n = AppLocalizations.of(context)!;
+      _logFilePath = file.absolute.path;
       if (!await file.exists()) {
         setState(() {
-          _error = 'Log file not found. Please start using the app first.';
+          _error = l10n.logFileNotFound;
           _loading = false;
         });
         return;
@@ -66,11 +92,36 @@ class _LogViewerPageState extends State<LogViewerPage> {
         });
       }
     } catch (e) {
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
-        _error = 'Failed to read log file: $e';
+        _error = l10n.logReadFailed(e.toString());
         _loading = false;
       });
     }
+  }
+
+  void _updateMatches() {
+    _matchStarts.clear();
+    _currentMatchIndex = -1;
+    if (_logContent == null || _searchQuery.isEmpty) return;
+    final text = _logContent!;
+    final query = _searchQuery.toLowerCase();
+    final lower = text.toLowerCase();
+    int start = 0;
+    while (true) {
+      final idx = lower.indexOf(query, start);
+      if (idx == -1) break;
+      _matchStarts.add(idx);
+      start = idx + query.length;
+    }
+    if (_matchStarts.isNotEmpty) _currentMatchIndex = 0;
+  }
+
+  void _goToMatch(int direction) {
+    if (_matchStarts.isEmpty) return;
+    setState(() {
+      _currentMatchIndex = (_currentMatchIndex + direction + _matchStarts.length) % _matchStarts.length;
+    });
   }
 
   Future<void> _copyLog() async {
@@ -89,8 +140,43 @@ class _LogViewerPageState extends State<LogViewerPage> {
       _logContent = null;
       _error = null;
       _truncated = false;
+      _matchStarts.clear();
+      _currentMatchIndex = -1;
     });
     _loadLog();
+  }
+
+  List<TextSpan> _buildSpans() {
+    if (_logContent == null) return [];
+    if (_searchQuery.isEmpty || _matchStarts.isEmpty) {
+      return [TextSpan(text: _logContent)];
+    }
+
+    final spans = <TextSpan>[];
+    final text = _logContent!;
+    final queryLen = _searchQuery.length;
+    int lastEnd = 0;
+
+    for (int i = 0; i < _matchStarts.length; i++) {
+      final start = _matchStarts[i];
+      if (start > lastEnd) {
+        spans.add(TextSpan(text: text.substring(lastEnd, start)));
+      }
+      final isCurrent = i == _currentMatchIndex;
+      spans.add(TextSpan(
+        text: text.substring(start, start + queryLen),
+        style: TextStyle(
+          backgroundColor: isCurrent ? Colors.orange : Colors.yellowAccent,
+          color: isCurrent ? Colors.white : Colors.black87,
+          fontWeight: FontWeight.bold,
+        ),
+      ));
+      lastEnd = start + queryLen;
+    }
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd)));
+    }
+    return spans;
   }
 
   @override
@@ -102,12 +188,51 @@ class _LogViewerPageState extends State<LogViewerPage> {
       appBar: AppBar(
         title: Text(l10n.logViewerTitle),
         actions: [
-          if (_logContent != null)
+          if (_logContent != null) ...[
+            if (!_isSearching)
+              IconButton(
+                icon: const Icon(Icons.search),
+                tooltip: l10n.searchHint,
+                onPressed: () => setState(() => _isSearching = true),
+              ),
+            if (_isSearching)
+              IconButton(
+                icon: const Icon(Icons.search_off),
+                tooltip: l10n.cancelButton,
+                onPressed: () {
+                  setState(() {
+                    _isSearching = false;
+                    _searchQuery = '';
+                    _searchController.clear();
+                    _matchStarts.clear();
+                    _currentMatchIndex = -1;
+                  });
+                },
+              ),
+            IconButton(
+              icon: const Icon(Icons.text_decrease),
+              tooltip: l10n.zoomOut,
+              onPressed: _fontSize > _minFontSize
+                  ? () => setState(() => _fontSize = (_fontSize - _fontStep).clamp(_minFontSize, _maxFontSize))
+                  : null,
+            ),
+            Text(
+              '${_fontSize.round()}',
+              style: TextStyle(fontSize: 12, color: theme.colorScheme.onPrimary.withOpacity(0.7)),
+            ),
+            IconButton(
+              icon: const Icon(Icons.text_increase),
+              tooltip: l10n.zoomIn,
+              onPressed: _fontSize < _maxFontSize
+                  ? () => setState(() => _fontSize = (_fontSize + _fontStep).clamp(_minFontSize, _maxFontSize))
+                  : null,
+            ),
             IconButton(
               icon: const Icon(Icons.copy),
               tooltip: l10n.copyText,
               onPressed: _copyLog,
             ),
+          ],
           if (kIsWeb && _error != null)
             IconButton(
               icon: const Icon(Icons.copy),
@@ -164,6 +289,77 @@ class _LogViewerPageState extends State<LogViewerPage> {
 
     return Column(
       children: [
+        if (_logFilePath.isNotEmpty)
+          Container(
+            width: double.infinity,
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Row(
+              children: [
+                Icon(Icons.folder_open, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _logFilePath,
+                    style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (_isSearching)
+          Container(
+            width: double.infinity,
+            color: theme.colorScheme.surfaceContainerHighest,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(
+              children: [
+                Icon(Icons.search, size: 18, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 4),
+                SizedBox(
+                  width: 160,
+                  child: TextField(
+                    controller: _searchController,
+                    autofocus: true,
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: l10n.logSearchHint,
+                      isDense: true,
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                        _updateMatches();
+                      });
+                    },
+                  ),
+                ),
+                if (_searchQuery.isNotEmpty) ...[
+                  Text(
+                    _matchStarts.isEmpty
+                        ? '0/0'
+                        : '${_currentMatchIndex + 1}/${_matchStarts.length}',
+                    style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _matchStarts.isNotEmpty ? () => _goToMatch(-1) : null,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _matchStarts.isNotEmpty ? () => _goToMatch(1) : null,
+                  ),
+                ],
+              ],
+            ),
+          ),
         if (_truncated)
           Container(
             width: double.infinity,
@@ -183,12 +379,18 @@ class _LogViewerPageState extends State<LogViewerPage> {
             ),
           ),
         Expanded(
-          child: SelectableText(
-            _logContent!,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 11,
-              height: 1.4,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: const EdgeInsets.all(12),
+            child: SelectableText.rich(
+              TextSpan(
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: _fontSize,
+                  height: 1.4,
+                ),
+                children: _buildSpans(),
+              ),
             ),
           ),
         ),

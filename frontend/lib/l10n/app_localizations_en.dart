@@ -406,6 +406,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filterTypeDocx => 'DOCX';
 
   @override
+  String get filterTypeVideos => 'Videos';
+
+  @override
   String get filterTypeOthers => 'Others';
 
   @override
@@ -1058,14 +1061,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noFeaturesRegistered => 'No features registered.';
 
   @override
+  String get versionTitle => 'Version';
+
+  @override
+  String get versionSubtitle => 'App version and logs';
+
+  @override
   String get logViewerTitle => 'Frontend Log';
 
   @override
   String get logViewerSubtitle => 'View and share app logs';
 
   @override
+  String get backendLogViewerTitle => 'Backend Log';
+
+  @override
+  String get backendLogViewerSubtitle => 'View backend server logs';
+
+  @override
   String get logTruncated =>
       'Log file truncated to the last 500 KB for performance.';
+
+  @override
+  String get logFileNotFound =>
+      'Log file not found. Please start using the app first.';
+
+  @override
+  String get logWebUnavailable =>
+      'Log file is not available on web. Logs are printed to the browser console instead.';
+
+  @override
+  String logReadFailed(Object error) {
+    return 'Failed to read log file: $error';
+  }
+
+  @override
+  String get logSearchHint => 'Search log...';
+
+  @override
+  String get zoomOut => 'Zoom out';
+
+  @override
+  String get zoomIn => 'Zoom in';
 
   @override
   String get uploadEmpty => 'No upload tasks';
@@ -1081,8 +1118,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Backend process is still running. Stop it before quitting?';
 
   @override
-  String uploadTitle(int count) {
-    return 'Uploads ($count)';
+  String uploadTitle(int completed, int total) {
+    return 'Uploads ($completed/$total)';
   }
 
   @override

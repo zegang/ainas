@@ -143,6 +143,7 @@
   "filterTypeImages": "Images",
   "filterTypePdf": "PDF",
   "filterTypeDocx": "DOCX",
+  "filterTypeVideos": "Videos",
   "filterTypeOthers": "Others",
   "hostLabel": "Server IP / Host",
   "portLabel": "Port",
@@ -488,17 +489,35 @@
   "logLevelLabel": "Log Level",
   "logFileLabel": "Log File",
   "noFeaturesRegistered": "No features registered.",
+  "versionTitle": "Version",
+  "versionSubtitle": "App version and logs",
   "logViewerTitle": "Frontend Log",
   "logViewerSubtitle": "View and share app logs",
+  "backendLogViewerTitle": "Backend Log",
+  "backendLogViewerSubtitle": "View backend server logs",
   "logTruncated": "Log file truncated to the last 500 KB for performance.",
+  "logFileNotFound": "Log file not found. Please start using the app first.",
+  "logWebUnavailable": "Log file is not available on web. Logs are printed to the browser console instead.",
+  "logReadFailed": "Failed to read log file: {error}",
+  "@logReadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "logSearchHint": "Search log...",
+  "zoomOut": "Zoom out",
+  "zoomIn": "Zoom in",
   "uploadEmpty": "No upload tasks",
   "showWindow": "Show Window",
   "quitApp": "Quit",
   "quitBackendRunning": "Backend process is still running. Stop it before quitting?",
-  "uploadTitle": "Uploads ({count})",
+  "uploadTitle": "Uploads ({completed}/{total})",
   "@uploadTitle": {
     "placeholders": {
-      "count": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
         "type": "int"
       }
     }

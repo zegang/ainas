@@ -15,7 +15,8 @@ class UploadOverlay extends StatelessWidget {
     return ListenableBuilder(
       listenable: api,
       builder: (context, _) {
-        final activeCount = api.uploads.where((t) => t.status == UploadStatus.uploading).length;
+        final completedCount = api.uploads.where((t) => t.status == UploadStatus.completed).length;
+        final totalCount = api.uploads.length;
         return Card(
           margin: const EdgeInsets.all(12),
           elevation: 8,
@@ -28,7 +29,7 @@ class UploadOverlay extends StatelessWidget {
                 ListTile(
                   dense: true,
                   title: Text(
-                    l10n.uploadTitle(activeCount),
+                    l10n.uploadTitle(completedCount, totalCount),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   trailing: TextButton(

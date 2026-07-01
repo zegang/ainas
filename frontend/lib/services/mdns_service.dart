@@ -63,7 +63,9 @@ class MdnsService {
             txtEntries.add(txt.text);
           }
 
-          if (ipAddresses.isEmpty && ipv6Addresses.isEmpty) continue;
+          if (ipAddresses.isEmpty && ipv6Addresses.isEmpty) {
+            _log.warning('No IP addresses resolved for ${srv.target}, using hostname as fallback');
+          }
 
           // Strip trailing dots from the target hostname for compatibility with http clients
           final host = srv.target.endsWith('.')

@@ -15,6 +15,7 @@ class _FileFilterSheetState extends State<FileFilterSheet> {
     'images': false,
     'pdf': false,
     'docx': false,
+    'videos': false,
     'others': false,
   };
   final Set<String> _selectedTagChips = {};
@@ -118,6 +119,10 @@ class _FileFilterSheetState extends State<FileFilterSheet> {
                             case 'docx':
                               icon = Icons.description_outlined;
                               label = l10n.filterTypeDocx;
+                              break;
+                            case 'videos':
+                              icon = Icons.videocam_outlined;
+                              label = l10n.filterTypeVideos;
                               break;
                             default:
                               icon = Icons.insert_drive_file_outlined;

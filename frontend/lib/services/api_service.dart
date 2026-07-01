@@ -679,8 +679,9 @@ class ApiService with ChangeNotifier {
   /// Enqueue files for sequential upload.
   /// [files] is a list of (displayName, sourcePath) pairs.
   /// Each file is copied to a staging directory so it survives app restarts.
-  Future<void> enqueueUploads(List<MapEntry<String, String>> files) async {
+  Future<void> enqueueUploads(List<MapEntry<String, String>> files, {String? parentPath}) async {
     await _ensureStagingDir();
+    final targetPath = parentPath ?? currentPath;
 
     for (final entry in files) {
       final fileName = entry.key;
@@ -697,7 +698,7 @@ class ApiService with ChangeNotifier {
         final task = UploadTask(
           id: taskId,
           fileName: fileName,
-          parentPath: currentPath,
+          parentPath: targetPath,
           filePath: sourcePath,
           status: UploadStatus.pending,
         );
@@ -709,7 +710,7 @@ class ApiService with ChangeNotifier {
       final task = UploadTask(
         id: taskId,
         fileName: fileName,
-        parentPath: currentPath,
+        parentPath: targetPath,
         stagingFilePath: stagedPath,
         status: UploadStatus.pending,
       );
@@ -811,9 +812,8 @@ class ApiService with ChangeNotifier {
     task.client = client;
 
     try {
-      final encodedPath = Uri.encodeComponent(task.parentPath);
-      final uploadUrl = '$baseUrl/api/files/upload?path=$encodedPath';
-      _log.info('Uploading file "${task.fileName}" to $uploadUrl');
+      final uploadUrl = '$baseUrl/api/files/upload';
+      _log.info('Uploading file "${task.fileName}" to $uploadUrl, parentPath="${task.parentPath}"');
 
       final request = ProgressMultipartRequest(
         'POST',
@@ -829,6 +829,7 @@ class ApiService with ChangeNotifier {
         },
       );
 
+      request.fields['path'] = task.parentPath;
       final uploadPath = task.stagingFilePath ?? task.filePath;
       if (uploadPath != null) {
         request.files.add(await http.MultipartFile.fromPath('file', uploadPath, filename: task.fileName));
