@@ -366,10 +366,12 @@ setup_cpp() {
     if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "mingw"* ]]; then
         win_arg=(-DTARGET_WINDOWS_VER="$TARGET_WINDOWS_VER")
     fi
-    cmake -S "$PROJECT_ROOT/backendcpp" -B "$PROJECT_ROOT/backendcpp/build" \
-        -DCMAKE_BUILD_TYPE="$build_type" \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        "${win_arg[@]}"
+    if [ ! -d "$PROJECT_ROOT/backendcpp/build" ]; then
+        cmake -S "$PROJECT_ROOT/backendcpp" -B "$PROJECT_ROOT/backendcpp/build" \
+            -DCMAKE_BUILD_TYPE="$build_type" \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            "${win_arg[@]}"
+    fi
     cmake --build "$PROJECT_ROOT/backendcpp/build" -j"$(nproc)"
 }
 

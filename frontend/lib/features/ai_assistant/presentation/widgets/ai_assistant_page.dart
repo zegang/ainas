@@ -74,7 +74,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
     _scrollToBottom();
 
     try {
-      final stream = _repository.streamResponse(text, files: currentFiles, requestId: requestId);
+      final stream = _repository.streamResponse(text, files: currentFiles, requestId: requestId, history: _messages);
       // Setup the stream in ApiService to keep it alive across page navigation.
       // ApiService now accumulates chunks directly into chatHistory,
       // so the response is preserved even without a UI listener.

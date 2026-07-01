@@ -496,6 +496,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'The AI system is active but its full capabilities are still being verified.';
 
   @override
+  String get aiStatusError => 'AI Error';
+
+  @override
+  String get modelsAvailable => 'Models available';
+
+  @override
+  String get backendUnreachable => 'Backend server unreachable';
+
+  @override
+  String get backendUnreachableHint =>
+      'Make sure the C++ backend is running to configure AI.';
+
+  @override
   String get connected => 'Connected';
 
   @override

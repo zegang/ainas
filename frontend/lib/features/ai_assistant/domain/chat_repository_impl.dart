@@ -13,14 +13,26 @@ class HttpChatRepository implements ChatRepository {
   HttpChatRepository({required this.baseUrl});
 
   @override
-  Future<ChatMessage> sendMessage(String text, {List<String>? files}) async {
+  Future<ChatMessage> sendMessage(String text, {List<String>? files, List<ChatMessage>? history}) async {
+    final body = <String, dynamic>{
+      'text': text,
+      'files': files ?? [],
+    };
+
+    if (history != null && history.isNotEmpty) {
+      body['messages'] = history
+          .where((m) => m.text.isNotEmpty)
+          .map((m) => {
+                'role': m.isUser ? 'user' : 'assistant',
+                'content': m.text,
+              })
+          .toList();
+    }
+
     final response = await _client.post(
       Uri.parse('$baseUrl/api/ai/chat'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'text': text,
-        'files': files ?? [],
-      }),
+      body: jsonEncode(body),
     );
 
     if (response.statusCode == 200) {
@@ -32,17 +44,30 @@ class HttpChatRepository implements ChatRepository {
   }
 
   @override
-  Stream<String> streamResponse(String text, {List<String>? files, String? requestId}) async* {
+  Stream<String> streamResponse(String text, {List<String>? files, String? requestId, List<ChatMessage>? history}) async* {
     final request = http.Request(
       'POST',
       Uri.parse('$baseUrl/api/ai/chat/stream'),
     );
     request.headers['Content-Type'] = 'application/json';
-    request.body = jsonEncode({
+
+    final body = <String, dynamic>{
       'text': text,
       'files': files ?? [],
       if (requestId != null) 'request_id': requestId,
-    });
+    };
+
+    if (history != null && history.isNotEmpty) {
+      body['messages'] = history
+          .where((m) => m.text.isNotEmpty)
+          .map((m) => {
+                'role': m.isUser ? 'user' : 'assistant',
+                'content': m.text,
+              })
+          .toList();
+    }
+
+    request.body = jsonEncode(body);
 
     final response = await _client.send(request);
     if (response.statusCode == 200) {

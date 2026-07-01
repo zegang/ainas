@@ -3,6 +3,7 @@
 #include "ainas/config/Config.hpp"
 #include "ainas/dto/DTOs.hpp"
 #include "ainas/logging/Logger.hpp"
+#include "ainas/service/AiService.hpp"
 
 #include "oatpp/web/server/api/ApiController.hpp"
 #include "oatpp/json/ObjectMapper.hpp"
@@ -18,27 +19,31 @@ namespace ainas {
 class SystemController : public oatpp::web::server::api::ApiController {
 private:
     std::shared_ptr<Config> m_config;
+    std::shared_ptr<AiState> m_aiState;
 
 public:
     SystemController(const std::shared_ptr<ObjectMapper>& objectMapper,
-                     std::shared_ptr<Config> config)
+                     std::shared_ptr<Config> config,
+                     std::shared_ptr<AiState> aiState)
         : oatpp::web::server::api::ApiController(objectMapper)
         , m_config(std::move(config))
+        , m_aiState(std::move(aiState))
     {}
 
     static std::shared_ptr<SystemController> createShared(
         const std::shared_ptr<ObjectMapper>& objectMapper,
-        std::shared_ptr<Config> config)
+        std::shared_ptr<Config> config,
+        std::shared_ptr<AiState> aiState)
     {
-        return std::make_shared<SystemController>(objectMapper, std::move(config));
+        return std::make_shared<SystemController>(objectMapper, std::move(config), std::move(aiState));
     }
 
     ENDPOINT("GET", "/api/status", status) {
         LOG_INFO("GET /api/status");
         auto response = StatusResponseDto::createShared();
         response->status = "running";
-        response->aiStatus = "disabled";
-        response->aiEnabled = false;
+        response->aiEnabled = m_aiState->enabled.load();
+        response->aiStatus = oatpp::String(m_aiState->status);
         return createDtoResponse(Status::CODE_200, response);
     }
 
@@ -103,6 +108,10 @@ public:
         response->dataPath = oatpp::String(m_config->dataPath.string());
         response->dbPath = oatpp::String(m_config->dbPath.string());
         response->nasmetadataPath = oatpp::String(m_config->nasmetadataPath.string());
+        response->aiEnabled = m_aiState->enabled.load();
+        response->cllamaBinary = oatpp::String(m_config->cllamaBinary.string());
+        response->cllamaPort = static_cast<Int32>(m_config->cllamaPort);
+        response->cllamaModelsFolder = oatpp::String(m_config->cllamaModelsFolder.string());
         return createDtoResponse(Status::CODE_200, response);
     }
 };

@@ -6,6 +6,7 @@
 #include "ainas/logging/Logger.hpp"
 #include "ainas/service/FileService.hpp"
 #include "ainas/service/ThumbnailService.hpp"
+#include "ainas/service/AiService.hpp"
 #include "ainas/controller/ConfigController.hpp"
 #include "ainas/controller/FilesController.hpp"
 #include "ainas/controller/SystemController.hpp"
@@ -24,6 +25,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -81,20 +83,16 @@ void daemonize() {
         exit(EXIT_FAILURE);
     }
     if (pid > 0) {
-        // Parent exits
         exit(EXIT_SUCCESS);
     }
 
-    // Child: new session
     if (setsid() < 0) {
         std::cerr << "Daemon: setsid failed\n";
         exit(EXIT_FAILURE);
     }
 
-    // Ignore SIGHUP
     signal(SIGHUP, SIG_IGN);
 
-    // Second fork to fully detach
     pid = fork();
     if (pid < 0) {
         std::cerr << "Daemon: second fork failed\n";
@@ -104,7 +102,6 @@ void daemonize() {
         exit(EXIT_SUCCESS);
     }
 
-    // Redirect stdio to /dev/null
     int fd = open("/dev/null", O_RDWR);
     if (fd >= 0) {
         dup2(fd, STDIN_FILENO);
@@ -131,12 +128,10 @@ ainas::LogLevel parseLogLevel() {
 int main(int argc, const char* argv[]) {
     ainas::util::FlagParser flags(argc, argv);
 
-    // CLI flags override environment variables
     applyFlags(flags);
 
     bool isDaemon = flags.has("daemon");
 
-    // Daemonize before logger init (stdio gets redirected to /dev/null)
 #if defined(__unix__) || defined(__APPLE__)
     if (isDaemon) {
         daemonize();
@@ -152,7 +147,6 @@ int main(int argc, const char* argv[]) {
 
     auto config = std::make_shared<ainas::Config>(ainas::Config::load());
 
-    // Initialize logging
     {
         ainas::Logger::Config logCfg;
         logCfg.level = parseLogLevel();
@@ -165,6 +159,9 @@ int main(int argc, const char* argv[]) {
         ainas::Logger::init(std::move(logCfg));
     }
 
+    std::error_code ec2;
+    auto binaryPath = std::filesystem::canonical(argv[0], ec2);
+    LOG_INFO("Binary path: {}", ec2 ? argv[0] : binaryPath.string());
     LOG_INFO("Starting AINAS C++ backend on {}:{}", config->addr, config->port);
     LOG_INFO("Data path: {}", config->dataPath.string());
     LOG_INFO("DB path: {}", config->dbPath.string());
@@ -173,7 +170,6 @@ int main(int argc, const char* argv[]) {
              config->thumbnailPath().string(),
              config->aiPath().string());
 
-    // Ensure metadata subdirectories exist
     std::error_code ec;
     std::filesystem::create_directories(config->thumbnailPath(), ec);
     std::filesystem::create_directories(config->aiPath(), ec);
@@ -189,21 +185,17 @@ int main(int argc, const char* argv[]) {
     auto thumbnailService = std::make_shared<ainas::ThumbnailService>(config);
     auto filesController = ainas::FilesController::createShared(
         objectMapper, fileService, config, thumbnailService);
+
+    auto aiService = std::make_shared<ainas::AiService>(config);
+    aiService->start();
+
     router->addController(filesController);
-
-    auto systemController = ainas::SystemController::createShared(
-        objectMapper, config);
-    router->addController(systemController);
-
-    auto aiController = ainas::AiController::createShared(
-        objectMapper, config);
-    router->addController(aiController);
+    router->addController(ainas::SystemController::createShared(objectMapper, config, aiService->state()));
+    router->addController(ainas::AiController::createShared(objectMapper, config, aiService->state(), aiService));
 
     auto configRepo = std::make_shared<ainas::ConfigRepository>(*database);
     configRepo->migrate();
-    auto configController = ainas::ConfigController::createShared(
-        objectMapper, configRepo);
-    router->addController(configController);
+    router->addController(ainas::ConfigController::createShared(objectMapper, configRepo));
 
     oatpp::network::Address address(
         config->addr.c_str(),
@@ -233,6 +225,7 @@ int main(int argc, const char* argv[]) {
     server.run([&]() { return running().load(); });
 
     LOG_INFO("Server stopped.");
+    aiService->stop();
     mdnsService->stop();
     oatpp::Environment::destroy();
     return 0;

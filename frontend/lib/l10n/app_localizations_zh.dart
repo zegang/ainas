@@ -489,6 +489,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiStatusTooltipEnabled => 'AI 系统已激活，但其完整功能仍在验证中。';
 
   @override
+  String get aiStatusError => 'AI 错误';
+
+  @override
+  String get modelsAvailable => '可用模型';
+
+  @override
+  String get backendUnreachable => '后端服务器无法访问';
+
+  @override
+  String get backendUnreachableHint => '请确保 C++ 后端正在运行以配置 AI。';
+
+  @override
   String get connected => '已连接';
 
   @override

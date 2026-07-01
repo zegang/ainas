@@ -1016,6 +1016,30 @@ abstract class AppLocalizations {
   /// **'The AI system is active but its full capabilities are still being verified.'**
   String get aiStatusTooltipEnabled;
 
+  /// No description provided for @aiStatusError.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Error'**
+  String get aiStatusError;
+
+  /// No description provided for @modelsAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Models available'**
+  String get modelsAvailable;
+
+  /// No description provided for @backendUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Backend server unreachable'**
+  String get backendUnreachable;
+
+  /// No description provided for @backendUnreachableHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Make sure the C++ backend is running to configure AI.'**
+  String get backendUnreachableHint;
+
   /// No description provided for @connected.
   ///
   /// In en, this message translates to:

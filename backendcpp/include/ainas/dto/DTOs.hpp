@@ -119,6 +119,10 @@ class AiStatusDto : public oatpp::DTO {
     DTO_FIELD(String, error);
     DTO_FIELD(Int32, elapsed, "elapsed");
     DTO_FIELD(Int32, models_available, "models_available");
+    DTO_FIELD(Int32, pid, "pid");
+    DTO_FIELD(String, binary, "binary");
+    DTO_FIELD(Int32, port, "port");
+    DTO_FIELD(String, models_folder, "models_folder");
 };
 
 class SystemConfigResponseDto : public oatpp::DTO {
@@ -127,6 +131,10 @@ class SystemConfigResponseDto : public oatpp::DTO {
     DTO_FIELD(String, dataPath, "data_path");
     DTO_FIELD(String, dbPath, "db_path");
     DTO_FIELD(String, nasmetadataPath, "nasmetadata_path");
+    DTO_FIELD(Boolean, aiEnabled, "ai_enabled");
+    DTO_FIELD(String, cllamaBinary, "cllama_binary");
+    DTO_FIELD(Int32, cllamaPort, "cllama_port");
+    DTO_FIELD(String, cllamaModelsFolder, "cllama_models_folder");
 };
 
 class ConfigEntryDto : public oatpp::DTO {
