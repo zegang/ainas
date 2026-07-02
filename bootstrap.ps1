@@ -290,6 +290,8 @@ function Setup-Cpp {
         -not (Test-Path "$ProjectRoot/vendor/cllama/third_party/oatpp-swagger/CMakeLists.txt")) {
         Write-Host "Step: Initializing Git submodules (recursive)..."
         git submodule update --init --recursive
+        # cpprestsdk is not needed since CLLAMA_USE_CPPREST is OFF by default
+        git -C "$ProjectRoot/vendor/cllama" submodule deinit -f third_party/cpprestsdk 2>&1 | Out-Null
     }
 
     # Install PDF libraries (poppler, qpdf) via vcpkg if available

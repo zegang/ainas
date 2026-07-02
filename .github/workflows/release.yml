@@ -537,6 +537,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Deinit unused cpprestsdk submodule
+        run: git -C vendor/cllama submodule deinit -f third_party/cpprestsdk 2>/dev/null || true
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -550,7 +553,7 @@ jobs:
 
       - name: Build
         working-directory: backendcpp
-        run: cmake --build build --parallel --config Release
+        run: cmake --build build --parallel 2 --config Release
 
       - name: Bundle runtime libraries & package binary
         run: |
@@ -611,6 +614,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           submodules: recursive
+
+      - name: Deinit unused cpprestsdk submodule
+        run: git -C vendor/cllama submodule deinit -f third_party/cpprestsdk 2>/dev/null || true
 
       - name: Install PDF dependencies
         run: brew install poppler qpdf boost
@@ -685,6 +691,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           submodules: recursive
+
+      - name: Deinit unused cpprestsdk submodule
+        run: git -C vendor/cllama submodule deinit -f third_party/cpprestsdk 2>/dev/null || true
 
       # Fix 2: Install PDF dependencies via vcpkg
       - name: Install PDF & Boost dependencies (vcpkg)
@@ -791,6 +800,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           submodules: recursive
+
+      - name: Deinit unused cpprestsdk submodule
+        run: git -C vendor/cllama submodule deinit -f third_party/cpprestsdk 2>/dev/null || true
 
       - name: Install PDF & Boost dependencies (vcpkg)
         continue-on-error: true
@@ -1095,6 +1107,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Deinit unused cpprestsdk submodule
+        run: git -C vendor/cllama submodule deinit -f third_party/cpprestsdk 2>/dev/null || true
+
       - uses: actions/setup-java@v5
         with:
           java-version: "21"
@@ -1194,6 +1209,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           submodules: recursive
+
+      - name: Deinit unused cpprestsdk submodule
+        run: git -C vendor/cllama submodule deinit -f third_party/cpprestsdk 2>/dev/null || true
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:

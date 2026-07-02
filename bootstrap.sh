@@ -382,6 +382,8 @@ setup_cpp() {
     if [ ! -f "$PROJECT_ROOT/vendor/oatpp/CMakeLists.txt" ] || [ ! -f "$PROJECT_ROOT/vendor/cllama/third_party/oatpp-swagger/CMakeLists.txt" ]; then
         echo "Step: Initializing Git submodules (recursive)..."
         git submodule update --init --recursive
+        # cpprestsdk is not needed since CLLAMA_USE_CPPREST is OFF by default
+        git -C "$PROJECT_ROOT/vendor/cllama" submodule deinit -f third_party/cpprestsdk 2>/dev/null || true
         needs_reconfigure=true
     fi
 
