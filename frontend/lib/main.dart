@@ -12,6 +12,8 @@ import 'shared/utils/backend_process_manager.dart';
 import 'features/file_browser/presentation/widgets/nas_browser_page.dart';
 import 'features/mine/presentation/widgets/login_widget.dart';
 import 'features/mine/presentation/widgets/mine_page.dart';
+import 'features/mine/presentation/widgets/storage_page.dart';
+import 'features/mine/presentation/widgets/ai_config_page.dart';
 import './services/api_service.dart';
 import 'shared/themes/app_theme.dart';
 import 'shared/widgets/ad_splash_screen.dart';
@@ -317,55 +319,73 @@ class _MainShellState extends State<MainShell> with WindowListener, TrayListener
           actions: [
             // AI Status Widget
             if (api.isServerConnected) ...[
-              Row(
-                children: [
-                  Icon(
-                    api.aiStatus == 'ready' ? Icons.auto_awesome : Icons.psychology,
-                    size: 16,
-                    color: api.aiStatus == 'ready' 
-                        ? themeExt.successColor 
-                        : (api.aiStatus == 'initializing' ? Colors.orange : Colors.grey),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _getAiStatusLabel(api.aiStatus, l10n),
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                ],
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AiConfigPage()),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      api.aiStatus == 'ready' ? Icons.auto_awesome : Icons.psychology,
+                      size: 16,
+                      color: api.aiStatus == 'ready' 
+                          ? themeExt.successColor 
+                          : (api.aiStatus == 'initializing' ? Colors.orange : Colors.grey),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _getAiStatusLabel(api.aiStatus, l10n),
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(width: 24),
             ],
             // Storage Usage Widget
             if (!isMobile) ...[
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(api.storageLabel.isEmpty ? l10n.loadingLabel : api.storageLabel, style: Theme.of(context).textTheme.labelSmall),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    width: 120,
-                    child: LinearProgressIndicator(
-                      value: api.storagePercent,
-                    backgroundColor: themeExt.storageTrackColor,
-                      borderRadius: BorderRadius.circular(4),
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const StoragePage()),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(api.storageLabel.isEmpty ? l10n.loadingLabel : api.storageLabel, style: Theme.of(context).textTheme.labelSmall),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      width: 120,
+                      child: LinearProgressIndicator(
+                        value: api.storagePercent,
+                      backgroundColor: themeExt.storageTrackColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(width: 16),
             ],
             // Connection Status Widget
-            Row(
-              children: [
-                Icon(
-                  Icons.circle,
-                  size: 12,
-                  color: api.isServerConnected ? themeExt.successColor : Theme.of(context).colorScheme.error,
-                ),
-                const SizedBox(width: 8),
-                Text(api.isServerConnected ? l10n.connected : l10n.offline),
-              ],
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const StoragePage()),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    size: 12,
+                    color: api.isServerConnected ? themeExt.successColor : Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(api.isServerConnected ? l10n.connected : l10n.offline),
+                ],
+              ),
             ),
             const SizedBox(width: 16),
           ],

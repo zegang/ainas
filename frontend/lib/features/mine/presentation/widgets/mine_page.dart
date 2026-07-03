@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/services/api_service.dart';
-import 'package:ainas_frontend/features/mine/presentation/widgets/settings_widget.dart';
+import 'package:ainas_frontend/features/mine/presentation/widgets/settings_page.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/storage_page.dart';
-import 'package:ainas_frontend/features/mine/presentation/widgets/user_info_widget.dart';
+import 'package:ainas_frontend/features/mine/presentation/widgets/user_info_page.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/ai_config_page.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/version_page.dart';
 
@@ -147,7 +147,7 @@ class MinePage extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) => Scaffold(
                           appBar: AppBar(title: Text(l10n.settingsTooltip)),
-                          body: const SettingsWidget(),
+                          body: const SettingsPage(),
                         ),
                       ),
                     ),

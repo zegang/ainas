@@ -67,6 +67,32 @@ class UserInfoWidget extends StatelessWidget {
           _infoRow(context, l10n.vipLabel, api.vipStatus),
           const SizedBox(height: 8),
           _infoRow(context, l10n.loginStatusLabel, api.isLoggedIn ? l10n.loggedIn : l10n.loggedOut),
+          const SizedBox(height: 24),
+          Center(
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.8,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                  side: BorderSide(color: Theme.of(context).colorScheme.error),
+                ),
+                onPressed: api.isLoggedIn
+                    ? () async {
+                        await api.logout();
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(l10n.logoutSuccess),
+                            backgroundColor: Theme.of(context).colorScheme.background,
+                          ),
+                        );
+                      }
+                    : null,
+                icon: const Icon(Icons.logout),
+                label: Text(l10n.logout),
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -470,9 +470,56 @@ function Build-ReleaseWindows {
     Write-Host "Step: Creating archive..."
     $archive = "$releaseDir/ainas-full-windows.zip"
     Compress-Archive -Path "$releaseDir/*" -DestinationPath $archive -Force
+
+    # Optionally create Windows installer if NSIS is available
+    $nsis = Get-Command "makensis.exe" -ErrorAction SilentlyContinue
+    if (-not $nsis) {
+        $nsisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+        if (Test-Path $nsisPath) { $nsis = $nsisPath }
+    }
+    if ($nsis) {
+        Write-Host "Step: Creating Windows installer with NSIS..."
+        $ver = $env:GITHUB_REF_NAME -replace '^v', ''
+        if (-not $ver) { $ver = "1.0.0" }
+        $nsiContent = @"
+!define PRODUCT_NAME "AI-NAS"
+!define PRODUCT_VERSION "$ver"
+!define PRODUCT_PUBLISHER "ainas"
+
+Name "`${PRODUCT_NAME} `${PRODUCT_VERSION}"
+OutFile "$releaseDir/ainas-full-windows-installer.exe"
+InstallDir "`$PROGRAMFILES64`${PRODUCT_NAME}"
+RequestExecutionLevel admin
+
+Section "Install"
+  SetOutPath "`$INSTDIR"
+  File /r "$releaseDir\*.*"
+
+  CreateDirectory "`$SMPROGRAMS`${PRODUCT_NAME}"
+  CreateShortCut "`$SMPROGRAMS`${PRODUCT_NAME}\AI-NAS.lnk" "`$INSTDIR\ainas_frontend.exe"
+  CreateShortCut "`$DESKTOP\AI-NAS.lnk" "`$INSTDIR\ainas_frontend.exe"
+SectionEnd
+
+Section "Uninstall"
+  RMDir /r "`$INSTDIR"
+  Delete "`$SMPROGRAMS`${PRODUCT_NAME}\AI-NAS.lnk"
+  RMDir "`$SMPROGRAMS`${PRODUCT_NAME}"
+  Delete "`$DESKTOP\AI-NAS.lnk"
+SectionEnd
+"@
+        $nsiContent | Out-File -FilePath "$releaseDir\installer.nsi" -Encoding ASCII
+        & $nsis "$releaseDir\installer.nsi"
+        Write-Host "  Installer:  $releaseDir/ainas-full-windows-installer.exe"
+    } else {
+        Write-Host "Note: NSIS (makensis.exe) not found. Skipping Windows installer creation."
+    }
+
     Write-Host "Release built:"
     Write-Host "  Directory: $releaseDir/"
     Write-Host "  Archive:   $archive"
+    if (Test-Path "$releaseDir/ainas-full-windows-installer.exe") {
+        Write-Host "  Installer: $releaseDir/ainas-full-windows-installer.exe"
+    }
 }
 
 function Build-ReleaseAndroid {

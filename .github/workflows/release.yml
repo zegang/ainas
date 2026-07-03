@@ -1028,11 +1028,49 @@ jobs:
           Compress-Archive -Path bundle\* `
             -DestinationPath "${{ github.workspace }}\ainas-full-windows.zip"
 
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
+      - name: Generate Windows installer
+        shell: pwsh
+        run: |
+          $ver = "${{ github.ref_name }}" -replace '^v', ''
+          @"
+          !define PRODUCT_NAME "AI-NAS"
+          !define PRODUCT_VERSION "$ver"
+          !define PRODUCT_PUBLISHER "ainas"
+
+          Name "\${PRODUCT_NAME} \${PRODUCT_VERSION}"
+          OutFile "${{ github.workspace }}\ainas-full-windows-installer.exe"
+          InstallDir "\$PROGRAMFILES64\${PRODUCT_NAME}"
+          RequestExecutionLevel admin
+
+          Section "Install"
+            SetOutPath "\$INSTDIR"
+            File /r "${{ github.workspace }}\bundle\*.*"
+
+            CreateDirectory "\$SMPROGRAMS\${PRODUCT_NAME}"
+            CreateShortCut "\$SMPROGRAMS\${PRODUCT_NAME}\AI-NAS.lnk" "\$INSTDIR\ainas_frontend.exe"
+            CreateShortCut "\$DESKTOP\AI-NAS.lnk" "\$INSTDIR\ainas_frontend.exe"
+          SectionEnd
+
+          Section "Uninstall"
+            RMDir /r "\$INSTDIR"
+            Delete "\$SMPROGRAMS\${PRODUCT_NAME}\AI-NAS.lnk"
+            RMDir "\$SMPROGRAMS\${PRODUCT_NAME}"
+            Delete "\$DESKTOP\AI-NAS.lnk"
+          SectionEnd
+          "@ | Out-File -FilePath installer.nsi -Encoding ASCII
+          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          files: ainas-full-windows.zip
+          files: |
+            ainas-full-windows.zip
+            ainas-full-windows-installer.exe
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -1040,7 +1078,9 @@ jobs:
       - uses: actions/upload-artifact@v5
         with:
           name: ainas-full-windows
-          path: ainas-full-windows.zip
+          path: |
+            ainas-full-windows.zip
+            ainas-full-windows-installer.exe
 
   # ── Windows full bundle (Win7) ─────────────────────────────────────
   ainas-full-windows7:
@@ -1077,11 +1117,49 @@ jobs:
           Compress-Archive -Path bundle\* `
             -DestinationPath "${{ github.workspace }}\ainas-full-windows7.zip"
 
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
+      - name: Generate Windows installer
+        shell: pwsh
+        run: |
+          $ver = "${{ github.ref_name }}" -replace '^v', ''
+          @"
+          !define PRODUCT_NAME "AI-NAS"
+          !define PRODUCT_VERSION "$ver"
+          !define PRODUCT_PUBLISHER "ainas"
+
+          Name "\${PRODUCT_NAME} \${PRODUCT_VERSION}"
+          OutFile "${{ github.workspace }}\ainas-full-windows7-installer.exe"
+          InstallDir "\$PROGRAMFILES64\${PRODUCT_NAME}"
+          RequestExecutionLevel admin
+
+          Section "Install"
+            SetOutPath "\$INSTDIR"
+            File /r "${{ github.workspace }}\bundle\*.*"
+
+            CreateDirectory "\$SMPROGRAMS\${PRODUCT_NAME}"
+            CreateShortCut "\$SMPROGRAMS\${PRODUCT_NAME}\AI-NAS.lnk" "\$INSTDIR\ainas_frontend.exe"
+            CreateShortCut "\$DESKTOP\AI-NAS.lnk" "\$INSTDIR\ainas_frontend.exe"
+          SectionEnd
+
+          Section "Uninstall"
+            RMDir /r "\$INSTDIR"
+            Delete "\$SMPROGRAMS\${PRODUCT_NAME}\AI-NAS.lnk"
+            RMDir "\$SMPROGRAMS\${PRODUCT_NAME}"
+            Delete "\$DESKTOP\AI-NAS.lnk"
+          SectionEnd
+          "@ | Out-File -FilePath installer.nsi -Encoding ASCII
+          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          files: ainas-full-windows7.zip
+          files: |
+            ainas-full-windows7.zip
+            ainas-full-windows7-installer.exe
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -1089,7 +1167,9 @@ jobs:
       - uses: actions/upload-artifact@v5
         with:
           name: ainas-full-windows7
-          path: ainas-full-windows7.zip
+          path: |
+            ainas-full-windows7.zip
+            ainas-full-windows7-installer.exe
 
   # ── Android full bundle (APK + embedded backend binaries) ──────────
   ainas-full-android:

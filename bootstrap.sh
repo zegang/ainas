@@ -737,9 +737,54 @@ build_release_windows() {
     # Prefer PowerShell Compress-Archive (Windows), fall back to zip
     powershell -Command "Compress-Archive -Path '*' -DestinationPath '$archive'" 2>/dev/null || \
     zip -r "$archive" .
+
+    # Optionally create Windows installer if NSIS is available
+    if command -v makensis &> /dev/null; then
+        echo "Step: Creating Windows installer with NSIS..."
+        local ver
+        if git describe --exact-match --tags HEAD &>/dev/null; then
+            ver="$(git describe --exact-match --tags HEAD)"
+        else
+            ver="1.0.0"
+        fi
+        ver="${ver#v}"
+        cat > /tmp/installer.nsi << NSISEOF
+!define PRODUCT_NAME "AI-NAS"
+!define PRODUCT_VERSION "$ver"
+!define PRODUCT_PUBLISHER "ainas"
+
+Name "\${PRODUCT_NAME} \${PRODUCT_VERSION}"
+OutFile "$release_dir/ainas-full-windows-installer.exe"
+InstallDir "\$PROGRAMFILES64\${PRODUCT_NAME}"
+RequestExecutionLevel admin
+
+Section "Install"
+  SetOutPath "\$INSTDIR"
+  File /r "$release_dir\\*.*"
+
+  CreateDirectory "\$SMPROGRAMS\${PRODUCT_NAME}"
+  CreateShortCut "\$SMPROGRAMS\${PRODUCT_NAME}\AI-NAS.lnk" "\$INSTDIR\ainas_frontend.exe"
+  CreateShortCut "\$DESKTOP\AI-NAS.lnk" "\$INSTDIR\ainas_frontend.exe"
+SectionEnd
+
+Section "Uninstall"
+  RMDir /r "\$INSTDIR"
+  Delete "\$SMPROGRAMS\${PRODUCT_NAME}\AI-NAS.lnk"
+  RMDir "\$SMPROGRAMS\${PRODUCT_NAME}"
+  Delete "\$DESKTOP\AI-NAS.lnk"
+SectionEnd
+NSISEOF
+        makensis /tmp/installer.nsi
+    else
+        echo "Note: NSIS (makensis) not found. Skipping Windows installer creation."
+    fi
+
     echo "Release built:"
     echo "  Directory: $release_dir/"
     echo "  Archive:   $archive"
+    if [ -f "$release_dir/ainas-full-windows-installer.exe" ]; then
+        echo "  Installer: $release_dir/ainas-full-windows-installer.exe"
+    fi
 }
 
 build_release_android() {

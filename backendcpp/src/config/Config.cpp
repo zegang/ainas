@@ -57,7 +57,7 @@ Config Config::load() {
     }
 
     config.cllamaModelsFolder = std::filesystem::absolute(
-        getEnv("CLLAMA_MODELS_FOLDER", config.aiPath() / "models"));
+        getEnv("CLLAMA_MODELS_FOLDER", (config.aiPath() / "models").string()));
     config.cllamaBinary = getEnv("CLLAMA_BINARY", "bin/cllama");
 
     return config;

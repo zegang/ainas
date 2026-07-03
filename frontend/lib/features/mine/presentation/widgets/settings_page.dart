@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/services/api_service.dart';
 
-class SettingsWidget extends StatefulWidget {
-  const SettingsWidget({super.key});
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
 
   @override
-  State<SettingsWidget> createState() => _SettingsWidgetState();
+  State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsWidgetState extends State<SettingsWidget> {
+class _SettingsPageState extends State<SettingsPage> {
   late TextEditingController _hostController;
   late TextEditingController _portController;
   final ApiService _api = ApiService();
@@ -300,32 +300,6 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                       _onSettingChanged();
                     }
                   },
-                ),
-                const SizedBox(height: 12),
-                Center(
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.8,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: theme.colorScheme.error,
-                        side: BorderSide(color: theme.colorScheme.error),
-                      ),
-                      onPressed: _api.isLoggedIn
-                          ? () async {
-                              await _api.logout();
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(l10n.logoutSuccess),
-                                  backgroundColor: theme.colorScheme.background,
-                                ),
-                              );
-                            }
-                          : null,
-                      icon: const Icon(Icons.logout),
-                      label: Text(l10n.logout),
-                    ),
-                  ),
                 ),
               ],
             ),
