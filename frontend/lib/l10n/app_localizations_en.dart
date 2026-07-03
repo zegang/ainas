@@ -54,6 +54,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clear => 'Clear';
 
   @override
+  String get createMenu => 'Create';
+
+  @override
   String get newFolderTitle => 'New Folder';
 
   @override
@@ -272,6 +275,50 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loginButton => 'Login';
+
+  @override
+  String get registerTitle => 'Register';
+
+  @override
+  String get registerButton => 'Register';
+
+  @override
+  String get confirmPasswordLabel => 'Confirm Password';
+
+  @override
+  String get switchToRegisterHint => 'Don\'t have an account? Register';
+
+  @override
+  String get switchToLoginHint => 'Already have an account? Login';
+
+  @override
+  String get registrationSuccess => 'Registration successful. Please login.';
+
+  @override
+  String get loginFailed => 'Login failed. Check your username and password.';
+
+  @override
+  String get usernamePasswordRequired =>
+      'Please enter both username and password.';
+
+  @override
+  String get passwordsDoNotMatch => 'Passwords do not match.';
+
+  @override
+  String get passwordTooShort => 'Password must be at least 4 characters.';
+
+  @override
+  String get roleLabel => 'Role';
+
+  @override
+  String get roleAdmin => 'Admin';
+
+  @override
+  String get roleUser => 'User';
+
+  @override
+  String get adminRegisterOffline =>
+      'Admin can register even when the server is offline.';
 
   @override
   String get guestUser => 'Guest';
@@ -1149,6 +1196,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backendLogViewerSubtitle => 'View backend server logs';
+
+  @override
+  String get logClearAction => 'Clear log';
+
+  @override
+  String get logClearConfirm => 'Are you sure you want to clear the log file?';
 
   @override
   String get logTruncated =>

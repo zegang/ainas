@@ -123,12 +123,63 @@ std::string MdnsService::getHostname() {
 MdnsService::MdnsService(const std::string& host, uint16_t port)
     : m_host(host)
     , m_port(port)
-    , m_serviceName("AINAS-" + getHostname())
+    , m_serviceName("AiNAS on " + getHostname())
     , m_client(nullptr)
+    , m_entryGroup(nullptr)
+    , m_simplePoll(nullptr)
     , m_running(false)
-{}
+{
+    m_txtRecords["version"] = "0.0.1";
+    m_txtRecords["id"] = "ainas";
+}
 
 MdnsService::~MdnsService() { stop(); }
+
+//===----------------------------------------------------------------------===//
+//  TXT record management
+//===----------------------------------------------------------------------===//
+
+void MdnsService::setTxtRecord(const std::string& key, const std::string& value) {
+    m_txtRecords[key] = value;
+}
+
+void MdnsService::removeTxtRecord(const std::string& key) {
+    m_txtRecords.erase(key);
+}
+
+void MdnsService::clearTxtRecords() {
+    m_txtRecords.clear();
+}
+
+const std::map<std::string, std::string>& MdnsService::getTxtRecords() const {
+    return m_txtRecords;
+}
+
+#ifdef _WIN32
+// Free-function wrappers around the dynamically-loaded Bonjour API,
+// so the buildTxtRecord template compiles on Windows where dns_sd.h
+// is not available.
+inline void TXTRecordCreate(BonjourTXTRecord* t, uint16_t s, void* b) {
+    s_bonjour.TXTRecordCreate(t, s, b);
+}
+inline uint16_t TXTRecordGetLength(const BonjourTXTRecord* t) {
+    return s_bonjour.TXTRecordGetLength(t);
+}
+inline const void* TXTRecordGetBytesPtr(const BonjourTXTRecord* t) {
+    return s_bonjour.TXTRecordGetBytesPtr(t);
+}
+inline void TXTRecordDeallocate(BonjourTXTRecord* t) {
+    s_bonjour.TXTRecordDeallocate(t);
+}
+#endif
+
+template <typename TXTRecordT, typename SetFn>
+void MdnsService::buildTxtRecord(TXTRecordT& txt, char* buf, size_t bufSize, SetFn setValue) const {
+    TXTRecordCreate(&txt, static_cast<uint16_t>(bufSize), buf);
+    for (const auto& [key, value] : m_txtRecords) {
+        setValue(&txt, key.c_str(), static_cast<uint8_t>(value.size()), value.c_str());
+    }
+}
 
 //===----------------------------------------------------------------------===//
 //  Start / Stop
@@ -149,9 +200,9 @@ bool MdnsService::start() {
     void* ref = nullptr;
     BonjourTXTRecord txt;
     char buf[256];
-    s_bonjour.TXTRecordCreate(&txt, sizeof(buf), buf);
-    s_bonjour.TXTRecordSetValue(&txt, "version", 5, "1.0.0");
-    s_bonjour.TXTRecordSetValue(&txt, "id", 8, "ai-nas-v1");
+    buildTxtRecord(txt, buf, sizeof(buf), [this](auto* r, const char* k, uint8_t v, const void* d) {
+        s_bonjour.TXTRecordSetValue(r, k, v, d);
+    });
 
     auto err = s_bonjour.DNSServiceRegister(
         &ref, 0, 0,
@@ -185,9 +236,9 @@ bool MdnsService::start() {
     DNSServiceRef ref{};
     char buf[256];
     TXTRecordRef txt;
-    TXTRecordCreate(&txt, sizeof(buf), buf);
-    TXTRecordSetValue(&txt, "version", 5, "1.0.0");
-    TXTRecordSetValue(&txt, "id", 8, "ai-nas-v1");
+    buildTxtRecord(txt, buf, sizeof(buf), [](auto* r, const char* k, uint8_t v, const void* d) {
+        TXTRecordSetValue(r, k, v, d);
+    });
 
     auto err = DNSServiceRegister(
         &ref, 0, 0,

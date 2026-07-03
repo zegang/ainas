@@ -26,6 +26,8 @@ import 'upload_overlay.dart';
 import 'folder_picker_dialog.dart';
 import 'merge_to_pdf_dialog.dart';
 
+enum _FileAction { newFolder, uploadFolder, uploadFile }
+
 class NASBrowser extends StatefulWidget {
   const NASBrowser({super.key});
 
@@ -578,22 +580,49 @@ class _NASBrowserState extends State<NASBrowser> {
           tooltip: l10n.selectAll,
           onPressed: _toggleSelectAll,
         ),
-        IconButton(
-          icon: const Icon(Icons.create_new_folder_outlined),
-          tooltip: l10n.newFolderTitle,
-          onPressed: _handleCreateFolder,
-        ),
-        if (!kIsWeb) // Hide folder upload on web
-          IconButton(
-            icon: const Icon(Icons.drive_folder_upload),
-            tooltip: l10n.uploadFolder,
-            onPressed: _handleFolderUpload,
-          ),
-        // Select files to upload
-        IconButton(
-          icon: const Icon(Icons.upload_file),
-          tooltip: l10n.uploadLabel,
-          onPressed: _handleUpload,
+        PopupMenuButton<_FileAction>(
+          icon: const Icon(Icons.add),
+          tooltip: l10n.createMenu,
+          onSelected: (action) {
+            switch (action) {
+              case _FileAction.newFolder:
+                _handleCreateFolder();
+              case _FileAction.uploadFolder:
+                _handleFolderUpload();
+              case _FileAction.uploadFile:
+                _handleUpload();
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: _FileAction.newFolder,
+              child: ListTile(
+                leading: const Icon(Icons.create_new_folder_outlined),
+                title: Text(l10n.newFolderTitle),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            if (!kIsWeb)
+              PopupMenuItem(
+                value: _FileAction.uploadFolder,
+                child: ListTile(
+                  leading: const Icon(Icons.drive_folder_upload),
+                  title: Text(l10n.uploadFolder),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            PopupMenuItem(
+              value: _FileAction.uploadFile,
+              child: ListTile(
+                leading: const Icon(Icons.upload_file),
+                title: Text(l10n.uploadLabel),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
         ),
         // Open transfers list
         IconButton(
@@ -765,22 +794,49 @@ class _NASBrowserState extends State<NASBrowser> {
                 tooltip: l10n.selectAll,
                 onPressed: _toggleSelectAll,
               ),
-              IconButton(
-                icon: const Icon(Icons.create_new_folder_outlined),
-                tooltip: l10n.newFolderTitle,
-                onPressed: _handleCreateFolder,
-              ),
-              if (!kIsWeb)
-                IconButton(
-                  icon: const Icon(Icons.drive_folder_upload),
-                  tooltip: l10n.uploadFolder,
-                  onPressed: _handleFolderUpload,
-                ),
-              // Select files to upload
-              IconButton(
-                icon: const Icon(Icons.upload_file),
-                tooltip: l10n.uploadLabel,
-                onPressed: _handleUpload,
+              PopupMenuButton<_FileAction>(
+                icon: const Icon(Icons.add),
+                tooltip: l10n.createMenu,
+                onSelected: (action) {
+                  switch (action) {
+                    case _FileAction.newFolder:
+                      _handleCreateFolder();
+                    case _FileAction.uploadFolder:
+                      _handleFolderUpload();
+                    case _FileAction.uploadFile:
+                      _handleUpload();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: _FileAction.newFolder,
+                    child: ListTile(
+                      leading: const Icon(Icons.create_new_folder_outlined),
+                      title: Text(l10n.newFolderTitle),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  if (!kIsWeb)
+                    PopupMenuItem(
+                      value: _FileAction.uploadFolder,
+                      child: ListTile(
+                        leading: const Icon(Icons.drive_folder_upload),
+                        title: Text(l10n.uploadFolder),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  PopupMenuItem(
+                    value: _FileAction.uploadFile,
+                    child: ListTile(
+                      leading: const Icon(Icons.upload_file),
+                      title: Text(l10n.uploadLabel),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
               ),
               // Open transfers list
               IconButton(

@@ -198,6 +198,45 @@ class MergeToPdfResponseDto : public oatpp::DTO {
     DTO_FIELD(Int32, fileCount, "file_count");
 };
 
+// ── User DTOs ────────────────────────────────────────────────────────
+
+class LoginRequestDto : public oatpp::DTO {
+    DTO_INIT(LoginRequestDto, DTO)
+    DTO_FIELD(String, username);
+    DTO_FIELD(String, password);
+};
+
+class RegisterRequestDto : public oatpp::DTO {
+    DTO_INIT(RegisterRequestDto, DTO)
+    DTO_FIELD(String, username);
+    DTO_FIELD(String, password);
+    DTO_FIELD(String, role);
+};
+
+class UserInfoDto : public oatpp::DTO {
+    DTO_INIT(UserInfoDto, DTO)
+    DTO_FIELD(Int64, id, "id");
+    DTO_FIELD(String, username);
+    DTO_FIELD(String, role);
+    DTO_FIELD(Int64, createdAt, "created_at");
+    DTO_FIELD(String, vipStatus, "vip_status");
+};
+
+class UserLoginResponseDto : public oatpp::DTO {
+    DTO_INIT(UserLoginResponseDto, DTO)
+    DTO_FIELD(Boolean, success);
+    DTO_FIELD(String, message);
+    DTO_FIELD(String, username);
+    DTO_FIELD(String, role);
+    DTO_FIELD(String, vipStatus, "vip_status");
+};
+
+class UserActionResponseDto : public oatpp::DTO {
+    DTO_INIT(UserActionResponseDto, DTO)
+    DTO_FIELD(Boolean, success);
+    DTO_FIELD(String, message);
+};
+
 } // namespace ainas
 
 #include OATPP_CODEGEN_END(DTO)

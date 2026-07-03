@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/services/api_service.dart';
-import 'package:ainas_frontend/features/mine/presentation/widgets/log_viewer_page.dart';
+import 'package:ainas_frontend/shared/widgets/log_viewer_page.dart';
 
 class VersionPage extends StatelessWidget {
   const VersionPage({super.key});

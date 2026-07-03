@@ -76,7 +76,7 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
             priority: 0,
             weight: 0,
             txtRecords: [],
-            serviceType: '_http._tcp.local.',
+            serviceType: '_http._tcp.local',
           ));
         });
       }
@@ -132,7 +132,7 @@ class _MdnsBrowserPageState extends State<MdnsBrowserPage> {
     final nameCtl = TextEditingController();
     final hostCtl = TextEditingController(text: localIps.first);
     final portCtl = TextEditingController(text: '9026');
-    final typeCtl = TextEditingController(text: '_http._tcp.local.');
+    final typeCtl = TextEditingController(text: '_http._tcp.local');
     final formKey = GlobalKey<FormState>();
 
     await showDialog<void>(

@@ -6,10 +6,17 @@ import '../shared/models/nas_server.dart';
 class MdnsService {
   static final _log = Logger('MdnsService');
 
-  /// Scans the local network for services of a specific type.
-  /// Returns a [Stream] of [NasServer] as they are discovered.
+  /// Scans all mDNS services on the network and filters by [searchText].
+  ///
+  /// A server matches if:
+  ///   - its service name (first label of the PTR domain) contains [searchText]
+  ///     (case-insensitive), OR
+  ///   - any TXT record with key "id" has a value containing [searchText]
+  ///     (case-insensitive).
+  ///
+  /// When [searchText] is empty or null, all discovered servers are returned.
   static Stream<NasServer> scanForServers({
-    String serviceType = '_http._tcp.local.',
+    String searchText = '',
     Duration timeout = const Duration(seconds: 5),
   }) async* {
     if (kIsWeb) {
@@ -17,63 +24,85 @@ class MdnsService {
       return;
     }
 
-    final MDnsClient client = MDnsClient();
+    final lowerSearch = searchText.toLowerCase();
+    final client = MDnsClient();
     try {
       await client.start();
-      _log.info('Starting mDNS scan for $serviceType...');
+      _log.info('Starting mDNS scan for all services ($searchText)...');
 
-      // 1. Look for Service Pointers (PTR)
-      await for (final PtrResourceRecord ptr in client.lookup<PtrResourceRecord>(
-        ResourceRecordQuery.serverPointer(serviceType),
-        timeout: timeout,
+      // Discover all service types
+      final serviceTypes = <String>{};
+      await for (final ptr in client.lookup<PtrResourceRecord>(
+        ResourceRecordQuery.serverPointer('_services._dns-sd._udp.local'),
+        timeout: Duration(seconds: 3),
       )) {
-        _log.fine('Found PTR record: ${ptr.domainName}');
+        serviceTypes.add(ptr.domainName);
+      }
+      serviceTypes.add('_http._tcp.local');
 
-        // 2. For each PTR, look for the Service Record (SRV) to get Port and Target Host
-        await for (final SrvResourceRecord srv in client.lookup<SrvResourceRecord>(
-          ResourceRecordQuery.service(ptr.domainName),
-          timeout: const Duration(seconds: 2),
+      for (final serviceType in serviceTypes) {
+        _log.fine('Scanning service type: $serviceType');
+
+        await for (final ptr in client.lookup<PtrResourceRecord>(
+          ResourceRecordQuery.serverPointer(serviceType),
+          timeout: timeout,
         )) {
-          _log.info('Found SRV record: ${ptr.domainName} -> ${srv.target}:${srv.port}');
+          final serviceName = ptr.domainName.split('.').first;
 
-          // 3. Resolve IPv4 addresses (A records) for the SRV target
-          final List<String> ipAddresses = [];
-          await for (final IPAddressResourceRecord ip in client.lookup<IPAddressResourceRecord>(
-            ResourceRecordQuery.addressIPv4(srv.target),
+          // Resolve SRV to get port and target hostname
+          SrvResourceRecord? srv;
+          await for (final record in client.lookup<SrvResourceRecord>(
+            ResourceRecordQuery.service(ptr.domainName),
             timeout: const Duration(seconds: 2),
           )) {
-            ipAddresses.add(ip.address.address);
+            srv = record;
+            break;
           }
+          if (srv == null) continue;
 
-          // 4. Resolve IPv6 addresses (AAAA records)
-          final List<String> ipv6Addresses = [];
-          await for (final IPAddressResourceRecord ip in client.lookup<IPAddressResourceRecord>(
-            ResourceRecordQuery.addressIPv6(srv.target),
-            timeout: const Duration(seconds: 2),
-          )) {
-            ipv6Addresses.add(ip.address.address);
-          }
-
-          // 5. Resolve TXT records for additional metadata
+          // Resolve TXT records
           final List<String> txtEntries = [];
-          await for (final TxtResourceRecord txt in client.lookup<TxtResourceRecord>(
+          await for (final txt in client.lookup<TxtResourceRecord>(
             ResourceRecordQuery.text(ptr.domainName),
             timeout: const Duration(seconds: 2),
           )) {
             txtEntries.add(txt.text);
           }
 
+          // Apply filter
+          if (searchText.isNotEmpty &&
+              !_matchesSearchText(lowerSearch, serviceName, txtEntries)) {
+            _log.fine('Skipping $serviceName (no match)');
+            continue;
+          }
+
+          // Resolve IP addresses
+          final List<String> ipAddresses = [];
+          await for (final ip in client.lookup<IPAddressResourceRecord>(
+            ResourceRecordQuery.addressIPv4(srv.target),
+            timeout: const Duration(seconds: 2),
+          )) {
+            ipAddresses.add(ip.address.address);
+          }
+          final List<String> ipv6Addresses = [];
+          await for (final ip in client.lookup<IPAddressResourceRecord>(
+            ResourceRecordQuery.addressIPv6(srv.target),
+            timeout: const Duration(seconds: 2),
+          )) {
+            ipv6Addresses.add(ip.address.address);
+          }
+
           if (ipAddresses.isEmpty && ipv6Addresses.isEmpty) {
             _log.warning('No IP addresses resolved for ${srv.target}, using hostname as fallback');
           }
 
-          // Strip trailing dots from the target hostname for compatibility with http clients
           final host = srv.target.endsWith('.')
               ? srv.target.substring(0, srv.target.length - 1)
               : srv.target;
 
+          _log.info('Discovered: $serviceName -> $host:${srv.port}');
           yield NasServer(
-            name: ptr.domainName.split('.').first,
+            name: serviceName,
             host: host,
             addresses: ipAddresses,
             ipv6Addresses: ipv6Addresses,
@@ -85,60 +114,41 @@ class MdnsService {
           );
         }
       }
-    } catch (e, stack) {
-      _log.severe('Error during mDNS discovery', e, stack);
+      _log.info('mDNS scan for all services completed.');
+    } catch (e) {
+      _log.severe('Error during mDNS discovery: $e');
     } finally {
       client.stop();
-      _log.info('mDNS scan for $serviceType completed.');
     }
+  }
+
+  /// Returns true if [serviceName] or any TXT "id" value matches [lowerSearch].
+  static bool _matchesSearchText(
+    String lowerSearch,
+    String serviceName,
+    List<String> txtEntries,
+  ) {
+    if (serviceName.toLowerCase().contains(lowerSearch)) return true;
+    for (final entry in txtEntries) {
+      for (final line in entry.split('\n')) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty) continue;
+        final eq = trimmed.indexOf('=');
+        if (eq < 0) continue;
+        final key = trimmed.substring(0, eq).trim();
+        final value = trimmed.substring(eq + 1).trim();
+        if (key.toLowerCase() == 'id' && value.toLowerCase().contains(lowerSearch)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /// Scans the local network for all registered mDNS service types.
-  /// First discovers available service types via DNS-SD meta-query,
-  /// then resolves instances for each type.
   static Stream<NasServer> scanForAllServices({
     Duration timeout = const Duration(seconds: 5),
   }) async* {
-    if (kIsWeb) {
-      _log.warning('mDNS discovery is not supported on Web.');
-      return;
-    }
-
-    _log.info('Starting mDNS scan for all services...');
-
-    // Step 1: Discover service types via DNS-SD meta-query
-    final serviceTypes = await _discoverServiceTypes(timeout: timeout);
-
-    // Step 2: Always include _http._tcp as a fallback
-    serviceTypes.add('_http._tcp.local.');
-
-    // Step 3: Scan each discovered service type
-    for (final type in serviceTypes) {
-      _log.info('Scanning service type: $type');
-      yield* scanForServers(serviceType: type, timeout: timeout);
-    }
-  }
-
-  /// Queries the DNS-SD meta-query name to discover all registered service types.
-  static Future<Set<String>> _discoverServiceTypes({
-    Duration timeout = const Duration(seconds: 3),
-  }) async {
-    final types = <String>{};
-    final client = MDnsClient();
-    try {
-      await client.start();
-      await for (final PtrResourceRecord ptr in client.lookup<PtrResourceRecord>(
-        ResourceRecordQuery.serverPointer('_services._dns-sd._udp.local'),
-        timeout: timeout,
-      )) {
-        types.add(ptr.domainName);
-        _log.fine('Discovered service type: ${ptr.domainName}');
-      }
-    } catch (e) {
-      _log.warning('Failed to discover service types: $e');
-    } finally {
-      client.stop();
-    }
-    return types;
+    yield* scanForServers(searchText: '', timeout: timeout);
   }
 }

@@ -34,7 +34,7 @@ std::string MdnsService::getHostname() {
 MdnsService::MdnsService(const std::string& host, uint16_t port)
     : m_host(host)
     , m_port(port)
-    , m_serviceName("AINAS-" + getHostname())
+    , m_serviceName("AiNAS on " + getHostname())
     , m_poll(nullptr)
     , m_client(nullptr)
     , m_group(nullptr)

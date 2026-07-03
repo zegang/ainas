@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <ctime>
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <thread>
@@ -19,6 +20,17 @@ void Logger::init(Config config) {
     inst.m_config = std::move(config);
 
     if (!inst.m_config.filePath.empty()) {
+        // Truncate if the log file exceeds the configured max size.
+        if (inst.m_config.maxFileSize > 0) {
+            std::error_code ec;
+            auto fsize = std::filesystem::file_size(inst.m_config.filePath, ec);
+            if (!ec && fsize > inst.m_config.maxFileSize) {
+                // Recreate the file empty by opening in truncate mode then closing.
+                std::ofstream trunc(inst.m_config.filePath, std::ios::trunc);
+                trunc.close();
+            }
+        }
+
         inst.m_fileStream.open(inst.m_config.filePath, std::ios::app);
         if (!inst.m_fileStream.is_open()) {
             std::cerr << "Logger: failed to open log file: "

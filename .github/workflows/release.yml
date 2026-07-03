@@ -281,7 +281,23 @@ jobs:
           fi
           # Bump iOS min version to 14.0 for file-picker Swift Package plugin
           sed -i '' 's/platform :ios, '\''13.0'\''/platform :ios, '\''14.0'\''/' ios/Podfile
+          # Also bump the deployment target in AppFrameworkInfo.plist so Xcode
+          # target matches what SPM plugins require
+          sed -i '' 's|<string>13.0</string>|<string>14.0</string>|' ios/Flutter/AppFrameworkInfo.plist 2>/dev/null || true
           flutter pub get
+
+      - name: Ensure iOS minimum deployment target 14.0
+        working-directory: frontend
+        run: |
+          # Flutter generates the Xcode project during build; patch the
+          # IPHONEOS_DEPLOYMENT_TARGET in pbxproj so SPM plugin integrity
+          # checks pass.
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/' \
+            ios/Runner.xcodeproj/project.pbxproj 2>/dev/null || true
+          # Ensure Podfile is still at 14.0 (flutter pub get may have reverted it)
+          sed -i '' 's/platform :ios, '\''13.0'\''/platform :ios, '\''14.0'\''/' ios/Podfile 2>/dev/null || true
+          # Also ensure the AppFrameworkInfo.plist stays at 14.0
+          sed -i '' 's|<string>13.0</string>|<string>14.0</string>|' ios/Flutter/AppFrameworkInfo.plist 2>/dev/null || true
 
       - name: Build iOS (no codesign)
         working-directory: frontend
@@ -993,7 +1009,7 @@ jobs:
           name: ainas-full-macos
           path: ainas-full-macos.zip
 
-  # ── Windows full bundle ────────────────────────────────────────────
+  # ── Windows full bundle (.zip) ─────────────────────────────────────
   ainas-full-windows:
     needs: [ainas-frontend-windows, ainas-backendcpp-windows]
     runs-on: windows-latest
@@ -1027,6 +1043,48 @@ jobs:
         run: |
           Compress-Archive -Path bundle\* `
             -DestinationPath "${{ github.workspace }}\ainas-full-windows.zip"
+
+      - name: Upload zip to Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ainas-full-windows.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ainas-full-windows
+          path: |
+            ainas-full-windows.zip
+            bundle/
+
+  # ── Windows installer (.exe) — wraps the full bundle into NSIS ─────
+  ainas-full-windows-installer:
+    needs: [ainas-full-windows]
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download full Windows bundle
+        uses: actions/download-artifact@v5
+        with:
+          name: ainas-full-windows
+          path: dl/full
+
+      - name: Extract bundle
+        run: |
+          mkdir -p bundle
+          unzip -q dl/full/ainas-full-windows.zip -d bundle
+          # If the zip placed files directly, use them; otherwise use the extracted bundle/
+          if [ -d "dl/full/bundle" ]; then
+            cp -r dl/full/bundle/* bundle/
+          fi
 
       - name: Install NSIS
         shell: pwsh
@@ -1064,25 +1122,21 @@ jobs:
           "@ | Out-File -FilePath installer.nsi -Encoding ASCII
           & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
 
-      - name: Upload to Release
+      - name: Upload installer to Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          files: |
-            ainas-full-windows.zip
-            ainas-full-windows-installer.exe
+          files: ainas-full-windows-installer.exe
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v5
         with:
-          name: ainas-full-windows
-          path: |
-            ainas-full-windows.zip
-            ainas-full-windows-installer.exe
+          name: ainas-full-windows-installer
+          path: ainas-full-windows-installer.exe
 
-  # ── Windows full bundle (Win7) ─────────────────────────────────────
+  # ── Windows full bundle (.zip, Win7) ───────────────────────────────
   ainas-full-windows7:
     needs: [ainas-frontend-windows7, ainas-backendcpp-windows7]
     runs-on: windows-latest
@@ -1116,6 +1170,47 @@ jobs:
         run: |
           Compress-Archive -Path bundle\* `
             -DestinationPath "${{ github.workspace }}\ainas-full-windows7.zip"
+
+      - name: Upload zip to Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ainas-full-windows7.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ainas-full-windows7
+          path: |
+            ainas-full-windows7.zip
+            bundle/
+
+  # ── Windows installer (.exe, Win7) — wraps the full bundle into NSIS ─
+  ainas-full-windows7-installer:
+    needs: [ainas-full-windows7]
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download full Windows bundle (Win7)
+        uses: actions/download-artifact@v5
+        with:
+          name: ainas-full-windows7
+          path: dl/full
+
+      - name: Extract bundle
+        run: |
+          mkdir -p bundle
+          unzip -q dl/full/ainas-full-windows7.zip -d bundle
+          if [ -d "dl/full/bundle" ]; then
+            cp -r dl/full/bundle/* bundle/
+          fi
 
       - name: Install NSIS
         shell: pwsh
@@ -1153,23 +1248,19 @@ jobs:
           "@ | Out-File -FilePath installer.nsi -Encoding ASCII
           & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
 
-      - name: Upload to Release
+      - name: Upload installer to Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          files: |
-            ainas-full-windows7.zip
-            ainas-full-windows7-installer.exe
+          files: ainas-full-windows7-installer.exe
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v5
         with:
-          name: ainas-full-windows7
-          path: |
-            ainas-full-windows7.zip
-            ainas-full-windows7-installer.exe
+          name: ainas-full-windows7-installer
+          path: ainas-full-windows7-installer.exe
 
   # ── Android full bundle (APK + embedded backend binaries) ──────────
   ainas-full-android:

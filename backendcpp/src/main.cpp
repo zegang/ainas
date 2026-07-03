@@ -2,6 +2,7 @@
 #include "ainas/database/Database.hpp"
 #include "ainas/database/ConfigRepository.hpp"
 #include "ainas/database/FileRepository.hpp"
+#include "ainas/database/UserRepository.hpp"
 #include "ainas/dto/DTOs.hpp"
 #include "ainas/logging/Logger.hpp"
 #include "ainas/service/FileService.hpp"
@@ -12,6 +13,7 @@
 #include "ainas/controller/FilesController.hpp"
 #include "ainas/controller/SystemController.hpp"
 #include "ainas/controller/AiController.hpp"
+#include "ainas/controller/UserController.hpp"
 #include "ainas/mdns/MdnsService.hpp"
 #include "ainas/util/cflag.hpp"
 
@@ -25,11 +27,15 @@
 #include <atomic>
 #include <csignal>
 #include <cstdlib>
+#include <cstring>
+#include <exception>
 #include <iostream>
 #include <memory>
 
 #if defined(_WIN32)
 #include <windows.h>
+#include <io.h>
+#include <fcntl.h>
 #else
 #include <fcntl.h>
 #include <unistd.h>
@@ -45,6 +51,104 @@ std::atomic<bool>& running() {
 void signalHandler(int sig) {
     LOG_INFO("Received signal {}, shutting down...", sig);
     running() = false;
+}
+
+// Global pointer so termination handlers can stop cllama on crash.
+std::shared_ptr<ainas::AiService> g_aiService;
+
+void stopAiService() {
+    if (auto svc = g_aiService) {
+        svc->stop();
+    }
+}
+
+// ── Crash-safe logging helpers ──────────────────────────────────────
+// These avoid the Logger (mutex, std::format) to work even in corrupt state.
+
+static void safeWriteStr(int fd, const char* s) {
+#if defined(_WIN32)
+    _write(fd, s, static_cast<unsigned>(std::strlen(s)));
+#else
+    write(fd, s, std::strlen(s));
+#endif
+}
+
+static void crashLog(const char* msg) {
+    safeWriteStr(STDERR_FILENO, msg);
+    safeWriteStr(STDERR_FILENO, "\n");
+
+    // Also append to the log file if the Logger is alive
+    try {
+        auto& logger = ainas::Logger::instance();
+        auto path = logger.getLogFilePath();
+        if (!path.empty()) {
+#if defined(_WIN32)
+            int fd = _open(path.c_str(), _O_WRONLY | _O_APPEND | _O_CREAT, 0644);
+            if (fd >= 0) {
+                safeWriteStr(fd, msg);
+                safeWriteStr(fd, "\n");
+                _close(fd);
+            }
+#else
+            int fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0644);
+            if (fd >= 0) {
+                safeWriteStr(fd, msg);
+                safeWriteStr(fd, "\n");
+                close(fd);
+            }
+#endif
+        }
+    } catch (...) {
+        // Logger not yet initialised — ignore
+    }
+}
+
+// ── Termination / crash handlers ────────────────────────────────────
+
+void terminateHandler() {
+    crashLog("=== UNEXPECTED TERMINATION ===");
+
+    // Try to extract exception info
+    try {
+        if (auto exc = std::current_exception()) {
+            try {
+                std::rethrow_exception(exc);
+            } catch (const std::exception& e) {
+                crashLog("Exception type: std::exception");
+                crashLog(e.what());
+            } catch (const std::string& s) {
+                crashLog("Exception type: std::string");
+                crashLog(s.c_str());
+            } catch (const char* s) {
+                crashLog("Exception type: char*");
+                crashLog(s);
+            } catch (...) {
+                crashLog("Exception type: unknown (not derived from std::exception)");
+            }
+        } else {
+            crashLog("No active exception (likely stack overflow / pure virtual call)");
+        }
+    } catch (...) {
+        crashLog("Failed to query exception info");
+    }
+
+    crashLog("Stopping services...");
+    stopAiService();
+    crashLog("Aborting...");
+
+    // Restore default SIGABRT so the core dump / process kill works
+    signal(SIGABRT, SIG_DFL);
+    abort();
+}
+
+void sigabrtHandler(int) {
+    crashLog("FATAL: SIGABRT received (direct abort() or assertion failure)");
+
+    stopAiService();
+
+    // Restore default and re-raise to get a core dump / OS termination
+    signal(SIGABRT, SIG_DFL);
+    raise(SIGABRT);
 }
 
 void setEnvVar(const char* name, const char* value) {
@@ -175,6 +279,9 @@ int main(int argc, const char* argv[]) {
     std::filesystem::create_directories(config->thumbnailPath(), ec);
     std::filesystem::create_directories(config->aiPath(), ec);
 
+    // Register crash handler to stop cllama on unhandled exceptions / terminate
+    std::set_terminate(terminateHandler);
+
     auto objectMapper = std::make_shared<oatpp::json::ObjectMapper>();
 
     auto database = std::make_unique<ainas::Database>(
@@ -189,6 +296,7 @@ int main(int argc, const char* argv[]) {
         objectMapper, fileService, config, pdfService, thumbnailService);
 
     auto aiService = std::make_shared<ainas::AiService>(config);
+    g_aiService = aiService;
     aiService->start();
 
     router->addController(filesController);
@@ -198,6 +306,10 @@ int main(int argc, const char* argv[]) {
     auto configRepo = std::make_shared<ainas::ConfigRepository>(*database);
     configRepo->migrate();
     router->addController(ainas::ConfigController::createShared(objectMapper, configRepo));
+
+    auto userRepo = std::make_shared<ainas::UserRepository>(*database);
+    userRepo->migrate();
+    router->addController(ainas::UserController::createShared(objectMapper, userRepo));
 
     oatpp::network::Address address(
         config->addr.c_str(),
@@ -222,6 +334,7 @@ int main(int argc, const char* argv[]) {
 
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
+    signal(SIGABRT, sigabrtHandler);
 
     LOG_INFO("Server running. Press Ctrl+C to stop.");
     server.run([&]() { return running().load(); });

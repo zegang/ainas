@@ -54,6 +54,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get clear => '清除';
 
   @override
+  String get createMenu => '新建';
+
+  @override
   String get newFolderTitle => '新建文件夹';
 
   @override
@@ -268,6 +271,48 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get loginButton => '登录';
+
+  @override
+  String get registerTitle => '注册';
+
+  @override
+  String get registerButton => '注册';
+
+  @override
+  String get confirmPasswordLabel => '确认密码';
+
+  @override
+  String get switchToRegisterHint => '没有账号？注册';
+
+  @override
+  String get switchToLoginHint => '已有账号？登录';
+
+  @override
+  String get registrationSuccess => '注册成功，请登录';
+
+  @override
+  String get loginFailed => '登录失败，请检查用户名和密码';
+
+  @override
+  String get usernamePasswordRequired => '请输入用户名和密码';
+
+  @override
+  String get passwordsDoNotMatch => '两次输入的密码不一致';
+
+  @override
+  String get passwordTooShort => '密码至少需要4个字符';
+
+  @override
+  String get roleLabel => '角色';
+
+  @override
+  String get roleAdmin => '管理员';
+
+  @override
+  String get roleUser => '用户';
+
+  @override
+  String get adminRegisterOffline => '管理员可以在服务器离线时注册';
 
   @override
   String get guestUser => '访客';
@@ -1140,6 +1185,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get backendLogViewerSubtitle => '查看后端服务器日志';
+
+  @override
+  String get logClearAction => '清空日志';
+
+  @override
+  String get logClearConfirm => '确定要清空日志文件吗？';
 
   @override
   String get logTruncated => '日志文件已截断至最后 500 KB 以提升性能。';

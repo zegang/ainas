@@ -1,31 +1,103 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ainas_frontend/l10n/app_localizations.dart';
+import 'package:ainas_frontend/services/mdns_service.dart';
 import 'package:ainas_frontend/shared/models/nas_server.dart';
+import 'package:ainas_frontend/features/home/presentation/widgets/mdns_server_detail_page.dart';
 
-class MdnsDiscoveryWidget extends StatelessWidget {
-  final List<NasServer> discoveredServers;
-  final bool isScanning;
-  final bool timedOut;
-  final int elapsedSeconds;
-  final void Function(NasServer) onServiceSelected;
-  final VoidCallback onRefresh;
-  final VoidCallback? onOpenBrowser;
+const Duration _mdnsScanTimeout = Duration(seconds: 20);
+
+class MdnsDiscoveryWidget extends StatefulWidget {
   final String? currentTargetUrl;
-  final String? serviceType;
+  final VoidCallback? onRefresh;
+  final VoidCallback? onOpenBrowser;
 
   const MdnsDiscoveryWidget({
     super.key,
-    required this.discoveredServers,
-    required this.isScanning,
-    this.timedOut = false,
-    this.elapsedSeconds = 0,
-    required this.onServiceSelected,
-    required this.onRefresh,
-    this.onOpenBrowser,
     this.currentTargetUrl,
-    this.serviceType,
+    this.onRefresh,
+    this.onOpenBrowser,
   });
+
+  @override
+  State<MdnsDiscoveryWidget> createState() => _MdnsDiscoveryWidgetState();
+}
+
+class _MdnsDiscoveryWidgetState extends State<MdnsDiscoveryWidget> {
+  bool _isScanning = false;
+  bool _mdnsTimedOut = false;
+  List<NasServer> _discoveredServers = [];
+  StreamSubscription<NasServer>? _mdnsSubscription;
+  DateTime? _mdnsScanStart;
+  Duration _mdnsElapsed = Duration.zero;
+  Timer? _mdnsElapsedTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startMdnsScan();
+  }
+
+  @override
+  void dispose() {
+    _mdnsSubscription?.cancel();
+    _mdnsElapsedTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startMdnsScan() {
+    if (kIsWeb) return;
+    _mdnsSubscription?.cancel();
+    _mdnsElapsedTimer?.cancel();
+    setState(() {
+      _isScanning = true;
+      _mdnsTimedOut = false;
+      _discoveredServers.clear();
+      _mdnsScanStart = DateTime.now();
+      _mdnsElapsed = Duration.zero;
+    });
+    _mdnsElapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _mdnsElapsed = DateTime.now().difference(_mdnsScanStart!));
+    });
+    _mdnsSubscription = MdnsService.scanForServers(searchText: 'ainas', timeout: _mdnsScanTimeout).listen(
+      (server) {
+        if (!mounted) return;
+        setState(() {
+          _discoveredServers.removeWhere(
+            (s) => s.host == server.host && s.port == server.port,
+          );
+          _discoveredServers.add(server);
+        });
+      },
+      onDone: () {
+        _mdnsElapsedTimer?.cancel();
+        if (mounted) {
+          setState(() {
+            _isScanning = false;
+            if (_discoveredServers.isEmpty) _mdnsTimedOut = true;
+          });
+        }
+      },
+      onError: (_) {
+        _mdnsElapsedTimer?.cancel();
+        if (mounted) setState(() => _isScanning = false);
+      },
+    );
+  }
+
+  void _onServiceSelected(NasServer server) {
+    Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => MdnsServerDetailPage(server: server),
+      ),
+    );
+  }
+
+  void _handleRefresh() {
+    _startMdnsScan();
+    widget.onRefresh?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,20 +144,20 @@ class MdnsDiscoveryWidget extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (onOpenBrowser != null)
+                    if (widget.onOpenBrowser != null)
                       IconButton(
                         icon: const Icon(Icons.open_in_full, size: 20),
-                        onPressed: onOpenBrowser,
+                        onPressed: widget.onOpenBrowser,
                         tooltip: l10n.mdnsBrowseAll,
                         constraints: const BoxConstraints(),
                         padding: EdgeInsets.zero,
                       ),
-                    if (isScanning)
-                      Text('${elapsedSeconds}s',
+                    if (_isScanning)
+                      Text('${_mdnsElapsed.inSeconds}s',
                           style: TextStyle(fontSize: 12, color: Colors.grey.shade600))
                     else
-                      IconButton(icon: const Icon(Icons.refresh), onPressed: onRefresh),
-                    if (isScanning) ...[
+                      IconButton(icon: const Icon(Icons.refresh), onPressed: _handleRefresh),
+                    if (_isScanning) ...[
                       const SizedBox(width: 6),
                       const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
                     ],
@@ -94,7 +166,7 @@ class MdnsDiscoveryWidget extends StatelessWidget {
               ],
             ),
             const Divider(),
-            if (isScanning && discoveredServers.isEmpty)
+            if (_isScanning && _discoveredServers.isEmpty)
               Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20),
@@ -104,14 +176,14 @@ class MdnsDiscoveryWidget extends StatelessWidget {
                       const CircularProgressIndicator(),
                       const SizedBox(height: 16),
                       Text(
-                        '${serviceType != null ? l10n.mdnsScanningForType(serviceType!) : l10n.mdnsScanningServers} (${elapsedSeconds}s)',
+                        '${l10n.mdnsScanningServers} (${_mdnsElapsed.inSeconds}s)',
                         style: TextStyle(color: Colors.grey.shade600),
                       ),
                     ],
                   ),
                 ),
               )
-            else if (discoveredServers.isEmpty && timedOut)
+            else if (_discoveredServers.isEmpty && _mdnsTimedOut)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Column(
@@ -119,19 +191,19 @@ class MdnsDiscoveryWidget extends StatelessWidget {
                     Center(child: Text(l10n.mdnsNoServers, style: TextStyle(color: Colors.grey.shade600))),
                     const SizedBox(height: 8),
                     Text(
-                      '${l10n.mdnsScanTimedOut} ($elapsedSeconds s)',
+                      '${l10n.mdnsScanTimedOut} (${_mdnsElapsed.inSeconds} s)',
                       style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                     ),
                     const SizedBox(height: 8),
                     FilledButton.tonalIcon(
-                      onPressed: onRefresh,
+                      onPressed: _handleRefresh,
                       icon: const Icon(Icons.refresh, size: 16),
                       label: Text(l10n.mdnsScanAgain),
                     ),
                   ],
                 ),
               )
-            else if (discoveredServers.isEmpty && !isScanning)
+            else if (_discoveredServers.isEmpty && !_isScanning)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Center(child: Text(l10n.mdnsNoServers)),
@@ -139,7 +211,7 @@ class MdnsDiscoveryWidget extends StatelessWidget {
             else
               Column(
                 children: [
-                  if (isScanning)
+                  if (_isScanning)
                     Center(
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: 8),
@@ -149,7 +221,7 @@ class MdnsDiscoveryWidget extends StatelessWidget {
                             const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5)),
                             const SizedBox(height: 8),
                             Text(
-                              '${l10n.mdnsScanningServers} (${discoveredServers.length} found, ${elapsedSeconds}s)',
+                              '${l10n.mdnsScanningServers} (${_discoveredServers.length} found, ${_mdnsElapsed.inSeconds}s)',
                               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                             ),
                           ],
@@ -159,10 +231,10 @@ class MdnsDiscoveryWidget extends StatelessWidget {
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: discoveredServers.length,
+                    itemCount: _discoveredServers.length,
                     itemBuilder: (context, index) {
-                      final server = discoveredServers[index];
-                      final isTarget = currentTargetUrl != null && server.url == currentTargetUrl;
+                      final server = _discoveredServers[index];
+                      final isTarget = widget.currentTargetUrl != null && server.url == widget.currentTargetUrl;
                       return ListTile(
                         leading: Icon(
                           isTarget ? Icons.check_circle : Icons.dns_outlined,
@@ -188,7 +260,7 @@ class MdnsDiscoveryWidget extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               )
                             : null,
-                        onTap: () => onServiceSelected(server),
+                        onTap: () => _onServiceSelected(server),
                       );
                     },
                   ),

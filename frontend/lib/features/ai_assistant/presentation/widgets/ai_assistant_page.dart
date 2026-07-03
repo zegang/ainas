@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:logging/logging.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:ainas_frontend/services/api_service.dart';
 import 'package:ainas_frontend/features/ai_assistant/domain/chat_repository_impl.dart';
 import 'package:ainas_frontend/shared/models/chat_message.dart';

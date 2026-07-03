@@ -188,6 +188,12 @@ abstract class AppLocalizations {
   /// **'Clear'**
   String get clear;
 
+  /// No description provided for @createMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get createMenu;
+
   /// No description provided for @newFolderTitle.
   ///
   /// In en, this message translates to:
@@ -583,6 +589,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Login'**
   String get loginButton;
+
+  /// No description provided for @registerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get registerTitle;
+
+  /// No description provided for @registerButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get registerButton;
+
+  /// No description provided for @confirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get confirmPasswordLabel;
+
+  /// No description provided for @switchToRegisterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account? Register'**
+  String get switchToRegisterHint;
+
+  /// No description provided for @switchToLoginHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? Login'**
+  String get switchToLoginHint;
+
+  /// No description provided for @registrationSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration successful. Please login.'**
+  String get registrationSuccess;
+
+  /// No description provided for @loginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Login failed. Check your username and password.'**
+  String get loginFailed;
+
+  /// No description provided for @usernamePasswordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter both username and password.'**
+  String get usernamePasswordRequired;
+
+  /// No description provided for @passwordsDoNotMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match.'**
+  String get passwordsDoNotMatch;
+
+  /// No description provided for @passwordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 4 characters.'**
+  String get passwordTooShort;
+
+  /// No description provided for @roleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get roleLabel;
+
+  /// No description provided for @roleAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get roleAdmin;
+
+  /// No description provided for @roleUser.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get roleUser;
+
+  /// No description provided for @adminRegisterOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin can register even when the server is offline.'**
+  String get adminRegisterOffline;
 
   /// No description provided for @guestUser.
   ///
@@ -2203,6 +2293,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View backend server logs'**
   String get backendLogViewerSubtitle;
+
+  /// No description provided for @logClearAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear log'**
+  String get logClearAction;
+
+  /// No description provided for @logClearConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to clear the log file?'**
+  String get logClearConfirm;
 
   /// No description provided for @logTruncated.
   ///

@@ -13,6 +13,7 @@ class AiConfigWidget extends StatefulWidget {
   final bool showLocalModelCard;
   final bool showFeatureIcons;
   final bool showRagDetails;
+  final bool showRagSection;
 
   const AiConfigWidget({
     super.key,
@@ -22,6 +23,7 @@ class AiConfigWidget extends StatefulWidget {
     this.showLocalModelCard = true,
     this.showFeatureIcons = true,
     this.showRagDetails = true,
+    this.showRagSection = true,
   });
 
   @override
@@ -129,12 +131,14 @@ class _AiConfigWidgetState extends State<AiConfigWidget> {
           const SizedBox(height: 8),
           _buildLocalModelsSection(context),
         ],
-        const SizedBox(height: 8),
-        AiRagWidget(
-          ragStatus: widget.ragStatus,
-          onRefresh: widget.onRefresh,
-          showDetails: false,
-        ),
+        if (widget.showRagSection) ...[
+          const SizedBox(height: 8),
+          AiRagWidget(
+            ragStatus: widget.ragStatus,
+            onRefresh: widget.onRefresh,
+            showDetails: false,
+          ),
+        ],
       ],
     );
   }

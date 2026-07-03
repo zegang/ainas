@@ -1,18 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/features/home/presentation/widgets/mdns_discovery_widget.dart';
 import 'package:ainas_frontend/features/home/presentation/widgets/mdns_browser_page.dart';
-import 'package:ainas_frontend/features/home/presentation/widgets/mdns_server_detail_page.dart';
 import 'package:ainas_frontend/features/home/presentation/widgets/storage_dashboard_widget.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/storage_page.dart';
-import 'package:ainas_frontend/shared/widgets/ai_config_widget.dart';
 import 'package:ainas_frontend/services/api_service.dart';
-import 'package:ainas_frontend/services/mdns_service.dart';
-import 'package:ainas_frontend/shared/models/nas_server.dart';
-
-const Duration _mdnsScanTimeout = Duration(seconds: 20);
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,100 +15,22 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final ApiService _api = ApiService();
-  bool _isScanning = false;
-  bool _mdnsTimedOut = false;
-  List<NasServer> _discoveredServers = [];
-  StreamSubscription<NasServer>? _mdnsSubscription;
-  DateTime? _mdnsScanStart;
-  Duration _mdnsElapsed = Duration.zero;
-  Timer? _mdnsElapsedTimer;
   Map<String, dynamic>? _storageUsage;
-  Map<String, dynamic>? _ragStatus;
-  Map<String, dynamic>? _aiStatus;
 
   @override
   void initState() {
     super.initState();
-    _refreshAll();
-    _startMdnsScan();
+    _refreshStorageUsage();
   }
 
-  @override
-  void dispose() {
-    _mdnsSubscription?.cancel();
-    _mdnsElapsedTimer?.cancel();
-    super.dispose();
-  }
-
-  void _startMdnsScan() {
-    if (kIsWeb) return;
-    _mdnsSubscription?.cancel();
-    _mdnsElapsedTimer?.cancel();
-    setState(() {
-      _isScanning = true;
-      _mdnsTimedOut = false;
-      _discoveredServers.clear();
-      _mdnsScanStart = DateTime.now();
-      _mdnsElapsed = Duration.zero;
-    });
-    _mdnsElapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _mdnsElapsed = DateTime.now().difference(_mdnsScanStart!));
-    });
-    _mdnsSubscription = MdnsService.scanForServers(timeout: _mdnsScanTimeout).listen(
-      (server) {
-        if (!mounted) return;
-        setState(() {
-          _discoveredServers.removeWhere(
-            (s) => s.host == server.host && s.port == server.port,
-          );
-          _discoveredServers.add(server);
-        });
-      },
-      onDone: () {
-        _mdnsElapsedTimer?.cancel();
-        if (mounted) {
-          setState(() {
-            _isScanning = false;
-            if (_discoveredServers.isEmpty) _mdnsTimedOut = true;
-          });
-        }
-      },
-      onError: (_) {
-        _mdnsElapsedTimer?.cancel();
-        if (mounted) setState(() => _isScanning = false);
-      },
-    );
-  }
-
-  Future<void> _refreshAll() async {
+  Future<void> _refreshStorageUsage() async {
     try {
-      final results = await Future.wait([
-        _api.getSystemUsage(),
-        _api.getRagStatus(),
-        _api.getAiStatus(),
-      ]);
-
-      setState(() {
-        _storageUsage = results[0] as Map<String, dynamic>?;
-        _ragStatus = results[1] as Map<String, dynamic>?;
-        _aiStatus = results[2] as Map<String, dynamic>;
-      });
+      final usage = await _api.getSystemUsage();
+      setState(() => _storageUsage = usage as Map<String, dynamic>?);
     } catch (e) {
       debugPrint("Home Page Refresh Error: $e");
-      setState(() {
-        _storageUsage = null;
-        _ragStatus = null;
-        _aiStatus = null;
-      });
+      setState(() => _storageUsage = null);
     }
-  }
-
-  void _onServiceSelected(NasServer server) {
-    Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => MdnsServerDetailPage(server: server),
-      ),
-    );
   }
 
   @override
@@ -127,21 +41,12 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.all(16.0),
         children: [
           MdnsDiscoveryWidget(
-            discoveredServers: _discoveredServers,
-            isScanning: _isScanning,
-            timedOut: _mdnsTimedOut,
-            elapsedSeconds: _mdnsElapsed.inSeconds,
-            onRefresh: () {
-              _startMdnsScan();
-              _refreshAll();
-            },
-            onServiceSelected: _onServiceSelected,
+            currentTargetUrl: _api.baseUrl,
+            onRefresh: _refreshStorageUsage,
             onOpenBrowser: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const MdnsBrowserPage()),
             ),
-            currentTargetUrl: _api.baseUrl,
-            serviceType: '_http._tcp.local.',
           ),
           const SizedBox(height: 16),
           GestureDetector(
@@ -151,17 +56,8 @@ class _HomePageState extends State<HomePage> {
             ),
             child: StorageDashboardWidget(
               usageData: _storageUsage,
-              onRefresh: _refreshAll,
+              onRefresh: _refreshStorageUsage,
             ),
-          ),
-          const SizedBox(height: 16),
-          AiConfigWidget(
-            ragStatus: _ragStatus,
-            aiStatus: _aiStatus,
-            onRefresh: _refreshAll,
-            showLocalModelCard: false,
-            showFeatureIcons: false,
-            showRagDetails: false,
           ),
         ],
       ),

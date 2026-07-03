@@ -10,7 +10,7 @@ import 'package:tray_manager/tray_manager.dart';
 import 'l10n/app_localizations.dart';
 import 'shared/utils/backend_process_manager.dart';
 import 'features/file_browser/presentation/widgets/nas_browser_page.dart';
-import 'features/mine/presentation/widgets/login_widget.dart';
+import 'shared/widgets/login_dialog.dart';
 import 'features/mine/presentation/widgets/mine_page.dart';
 import 'features/mine/presentation/widgets/storage_page.dart';
 import 'features/mine/presentation/widgets/ai_config_page.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:ainas_frontend/shared/models/chat_message.dart';
 import 'package:ainas_frontend/shared/widgets/viewers/pdf_viewer_page.dart';
 import 'package:ainas_frontend/shared/widgets/viewers/docx_viewer_page.dart';

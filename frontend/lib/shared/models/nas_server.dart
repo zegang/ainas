@@ -18,7 +18,7 @@ class NasServer {
     required this.addresses,
     this.ipv6Addresses = const [],
     this.txtRecords = const [],
-    this.serviceType = '_http._tcp.local.',
+    this.serviceType = '_http._tcp.local',
   });
 
   String get primaryAddress => addresses.isNotEmpty

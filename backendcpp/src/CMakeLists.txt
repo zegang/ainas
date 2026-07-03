@@ -1,15 +1,27 @@
 # -- Platform-specific mDNS source file ------------------------------
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    find_path(DNS_SD_INCLUDE_DIRS dns_sd.h)
-    find_library(DNS_SD_LIBRARIES dns_sd)
-    if(DNS_SD_INCLUDE_DIRS AND DNS_SD_LIBRARIES)
-        set(MDNS_SOURCE mdns/MdnsService_bonjour.cpp)
+    # Prefer native Avahi API over Bonjour compat layer (avoids
+    # "Please fix your application to use the native API of Avahi!" warning)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(AVAHI_CLIENT avahi-client)
+    endif()
+    if(AVAHI_CLIENT_FOUND)
+        set(MDNS_SOURCE mdns/MdnsService_avahi.cpp)
         set(MDNS_AVAILABLE TRUE)
-        message(STATUS "mDNS: Using Bonjour (Linux via libdns_sd)")
+        message(STATUS "mDNS: Using native Avahi (Linux)")
     else()
-        set(MDNS_SOURCE mdns/MdnsService_stub.cpp)
-        set(MDNS_AVAILABLE FALSE)
-        message(WARNING "libdns_sd not found — install libavahi-compat-libdnssd-dev")
+        find_path(DNS_SD_INCLUDE_DIRS dns_sd.h)
+        find_library(DNS_SD_LIBRARIES dns_sd)
+        if(DNS_SD_INCLUDE_DIRS AND DNS_SD_LIBRARIES)
+            set(MDNS_SOURCE mdns/MdnsService_bonjour.cpp)
+            set(MDNS_AVAILABLE TRUE)
+            message(STATUS "mDNS: Using Bonjour (Linux via libdns_sd)")
+        else()
+            set(MDNS_SOURCE mdns/MdnsService_stub.cpp)
+            set(MDNS_AVAILABLE FALSE)
+            message(WARNING "mDNS not available — install libavahi-client-dev or libavahi-compat-libdnssd-dev")
+        endif()
     endif()
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(MDNS_SOURCE mdns/MdnsService_bonjour.cpp)
@@ -94,9 +106,11 @@ add_executable(ainas-backend-cpp
     service/AiService.cpp
     controller/AiController.cpp
     controller/ConfigController.cpp
+    controller/UserController.cpp
     database/Database.cpp
     database/FileRepository.cpp
     database/ConfigRepository.cpp
+    database/UserRepository.cpp
     ${MDNS_SOURCE}
 )
 
@@ -106,25 +120,39 @@ target_link_libraries(ainas-backend-cpp PRIVATE
     ${SQLITE3_LIBRARIES}
     httplib::httplib
     nlohmann_json::nlohmann_json
-    ${POPPLER_LIBRARIES}
-    ${QPDF_LIBRARIES}
 )
+
+if(POPPLER_FOUND)
+    target_link_libraries(ainas-backend-cpp PRIVATE ${POPPLER_LIBRARIES})
+endif()
+if(QPDF_FOUND)
+    target_link_libraries(ainas-backend-cpp PRIVATE ${QPDF_LIBRARIES})
+endif()
 
 add_dependencies(ainas-backend-cpp cllama)
 
 # Copy cllama binary and runner into bin/ subdirectory alongside the backend binary.
 # The backend resolves cllama as "<self-dir>/bin/cllama" by default.
+# Uses a helper script so build won't fail when cllama binaries don't exist yet.
+set(_CL_COPY_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/copy_if_exists.cmake")
+set(_CL_SUFFIX "$<IF:$<PLATFORM_ID:Windows>,.exe,>")
 add_custom_command(TARGET ainas-backend-cpp POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:ainas-backend-cpp>/bin"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_BINARY_DIR}/cllama/bin/cllama$<IF:$<PLATFORM_ID:Windows>,.exe,>"
-        "$<TARGET_FILE_DIR:ainas-backend-cpp>/bin/"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_BINARY_DIR}/cllama/bin/cllama_runner$<IF:$<PLATFORM_ID:Windows>,.exe,>"
-        "$<TARGET_FILE_DIR:ainas-backend-cpp>/bin/"
+    COMMAND ${CMAKE_COMMAND} -E env
+        "SRC=${CMAKE_BINARY_DIR}/cllama/bin/cllama${_CL_SUFFIX}"
+        "DST=$<TARGET_FILE_DIR:ainas-backend-cpp>/bin/"
+        ${CMAKE_COMMAND} -P "${_CL_COPY_SCRIPT}"
+    COMMAND ${CMAKE_COMMAND} -E env
+        "SRC=${CMAKE_BINARY_DIR}/cllama/bin/cllama_runner${_CL_SUFFIX}"
+        "DST=$<TARGET_FILE_DIR:ainas-backend-cpp>/bin/"
+        ${CMAKE_COMMAND} -P "${_CL_COPY_SCRIPT}"
     COMMENT "Copying cllama and cllama_runner to output bin/"
 )
 
+if(AVAHI_CLIENT_FOUND)
+    target_link_libraries(ainas-backend-cpp PRIVATE ${AVAHI_CLIENT_LIBRARIES})
+    target_include_directories(ainas-backend-cpp PRIVATE ${AVAHI_CLIENT_INCLUDE_DIRS})
+endif()
 if(DNS_SD_LIBRARIES)
     target_link_libraries(ainas-backend-cpp PRIVATE ${DNS_SD_LIBRARIES})
     target_include_directories(ainas-backend-cpp PRIVATE ${DNS_SD_INCLUDE_DIRS})
@@ -138,6 +166,11 @@ target_include_directories(ainas-backend-cpp PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/stb
     ${SQLITE3_INCLUDE_DIRS}
-    ${POPPLER_INCLUDE_DIRS}
-    ${QPDF_INCLUDE_DIRS}
 )
+
+if(POPPLER_FOUND)
+    target_include_directories(ainas-backend-cpp PRIVATE ${POPPLER_INCLUDE_DIRS})
+endif()
+if(QPDF_FOUND)
+    target_include_directories(ainas-backend-cpp PRIVATE ${QPDF_INCLUDE_DIRS})
+endif()

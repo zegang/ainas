@@ -26,6 +26,7 @@ public:
         LogLevel level{LogLevel::Info};
         bool console{true};
         std::string filePath{};
+        uint64_t maxFileSize{10 * 1024 * 1024}; // 10 MB – 0 to disable
     };
 
     static void init(Config config);

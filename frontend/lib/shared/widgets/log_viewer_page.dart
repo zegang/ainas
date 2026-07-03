@@ -124,6 +124,45 @@ class _LogViewerPageState extends State<LogViewerPage> {
     });
   }
 
+  Future<void> _clearLog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.logClearAction),
+        content: Text(l10n.logClearConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.logClearAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final file = File(_logFileName);
+      if (await file.exists()) {
+        await file.writeAsString('');
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.logClearAction)),
+      );
+      _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.logReadFailed(e.toString()))),
+      );
+    }
+  }
+
   Future<void> _copyLog() async {
     if (_logContent == null) return;
     await Clipboard.setData(ClipboardData(text: _logContent!));
@@ -244,6 +283,12 @@ class _LogViewerPageState extends State<LogViewerPage> {
                   SnackBar(content: Text(l10n.copiedToClipboard)),
                 );
               },
+            ),
+          if (_logContent != null)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep),
+              tooltip: l10n.logClearAction,
+              onPressed: () => _clearLog(context),
             ),
           IconButton(
             icon: const Icon(Icons.refresh),
