@@ -1254,4 +1254,258 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get uploadStatusUploading => 'Uploading';
+
+  @override
+  String get syncTitle => 'File Sync';
+
+  @override
+  String get syncNewConfig => 'New Sync Config';
+
+  @override
+  String get syncEmpty => 'No sync configurations';
+
+  @override
+  String get syncEmptyHint =>
+      'Create a sync to copy files from your device to the NAS';
+
+  @override
+  String get syncLoadFailed => 'Failed to load sync configs';
+
+  @override
+  String get syncDeleteTitle => 'Delete Sync Config';
+
+  @override
+  String syncDeleteConfirm(Object name) {
+    return 'Are you sure you want to delete \"$name\"?';
+  }
+
+  @override
+  String syncTriggered(int count) {
+    return 'Sync completed — $count file(s) copied';
+  }
+
+  @override
+  String get syncNameLabel => 'Name';
+
+  @override
+  String get syncNameHint => 'e.g. Photos Backup';
+
+  @override
+  String get syncNameRequired => 'Name is required';
+
+  @override
+  String get syncSourceLabel => 'Source (local folder)';
+
+  @override
+  String get syncSourceHint => 'Path to local folder on this device';
+
+  @override
+  String get syncSourceRequired => 'Source path is required';
+
+  @override
+  String get syncTargetLabel => 'Target (NAS folder)';
+
+  @override
+  String get syncTargetHint => 'Path on the NAS (e.g. /Backups)';
+
+  @override
+  String get syncTargetRequired => 'Target path is required';
+
+  @override
+  String get syncIntervalLabel => 'Sync interval (seconds, 0 = manual only)';
+
+  @override
+  String get syncIntervalHint => '0 for manual sync';
+
+  @override
+  String get syncPolicyLabel => 'Sync Policy';
+
+  @override
+  String get syncTypeInterval => 'Time Interval (seconds)';
+
+  @override
+  String get syncTypeDaily => 'Daily at specific time';
+
+  @override
+  String get syncTypeWatch => 'Watch folder changes';
+
+  @override
+  String get syncDailyTimeLabel => 'Sync time';
+
+  @override
+  String get syncWatchNote =>
+      'Syncs automatically when files change in the source folder';
+
+  @override
+  String syncToggleFailed(Object error) {
+    return 'Failed to toggle sync config: $error';
+  }
+
+  @override
+  String syncTriggerFailed(Object error) {
+    return 'Sync failed: $error';
+  }
+
+  @override
+  String get syncDeleteFailed => 'Failed to delete sync config';
+
+  @override
+  String syncCreateFailed(Object error) {
+    return 'Failed to create sync config: $error';
+  }
+
+  @override
+  String get syncGetFailed => 'Failed to get sync config';
+
+  @override
+  String syncUpdateFailed(Object error) {
+    return 'Failed to update sync config: $error';
+  }
+
+  @override
+  String get syncTriggerNow => 'Sync now';
+
+  @override
+  String syncLastSynced(Object datetime) {
+    return 'Last synced: $datetime';
+  }
+
+  @override
+  String get syncBrowseLocalFolder => 'Browse local folder';
+
+  @override
+  String get syncBrowseNasFolder => 'Browse NAS folder';
+
+  @override
+  String get syncSelectTargetFolder => 'Select target folder';
+
+  @override
+  String get windowSettingsTitle => 'Window Settings';
+
+  @override
+  String get windowSettingsRegular => 'Regular';
+
+  @override
+  String get windowSettingsDialog => 'Dialog';
+
+  @override
+  String get windowSettingsTooltip => 'Tooltip';
+
+  @override
+  String get windowSettingsInitialWidth => 'Initial width';
+
+  @override
+  String get windowSettingsInitialHeight => 'Initial height';
+
+  @override
+  String get windowSettingsDecorations => 'Decorations';
+
+  @override
+  String get windowSettingsParentAnchor => 'Parent Anchor';
+
+  @override
+  String get windowSettingsChildAnchor => 'Child Anchor';
+
+  @override
+  String get windowSettingsOffset => 'Offset';
+
+  @override
+  String get windowSettingsX => 'X';
+
+  @override
+  String get windowSettingsY => 'Y';
+
+  @override
+  String get windowSettingsConstraintAdjustment => 'Constraint Adjustment';
+
+  @override
+  String get windowSettingsFlip => 'Flip';
+
+  @override
+  String get windowSettingsSlide => 'Slide';
+
+  @override
+  String get windowSettingsResize => 'Resize';
+
+  @override
+  String get editButton => 'Edit';
+
+  @override
+  String get syncEditConfig => 'Edit Sync Config';
+
+  @override
+  String get syncConfigInfo => 'Config Info';
+
+  @override
+  String get syncFileList => 'Files';
+
+  @override
+  String get syncFileListEmpty => 'No files synced yet';
+
+  @override
+  String get enabledLabel => 'Enabled';
+
+  @override
+  String get yesLabel => 'Yes';
+
+  @override
+  String get noLabel => 'No';
+
+  @override
+  String get syncLastSyncedTime => 'Last Synced';
+
+  @override
+  String get syncDeleteAfterSyncLabel => 'Delete files after sync';
+
+  @override
+  String get syncDeleteAfterSyncHint =>
+      'Remove source files once they are synced to the target';
+
+  @override
+  String get syncStats => 'Stats';
+
+  @override
+  String get syncSourceCount => 'Source';
+
+  @override
+  String get syncTargetCount => 'Target';
+
+  @override
+  String get syncSyncedCount => 'Synced';
+
+  @override
+  String get syncSourceNotFound => 'Source folder not found';
+
+  @override
+  String get syncSourceEmpty => 'Source folder is empty';
+
+  @override
+  String get syncAlreadyUpToDate => 'All files are up to date';
+
+  @override
+  String get syncSourceFilesRemoved => 'Source files removed after sync';
+
+  @override
+  String get syncPendingCount => 'Pending';
+
+  @override
+  String get syncFilesFound => 'files found';
+
+  @override
+  String get syncScanning => 'Scanning...';
+
+  @override
+  String get moreOptions => 'More options';
+
+  @override
+  String get startSync => 'Sync to AINAS';
+
+  @override
+  String get pullToLocal => 'Pull to Local';
+
+  @override
+  String get syncCompleted => 'Sync completed successfully';
+
+  @override
+  String get syncFailed => 'Sync failed';
 }

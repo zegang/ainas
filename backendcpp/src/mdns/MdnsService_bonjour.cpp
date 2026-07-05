@@ -1,5 +1,6 @@
 #include "ainas/mdns/MdnsService.hpp"
 #include "ainas/logging/Logger.hpp"
+#include "ainas/platform/Platform.hpp"
 
 #include <cstdint>
 #include <cstring>
@@ -100,20 +101,7 @@ static BonjourApi s_bonjour;
 //===----------------------------------------------------------------------===//
 
 std::string MdnsService::getHostname() {
-    char buf[256];
-#ifdef _WIN32
-    DWORD size = sizeof(buf);
-    if (GetComputerNameA(buf, &size)) {
-        buf[sizeof(buf) - 1] = '\0';
-        return buf;
-    }
-#else
-    if (gethostname(buf, sizeof(buf)) == 0) {
-        buf[sizeof(buf) - 1] = '\0';
-        return buf;
-    }
-#endif
-    return "unknown";
+    return ainas::platform::hostname();
 }
 
 //===----------------------------------------------------------------------===//

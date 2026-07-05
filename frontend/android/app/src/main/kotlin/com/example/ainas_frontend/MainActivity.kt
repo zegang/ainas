@@ -1,4 +1,4 @@
-package com.example.ainas_frontend
+package org.zlab.ainas_frontend
 
 import io.flutter.embedding.android.FlutterActivity
 

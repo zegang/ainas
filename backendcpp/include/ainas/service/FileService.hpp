@@ -2,6 +2,7 @@
 
 #include "ainas/config/Config.hpp"
 #include "ainas/database/FileRepository.hpp"
+#include "ainas/database/SyncConfigRepository.hpp"
 #include "ainas/dto/DTOs.hpp"
 
 #include <filesystem>
@@ -23,6 +24,8 @@ class FileService {
 public:
     explicit FileService(std::shared_ptr<Config> config,
                          Database& database);
+
+    void setSyncConfigRepo(SyncConfigRepository* repo) { m_syncConfigRepo = repo; }
 
     oatpp::Object<FileListResponseDto> listFiles(const oatpp::String& pathStr);
     oatpp::Object<UploadResponseDto> uploadFile(const std::string& tmpPath,
@@ -47,6 +50,7 @@ public:
 private:
     std::shared_ptr<Config> m_config;
     FileRepository m_repo;
+    SyncConfigRepository* m_syncConfigRepo = nullptr;
 
     v_int64 formatTime(std::filesystem::file_time_type ftime) const;
     oatpp::Object<FileItemDto> makeFileItem(const std::filesystem::directory_entry& entry,

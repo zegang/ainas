@@ -1,5 +1,6 @@
 #include "ainas/mdns/MdnsService.hpp"
 #include "ainas/logging/Logger.hpp"
+#include "ainas/platform/Platform.hpp"
 
 #include <avahi-client/client.h>
 #include <avahi-client/publish.h>
@@ -20,12 +21,7 @@ namespace ainas {
 //===----------------------------------------------------------------------===//
 
 std::string MdnsService::getHostname() {
-    char buf[256];
-    if (gethostname(buf, sizeof(buf)) == 0) {
-        buf[sizeof(buf) - 1] = '\0';
-        return buf;
-    }
-    return "unknown";
+    return ainas::platform::hostname();
 }
 
 //===----------------------------------------------------------------------===//

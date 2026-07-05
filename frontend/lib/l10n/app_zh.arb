@@ -573,5 +573,211 @@
       "path": {}
     }
   },
-  "uploadStatusUploading": "上传中"
+  "uploadStatusUploading": "上传中",
+  "syncTitle": "文件同步",
+  "syncNewConfig": "新建同步",
+  "syncEmpty": "暂无同步配置",
+  "syncEmptyHint": "创建同步任务，将设备文件复制到 NAS",
+  "syncLoadFailed": "加载同步配置失败",
+  "syncDeleteTitle": "删除同步配置",
+  "syncDeleteConfirm": "确定要删除同步 \"{name}\" 吗？",
+  "@syncDeleteConfirm": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "syncTriggered": "同步完成 — 已复制 {count} 个文件",
+  "@syncTriggered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncNameLabel": "名称",
+  "syncNameHint": "例如：照片备份",
+  "syncNameRequired": "名称不能为空",
+  "syncSourceLabel": "源路径（本地文件夹）",
+  "syncSourceHint": "设备上的本地文件夹路径",
+  "syncSourceRequired": "源路径不能为空",
+  "syncTargetLabel": "目标路径（NAS 文件夹）",
+  "syncTargetHint": "NAS 上的路径（如 /Backups）",
+  "syncTargetRequired": "目标路径不能为空",
+  "syncIntervalLabel": "同步间隔（秒，0 = 仅手动）",
+  "syncIntervalHint": "0 表示仅手动同步",
+  "syncPolicyLabel": "同步策略",
+  "@syncPolicyLabel": {
+    "description": "Label for the sync policy/schedule type selector"
+  },
+  "syncTypeInterval": "时间间隔（秒）",
+  "@syncTypeInterval": {
+    "description": "Label for interval-based sync type"
+  },
+  "syncTypeDaily": "每天指定时间同步",
+  "@syncTypeDaily": {
+    "description": "Label for daily scheduled sync type"
+  },
+  "syncTypeWatch": "监控文件夹变化",
+  "@syncTypeWatch": {
+    "description": "Label for file-watching sync type"
+  },
+  "syncDailyTimeLabel": "同步时间",
+  "@syncDailyTimeLabel": {
+    "description": "Label for the daily sync time picker"
+  },
+  "syncWatchNote": "源文件夹中文件发生变化时自动同步",
+  "@syncWatchNote": {
+    "description": "Note shown for watch-based sync type"
+  },
+  "syncToggleFailed": "切换同步配置失败：{error}",
+  "@syncToggleFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "syncTriggerFailed": "同步失败：{error}",
+  "@syncTriggerFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "syncDeleteFailed": "删除同步配置失败",
+  "syncCreateFailed": "创建同步配置失败：{error}",
+  "@syncCreateFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "syncGetFailed": "获取同步配置失败",
+  "syncUpdateFailed": "更新同步配置失败：{error}",
+  "@syncUpdateFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "syncTriggerNow": "立即同步",
+  "syncLastSynced": "上次同步：{datetime}",
+  "@syncLastSynced": {
+    "placeholders": {
+      "datetime": {}
+    }
+  },
+  "syncBrowseLocalFolder": "浏览本地文件夹",
+  "syncBrowseNasFolder": "浏览 NAS 文件夹",
+  "syncSelectTargetFolder": "选择目标文件夹",
+  "windowSettingsTitle": "窗口设置",
+  "windowSettingsRegular": "常规",
+  "windowSettingsDialog": "对话框",
+  "windowSettingsTooltip": "工具提示",
+  "windowSettingsInitialWidth": "初始宽度",
+  "windowSettingsInitialHeight": "初始高度",
+  "windowSettingsDecorations": "装饰",
+  "windowSettingsParentAnchor": "父锚点",
+  "windowSettingsChildAnchor": "子锚点",
+  "windowSettingsOffset": "偏移",
+  "windowSettingsX": "X",
+  "windowSettingsY": "Y",
+  "windowSettingsConstraintAdjustment": "约束调整",
+  "windowSettingsFlip": "翻转",
+  "windowSettingsSlide": "滑动",
+  "windowSettingsResize": "调整大小",
+  "editButton": "编辑",
+  "@editButton": {
+    "description": "Edit button label"
+  },
+  "syncEditConfig": "编辑同步配置",
+  "@syncEditConfig": {
+    "description": "Title for editing a sync config"
+  },
+  "syncConfigInfo": "配置信息",
+  "@syncConfigInfo": {
+    "description": "Section header for config details"
+  },
+  "syncFileList": "文件列表",
+  "@syncFileList": {
+    "description": "Section header for synced file list"
+  },
+  "syncFileListEmpty": "暂无已同步文件",
+  "@syncFileListEmpty": {
+    "description": "Placeholder when no files have been synced"
+  },
+  "enabledLabel": "已启用",
+  "yesLabel": "是",
+  "noLabel": "否",
+  "syncLastSyncedTime": "上次同步时间",
+  "@syncLastSyncedTime": {
+    "description": "Label for the last synced timestamp on details page"
+  },
+  "syncDeleteAfterSyncLabel": "同步后删除源文件",
+  "@syncDeleteAfterSyncLabel": {
+    "description": "Label for the 'delete after sync' toggle"
+  },
+  "syncDeleteAfterSyncHint": "文件同步到目标后删除源文件",
+  "@syncDeleteAfterSyncHint": {
+    "description": "Hint text explaining what 'delete after sync' does"
+  },
+  "syncStats": "统计",
+  "@syncStats": {
+    "description": "Section header for sync statistics"
+  },
+  "syncSourceCount": "源文件",
+  "@syncSourceCount": {
+    "description": "Label under source file count on details page"
+  },
+  "syncTargetCount": "目标文件",
+  "@syncTargetCount": {
+    "description": "Label under target file count on details page"
+  },
+  "syncSyncedCount": "已同步",
+  "@syncSyncedCount": {
+    "description": "Label under synced file count on details page"
+  },
+  "syncSourceNotFound": "源文件夹不存在",
+  "@syncSourceNotFound": {
+    "description": "Error when source folder doesn't exist"
+  },
+  "syncSourceEmpty": "源文件夹为空",
+  "@syncSourceEmpty": {
+    "description": "Message when source folder has no files"
+  },
+  "syncAlreadyUpToDate": "所有文件已是最新",
+  "@syncAlreadyUpToDate": {
+    "description": "Message when no files need syncing"
+  },
+  "syncSourceFilesRemoved": "同步后已删除源文件",
+  "@syncSourceFilesRemoved": {
+    "description": "Message shown after source files are deleted post-sync"
+  },
+  "syncPendingCount": "待同步",
+  "@syncPendingCount": {
+    "description": "Label under pending file count on details page"
+  },
+  "syncFilesFound": "个文件",
+  "@syncFilesFound": {
+    "description": "Text after scan count, e.g. '42 files found'"
+  },
+  "syncScanning": "正在扫描...",
+  "@syncScanning": {
+    "description": "Status text while scanning local files"
+  },
+  "moreOptions": "更多选项",
+  "@moreOptions": {
+    "description": "Tooltip for menu button"
+  },
+  "startSync": "同步到 AINAS",
+  "@startSync": {
+    "description": "Menu item to upload files to server"
+  },
+  "pullToLocal": "拉取到本地",
+  "@pullToLocal": {
+    "description": "Menu item to download files from server"
+  },
+  "syncCompleted": "同步完成",
+  "@syncCompleted": {
+    "description": "Success message after sync"
+  },
+  "syncFailed": "同步失败",
+  "@syncFailed": {
+    "description": "Error message when sync fails"
+  }
 }

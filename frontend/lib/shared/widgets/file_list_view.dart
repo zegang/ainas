@@ -14,10 +14,11 @@ class FileListView extends StatelessWidget {
   final Function(int, bool) onSort;
   final Function(FileItem) onItemTap;
   final Function(String, FileItem) onActionSelected;
+  final Function(FileItem)? onSyncConfigTap;
   final Set<FileItem> selectedItems;
   final Function(bool?) onSelectAll;
   final Function(FileItem, bool?) onItemSelected;
-  final bool showSizeColumn;
+  final   bool showSizeColumn;
   final bool showTypeColumn;
   final bool showDateColumn;
   final bool showActionMenu;
@@ -32,6 +33,7 @@ class FileListView extends StatelessWidget {
     required this.onItemTap,
     required this.onActionSelected,
     required this.selectedItems,
+    this.onSyncConfigTap,
     required this.onSelectAll,
     required this.onItemSelected,
     this.showSizeColumn = true,
@@ -210,6 +212,19 @@ class FileListView extends StatelessWidget {
               ),
             if (showTypeColumn) Expanded(flex: 1, child: Text(typeStr, style: const TextStyle(fontSize: 13, color: Colors.grey))),
             if (showDateColumn) Expanded(flex: 2, child: Text(dateStr, style: const TextStyle(fontSize: 13, color: Colors.grey))),
+            if (showActionMenu && item.syncConfigName != null && onSyncConfigTap != null)
+              SizedBox(
+                width: 32,
+                height: 32,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onSyncConfigTap!(item),
+                  child: Tooltip(
+                    message: item.syncConfigName!,
+                    child: Icon(Icons.sync, size: 18, color: Theme.of(context).colorScheme.primary),
+                  ),
+                ),
+              ),
             if (showActionMenu) FileActionMenu(item: item, onActionSelected: onActionSelected),
           ],
         ),

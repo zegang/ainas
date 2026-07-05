@@ -250,7 +250,7 @@ bool FileRepository::deleteById(int64_t id) {
         "DELETE FROM file_metadata WHERE id = ?");
     stmt.bind(1, id);
     stmt.step();
-    return m_db.lastInsertRowId() > 0;
+    return sqlite3_changes(m_db.handle()) > 0;
 }
 
 bool FileRepository::deleteByPath(const std::string& path) {
@@ -258,7 +258,7 @@ bool FileRepository::deleteByPath(const std::string& path) {
         "DELETE FROM file_metadata WHERE path = ?");
     stmt.bind(1, path);
     stmt.step();
-    return m_db.lastInsertRowId() > 0;
+    return sqlite3_changes(m_db.handle()) > 0;
 }
 
 int64_t FileRepository::deleteByParentId(int64_t parentId) {

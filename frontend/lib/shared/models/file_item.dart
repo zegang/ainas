@@ -9,6 +9,8 @@ class FileItem {
   final int size;
   final DateTime updatedAt;
   final DateTime createdAt;
+  final String? syncConfigName;
+  final int? syncConfigId;
 
   FileItem({
     required this.name,
@@ -18,6 +20,8 @@ class FileItem {
     this.size = 0,
     required this.updatedAt,
     required this.createdAt,
+    this.syncConfigName,
+    this.syncConfigId,
   });
 
   factory FileItem.fromJson(Map<String, dynamic> json) {
@@ -29,6 +33,8 @@ class FileItem {
       size: json['size'] ?? 0,
       updatedAt: DateTime.fromMillisecondsSinceEpoch(((json['updated_at'] ?? 0) * 1000).toInt()),
       createdAt: DateTime.fromMillisecondsSinceEpoch(((json['created_at'] ?? 0) * 1000).toInt()),
+      syncConfigName: json['sync_config_name'] as String?,
+      syncConfigId: json['sync_config_id'] as int?,
     );
   }
 

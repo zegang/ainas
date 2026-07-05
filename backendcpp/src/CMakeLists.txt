@@ -1,7 +1,36 @@
-# -- Platform-specific mDNS source file ------------------------------
+# ── Platform abstraction source file ────────────────────────────────
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    # Prefer native Avahi API over Bonjour compat layer (avoids
-    # "Please fix your application to use the native API of Avahi!" warning)
+    if(ANDROID)
+        set(PLATFORM_SOURCE platform/Platform_android.cpp)
+        message(STATUS "Platform: Android")
+    else()
+        set(PLATFORM_SOURCE platform/Platform_linux.cpp)
+        message(STATUS "Platform: Linux")
+    endif()
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        set(PLATFORM_SOURCE platform/Platform_ios.cpp)
+        message(STATUS "Platform: iOS")
+    else()
+        set(PLATFORM_SOURCE platform/Platform_macos.cpp)
+        message(STATUS "Platform: macOS")
+    endif()
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(PLATFORM_SOURCE platform/Platform_windows.cpp)
+    message(STATUS "Platform: Windows")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    set(PLATFORM_SOURCE platform/Platform_android.cpp)
+    message(STATUS "Platform: Android")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(PLATFORM_SOURCE platform/Platform_ios.cpp)
+    message(STATUS "Platform: iOS")
+else()
+    set(PLATFORM_SOURCE platform/Platform_linux.cpp)
+    message(STATUS "Platform: ${CMAKE_SYSTEM_NAME} (fallback to Linux)")
+endif()
+
+# ── Platform-specific mDNS source file ─────────────────────────────
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
         pkg_check_modules(AVAHI_CLIENT avahi-client)
@@ -37,6 +66,7 @@ else()
     message(STATUS "mDNS: Not available on ${CMAKE_SYSTEM_NAME}")
 endif()
 
+# ── System libraries ───────────────────────────────────────────────
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
     pkg_check_modules(SQLITE3 sqlite3)
@@ -111,7 +141,12 @@ add_executable(ainas-backend-cpp
     database/FileRepository.cpp
     database/ConfigRepository.cpp
     database/UserRepository.cpp
+    database/SyncConfigRepository.cpp
+    database/SyncFileManifestRepository.cpp
+    service/SyncService.cpp
+    controller/SyncController.cpp
     ${MDNS_SOURCE}
+    ${PLATFORM_SOURCE}
 )
 
 target_link_libraries(ainas-backend-cpp PRIVATE

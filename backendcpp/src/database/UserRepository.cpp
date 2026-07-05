@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <sqlite3.h>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
@@ -217,7 +218,7 @@ bool UserRepository::deleteUser(const std::string& username) {
         "DELETE FROM users WHERE username = ?");
     stmt.bind(1, username);
     stmt.step();
-    return m_db.lastInsertRowId() > 0;
+    return sqlite3_changes(m_db.handle()) > 0;
 }
 
 std::string UserRepository::hashPassword(const std::string& password) {

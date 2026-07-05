@@ -5,6 +5,7 @@
 #include "ainas/database/UserRepository.hpp"
 #include "ainas/dto/DTOs.hpp"
 #include "ainas/logging/Logger.hpp"
+#include "ainas/platform/Platform.hpp"
 #include "ainas/service/FileService.hpp"
 #include "ainas/service/PdfService.hpp"
 #include "ainas/service/ThumbnailService.hpp"
@@ -14,6 +15,10 @@
 #include "ainas/controller/SystemController.hpp"
 #include "ainas/controller/AiController.hpp"
 #include "ainas/controller/UserController.hpp"
+#include "ainas/database/SyncConfigRepository.hpp"
+#include "ainas/database/SyncFileManifestRepository.hpp"
+#include "ainas/service/SyncService.hpp"
+#include "ainas/controller/SyncController.hpp"
 #include "ainas/mdns/MdnsService.hpp"
 #include "ainas/util/cflag.hpp"
 
@@ -29,17 +34,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <exception>
+#include <fcntl.h>
 #include <iostream>
 #include <memory>
-
-#if defined(_WIN32)
-#include <windows.h>
-#include <io.h>
-#include <fcntl.h>
-#else
-#include <fcntl.h>
-#include <unistd.h>
-#endif
 
 namespace {
 
@@ -65,38 +62,21 @@ void stopAiService() {
 // ── Crash-safe logging helpers ──────────────────────────────────────
 // These avoid the Logger (mutex, std::format) to work even in corrupt state.
 
-static void safeWriteStr(int fd, const char* s) {
-#if defined(_WIN32)
-    _write(fd, s, static_cast<unsigned>(std::strlen(s)));
-#else
-    write(fd, s, std::strlen(s));
-#endif
-}
-
 static void crashLog(const char* msg) {
-    safeWriteStr(STDERR_FILENO, msg);
-    safeWriteStr(STDERR_FILENO, "\n");
+    ainas::platform::safeWrite(2, msg);
+    ainas::platform::safeWrite(2, "\n");
 
     // Also append to the log file if the Logger is alive
     try {
         auto& logger = ainas::Logger::instance();
         auto path = logger.getLogFilePath();
         if (!path.empty()) {
-#if defined(_WIN32)
-            int fd = _open(path.c_str(), _O_WRONLY | _O_APPEND | _O_CREAT, 0644);
+            int fd = ainas::platform::safeOpen(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0644);
             if (fd >= 0) {
-                safeWriteStr(fd, msg);
-                safeWriteStr(fd, "\n");
-                _close(fd);
+                ainas::platform::safeWrite(fd, msg);
+                ainas::platform::safeWrite(fd, "\n");
+                ainas::platform::safeClose(fd);
             }
-#else
-            int fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0644);
-            if (fd >= 0) {
-                safeWriteStr(fd, msg);
-                safeWriteStr(fd, "\n");
-                close(fd);
-            }
-#endif
         }
     } catch (...) {
         // Logger not yet initialised — ignore
@@ -152,11 +132,7 @@ void sigabrtHandler(int) {
 }
 
 void setEnvVar(const char* name, const char* value) {
-#if defined(_WIN32)
-    _putenv_s(name, value);
-#else
-    setenv(name, value, 1);
-#endif
+    ainas::platform::setEnv(name, value);
 }
 
 void applyFlags(const ainas::util::FlagParser& flags) {
@@ -180,42 +156,12 @@ void applyFlags(const ainas::util::FlagParser& flags) {
     }
 }
 
-#if defined(__unix__) || defined(__APPLE__)
 void daemonize() {
-    pid_t pid = fork();
-    if (pid < 0) {
-        std::cerr << "Daemon: fork failed\n";
+    if (!ainas::platform::daemonize()) {
+        std::cerr << "Daemon: failed to daemonize\n";
         exit(EXIT_FAILURE);
-    }
-    if (pid > 0) {
-        exit(EXIT_SUCCESS);
-    }
-
-    if (setsid() < 0) {
-        std::cerr << "Daemon: setsid failed\n";
-        exit(EXIT_FAILURE);
-    }
-
-    signal(SIGHUP, SIG_IGN);
-
-    pid = fork();
-    if (pid < 0) {
-        std::cerr << "Daemon: second fork failed\n";
-        exit(EXIT_FAILURE);
-    }
-    if (pid > 0) {
-        exit(EXIT_SUCCESS);
-    }
-
-    int fd = open("/dev/null", O_RDWR);
-    if (fd >= 0) {
-        dup2(fd, STDIN_FILENO);
-        dup2(fd, STDOUT_FILENO);
-        dup2(fd, STDERR_FILENO);
-        if (fd > 2) close(fd);
     }
 }
-#endif
 
 ainas::LogLevel parseLogLevel() {
     if (auto* env = std::getenv("AINAS_LOG_LEVEL")) {
@@ -237,16 +183,12 @@ int main(int argc, const char* argv[]) {
 
     bool isDaemon = flags.has("daemon");
 
-#if defined(__unix__) || defined(__APPLE__)
     if (isDaemon) {
-        daemonize();
+        if (!ainas::platform::daemonize()) {
+            std::cerr << "Warning: --daemon is not supported on this platform, running in foreground\n";
+            isDaemon = false;
+        }
     }
-#else
-    if (isDaemon) {
-        std::cerr << "Warning: --daemon is not supported on this platform, running in foreground\n";
-        isDaemon = false;
-    }
-#endif
 
     oatpp::Environment::init();
 
@@ -310,6 +252,14 @@ int main(int argc, const char* argv[]) {
     auto userRepo = std::make_shared<ainas::UserRepository>(*database);
     userRepo->migrate();
     router->addController(ainas::UserController::createShared(objectMapper, userRepo));
+
+    auto syncRepo = std::make_shared<ainas::SyncConfigRepository>(*database);
+    syncRepo->migrate();
+    fileService->setSyncConfigRepo(syncRepo.get());
+    auto syncManifestRepo = std::make_shared<ainas::SyncFileManifestRepository>(*database);
+    syncManifestRepo->migrate();
+    auto syncService = std::make_shared<ainas::SyncService>(config, *syncRepo, *syncManifestRepo);
+    router->addController(ainas::SyncController::createShared(objectMapper, syncRepo, syncService));
 
     oatpp::network::Address address(
         config->addr.c_str(),

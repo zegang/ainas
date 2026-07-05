@@ -782,8 +782,18 @@ jobs:
           REL=backendcpp/build/src/Release
           mkdir -p staging/bin
           cp "$REL"/ainas-backend-cpp.exe staging/
-          cp "$REL"/bin/cllama.exe staging/bin/
-          cp "$REL"/bin/cllama_runner.exe staging/bin/
+          # cllama binaries: try expected location first, then find from
+          # ExternalProject build dir (multi-config generators put outputs
+          # under a $<CONFIG>/ subdirectory).
+          if [ -f "$REL/bin/cllama.exe" ]; then
+            cp "$REL"/bin/cllama.exe staging/bin/
+            cp "$REL"/bin/cllama_runner.exe staging/bin/
+          else
+            # Find cllama.exe anywhere under the cllama build tree
+            find backendcpp/build/cllama -name "cllama.exe" -exec cp {} staging/bin/ \; 2>/dev/null || :
+            find backendcpp/build/cllama -name "cllama_runner.exe" -exec cp {} staging/bin/ \; 2>/dev/null || :
+            echo "cllama binaries: searched from ExternalProject build tree"
+          fi
           cp "$REL"/*.dll staging/ 2>/dev/null || true
           cp "$REL"/bin/*.dll staging/bin/ 2>/dev/null || true
           tar czf ainas-backendcpp-windows.tar.gz -C staging .
@@ -888,26 +898,18 @@ jobs:
           REL=backendcpp/build/src/Release
           mkdir -p staging/bin
           cp "$REL"/ainas-backend-cpp.exe staging/
-          cp "$REL"/bin/cllama.exe staging/bin/
-          cp "$REL"/bin/cllama_runner.exe staging/bin/
+          if [ -f "$REL/bin/cllama.exe" ]; then
+            cp "$REL"/bin/cllama.exe staging/bin/
+            cp "$REL"/bin/cllama_runner.exe staging/bin/
+          else
+            find backendcpp/build/cllama -name "cllama.exe" -exec cp {} staging/bin/ \; 2>/dev/null || :
+            find backendcpp/build/cllama -name "cllama_runner.exe" -exec cp {} staging/bin/ \; 2>/dev/null || :
+            echo "cllama binaries: searched from ExternalProject build tree"
+          fi
           cp "$REL"/*.dll staging/ 2>/dev/null || true
           cp "$REL"/bin/*.dll staging/bin/ 2>/dev/null || true
           tar czf ainas-backendcpp-windows7.tar.gz -C staging .
           rm -rf staging
-
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: ainas-backendcpp-windows7.tar.gz
-          fail_on_unmatched_files: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/upload-artifact@v5
-        with:
-           name: ainas-backendcpp-windows7
-           path: ainas-backendcpp-windows7.tar.gz
 
   # ─── Full bundles: Flutter frontend + C++ backend ──────────────────
   ainas-full-linux:

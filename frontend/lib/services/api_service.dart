@@ -8,6 +8,7 @@ import 'db_service.dart';
 import 'settings_service.dart';
 import 'file_service.dart';
 import 'ai_service.dart';
+import 'sync_service.dart';
 import 'user_service.dart';
 import '../shared/models/chat_message.dart';
 import '../shared/models/file_item.dart';
@@ -18,12 +19,14 @@ class ApiService with ChangeNotifier {
     user.addListener(notifyListeners);
     ai.addListener(notifyListeners);
     files.baseUrl = settings.baseUrl;
+    sync.baseUrl = settings.baseUrl;
     settings.addListener(_onSettingsChanged);
     files.addListener(notifyListeners);
   }
 
   void _onSettingsChanged() {
     files.baseUrl = settings.baseUrl;
+    sync.baseUrl = settings.baseUrl;
     notifyListeners();
   }
 
@@ -36,11 +39,13 @@ class ApiService with ChangeNotifier {
   final settings = SettingsService();
   final files = FileService();
   final ai = AiService();
+  final sync = SyncService();
   final user = UserService();
 
   set dbService(DbService service) {
     settings.dbService = service;
     files.dbService = service;
+    sync.baseUrl = baseUrl;
     user.dbService = service;
   }
 
@@ -53,9 +58,14 @@ class ApiService with ChangeNotifier {
   Future<void> loadSettings() async {
     await settings.loadSettings();
     await user.loadSettings();
+    await sync.listConfigs();
+    sync.startAutoSync();
   }
   Future<void> updateBaseUrl(String url) => settings.updateBaseUrl(url);
-  Future<void> persistBaseUrl(String url) => settings.persistBaseUrl(url);
+  Future<void> persistBaseUrl(String url) {
+    sync.baseUrl = url;
+    return settings.persistBaseUrl(url);
+  }
   Future<void> persistLocale(String langCode) => settings.persistLocale(langCode);
   Future<void> persistThemeMode(ThemeMode mode) => settings.persistThemeMode(mode);
   Future<void> persistFontScale(double scale) => settings.persistFontScale(scale);

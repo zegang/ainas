@@ -19,12 +19,11 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 subprojects {
-    afterEvaluate {
-        // AGP 9.x requires namespace in every module. Inject one for
-        // third-party libraries (e.g. isar_flutter_libs) that omit it.
-        if (extensions.findByName("android") is com.android.build.gradle.LibraryExtension) {
-            extensions.configure<com.android.build.gradle.LibraryExtension> {
-                namespace.set(namespace.orNull ?: "com.example.${project.name}")
+    pluginManager.withPlugin("com.android.library") {
+        val androidExt = extensions.findByName("android")
+        if (androidExt is com.android.build.api.dsl.LibraryExtension) {
+            if (androidExt.namespace == null) {
+                androidExt.namespace = "org.zlab.${project.name}"
             }
         }
     }

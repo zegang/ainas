@@ -1,11 +1,10 @@
 #include "ainas/mdns/MdnsService.hpp"
 #include "ainas/logging/Logger.hpp"
+#include "ainas/platform/Platform.hpp"
 
 #ifdef _WIN32
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
-#else
-#include <unistd.h>
 #endif
 
 namespace ainas {
@@ -15,20 +14,7 @@ namespace ainas {
 //===----------------------------------------------------------------------===//
 
 std::string MdnsService::getHostname() {
-    char buf[256];
-#ifdef _WIN32
-    DWORD size = sizeof(buf);
-    if (GetComputerNameA(buf, &size)) {
-        buf[sizeof(buf) - 1] = '\0';
-        return buf;
-    }
-#else
-    if (gethostname(buf, sizeof(buf)) == 0) {
-        buf[sizeof(buf) - 1] = '\0';
-        return buf;
-    }
-#endif
-    return "unknown";
+    return ainas::platform::hostname();
 }
 
 MdnsService::MdnsService(const std::string& host, uint16_t port)

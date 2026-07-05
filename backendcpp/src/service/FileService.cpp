@@ -251,6 +251,27 @@ oatpp::Object<FileListResponseDto> FileService::listFiles(const oatpp::String& p
         response->items->push_back(recordToDto(rec));
     }
 
+    if (m_syncConfigRepo) {
+        auto syncConfigs = m_syncConfigRepo->findAll();
+        if (!syncConfigs.empty()) {
+            for (const auto& item : *response->items) {
+                if (!item->path) continue;
+                std::string itemPath(item->path->data(), item->path->size());
+                if (!itemPath.empty() && itemPath.front() == '/') {
+                    itemPath.erase(0, 1);
+                }
+                for (const auto& sc : syncConfigs) {
+                    if (itemPath == sc.targetPath ||
+                        itemPath.rfind(sc.targetPath + "/", 0) == 0) {
+                        item->syncConfigName = oatpp::String(sc.name);
+                        item->syncConfigId = sc.id;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     std::sort(response->items->begin(), response->items->end(),
         [](const auto& a, const auto& b) {
             return str(a->name) < str(b->name);

@@ -80,11 +80,6 @@ private:
     std::shared_ptr<Config> m_config;
     std::shared_ptr<AiState> m_aiState;
 
-#if defined(_WIN32)
-    void* m_processHandle{nullptr};
-    void* m_threadHandle{nullptr};
-#endif
-
     bool spawnCllama();
     bool waitForReady(int timeoutSeconds);
     void terminate();

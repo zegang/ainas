@@ -591,6 +591,212 @@
       "path": {}
     }
   },
-  "uploadStatusUploading": "Uploading"
+  "uploadStatusUploading": "Uploading",
+  "syncTitle": "File Sync",
+  "syncNewConfig": "New Sync Config",
+  "syncEmpty": "No sync configurations",
+  "syncEmptyHint": "Create a sync to copy files from your device to the NAS",
+  "syncLoadFailed": "Failed to load sync configs",
+  "syncDeleteTitle": "Delete Sync Config",
+  "syncDeleteConfirm": "Are you sure you want to delete \"{name}\"?",
+  "@syncDeleteConfirm": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "syncTriggered": "Sync completed — {count} file(s) copied",
+  "@syncTriggered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncNameLabel": "Name",
+  "syncNameHint": "e.g. Photos Backup",
+  "syncNameRequired": "Name is required",
+  "syncSourceLabel": "Source (local folder)",
+  "syncSourceHint": "Path to local folder on this device",
+  "syncSourceRequired": "Source path is required",
+  "syncTargetLabel": "Target (NAS folder)",
+  "syncTargetHint": "Path on the NAS (e.g. /Backups)",
+  "syncTargetRequired": "Target path is required",
+  "syncIntervalLabel": "Sync interval (seconds, 0 = manual only)",
+  "syncIntervalHint": "0 for manual sync",
+  "syncPolicyLabel": "Sync Policy",
+  "@syncPolicyLabel": {
+    "description": "Label for the sync policy/schedule type selector"
+  },
+  "syncTypeInterval": "Time Interval (seconds)",
+  "@syncTypeInterval": {
+    "description": "Label for interval-based sync type"
+  },
+  "syncTypeDaily": "Daily at specific time",
+  "@syncTypeDaily": {
+    "description": "Label for daily scheduled sync type"
+  },
+  "syncTypeWatch": "Watch folder changes",
+  "@syncTypeWatch": {
+    "description": "Label for file-watching sync type"
+  },
+  "syncDailyTimeLabel": "Sync time",
+  "@syncDailyTimeLabel": {
+    "description": "Label for the daily sync time picker"
+  },
+  "syncWatchNote": "Syncs automatically when files change in the source folder",
+  "@syncWatchNote": {
+    "description": "Note shown for watch-based sync type"
+  },
+  "syncToggleFailed": "Failed to toggle sync config: {error}",
+  "@syncToggleFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "syncTriggerFailed": "Sync failed: {error}",
+  "@syncTriggerFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "syncDeleteFailed": "Failed to delete sync config",
+  "syncCreateFailed": "Failed to create sync config: {error}",
+  "@syncCreateFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "syncGetFailed": "Failed to get sync config",
+  "syncUpdateFailed": "Failed to update sync config: {error}",
+  "@syncUpdateFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "syncTriggerNow": "Sync now",
+  "syncLastSynced": "Last synced: {datetime}",
+  "@syncLastSynced": {
+    "placeholders": {
+      "datetime": {}
+    }
+  },
+  "syncBrowseLocalFolder": "Browse local folder",
+  "syncBrowseNasFolder": "Browse NAS folder",
+  "syncSelectTargetFolder": "Select target folder",
+  "windowSettingsTitle": "Window Settings",
+  "windowSettingsRegular": "Regular",
+  "windowSettingsDialog": "Dialog",
+  "windowSettingsTooltip": "Tooltip",
+  "windowSettingsInitialWidth": "Initial width",
+  "windowSettingsInitialHeight": "Initial height",
+  "windowSettingsDecorations": "Decorations",
+  "windowSettingsParentAnchor": "Parent Anchor",
+  "windowSettingsChildAnchor": "Child Anchor",
+  "windowSettingsOffset": "Offset",
+  "windowSettingsX": "X",
+  "windowSettingsY": "Y",
+  "windowSettingsConstraintAdjustment": "Constraint Adjustment",
+  "windowSettingsFlip": "Flip",
+  "windowSettingsSlide": "Slide",
+  "windowSettingsResize": "Resize",
+  "editButton": "Edit",
+  "@editButton": {
+    "description": "Edit button label"
+  },
+  "syncEditConfig": "Edit Sync Config",
+  "@syncEditConfig": {
+    "description": "Title for editing a sync config"
+  },
+  "syncConfigInfo": "Config Info",
+  "@syncConfigInfo": {
+    "description": "Section header for config details"
+  },
+  "syncFileList": "Files",
+  "@syncFileList": {
+    "description": "Section header for synced file list"
+  },
+  "syncFileListEmpty": "No files synced yet",
+  "@syncFileListEmpty": {
+    "description": "Placeholder when no files have been synced"
+  },
+  "enabledLabel": "Enabled",
+  "yesLabel": "Yes",
+  "noLabel": "No",
+  "syncLastSyncedTime": "Last Synced",
+  "@syncLastSyncedTime": {
+    "description": "Label for the last synced timestamp on details page"
+  },
+  "syncDeleteAfterSyncLabel": "Delete files after sync",
+  "@syncDeleteAfterSyncLabel": {
+    "description": "Label for the 'delete after sync' toggle"
+  },
+  "syncDeleteAfterSyncHint": "Remove source files once they are synced to the target",
+  "@syncDeleteAfterSyncHint": {
+    "description": "Hint text explaining what 'delete after sync' does"
+  },
+  "syncStats": "Stats",
+  "@syncStats": {
+    "description": "Section header for sync statistics"
+  },
+  "syncSourceCount": "Source",
+  "@syncSourceCount": {
+    "description": "Label under source file count on details page"
+  },
+  "syncTargetCount": "Target",
+  "@syncTargetCount": {
+    "description": "Label under target file count on details page"
+  },
+  "syncSyncedCount": "Synced",
+  "@syncSyncedCount": {
+    "description": "Label under synced file count on details page"
+  },
+  "syncSourceNotFound": "Source folder not found",
+  "@syncSourceNotFound": {
+    "description": "Error when source folder doesn't exist"
+  },
+  "syncSourceEmpty": "Source folder is empty",
+  "@syncSourceEmpty": {
+    "description": "Message when source folder has no files"
+  },
+  "syncAlreadyUpToDate": "All files are up to date",
+  "@syncAlreadyUpToDate": {
+    "description": "Message when no files need syncing"
+  },
+  "syncSourceFilesRemoved": "Source files removed after sync",
+  "@syncSourceFilesRemoved": {
+    "description": "Message shown after source files are deleted post-sync"
+  },
+  "syncPendingCount": "Pending",
+  "@syncPendingCount": {
+    "description": "Label under pending file count on details page"
+  },
+  "syncFilesFound": "files found",
+  "@syncFilesFound": {
+    "description": "Text after scan count, e.g. '42 files found'"
+  },
+  "syncScanning": "Scanning...",
+  "@syncScanning": {
+    "description": "Status text while scanning local files"
+  },
+  "moreOptions": "More options",
+  "@moreOptions": {
+    "description": "Tooltip for menu button"
+  },
+  "startSync": "Sync to AINAS",
+  "@startSync": {
+    "description": "Menu item to upload files to server"
+  },
+  "pullToLocal": "Pull to Local",
+  "@pullToLocal": {
+    "description": "Menu item to download files from server"
+  },
+  "syncCompleted": "Sync completed successfully",
+  "@syncCompleted": {
+    "description": "Success message after sync"
+  },
+  "syncFailed": "Sync failed",
+  "@syncFailed": {
+    "description": "Error message when sync fails"
+  }
 }
 

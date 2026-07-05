@@ -1,4 +1,5 @@
 #include "ainas/logging/Logger.hpp"
+#include "ainas/platform/Platform.hpp"
 
 #include <algorithm>
 #include <array>
@@ -83,11 +84,7 @@ std::string Logger::formatTimestamp(std::chrono::system_clock::time_point now) {
               1000;
     std::time_t t = std::chrono::system_clock::to_time_t(now);
     std::tm bt{};
-#if defined(_WIN32)
-    localtime_s(&bt, &t);
-#else
-    localtime_r(&t, &bt);
-#endif
+    ainas::platform::localtime(&t, &bt);
     char buf[64];
     std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &bt);
     return std::format("{}.{:03d}", buf, static_cast<int>(ms.count()));

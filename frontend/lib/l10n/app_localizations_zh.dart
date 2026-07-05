@@ -1239,4 +1239,255 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get uploadStatusUploading => '上传中';
+
+  @override
+  String get syncTitle => '文件同步';
+
+  @override
+  String get syncNewConfig => '新建同步';
+
+  @override
+  String get syncEmpty => '暂无同步配置';
+
+  @override
+  String get syncEmptyHint => '创建同步任务，将设备文件复制到 NAS';
+
+  @override
+  String get syncLoadFailed => '加载同步配置失败';
+
+  @override
+  String get syncDeleteTitle => '删除同步配置';
+
+  @override
+  String syncDeleteConfirm(Object name) {
+    return '确定要删除同步 \"$name\" 吗？';
+  }
+
+  @override
+  String syncTriggered(int count) {
+    return '同步完成 — 已复制 $count 个文件';
+  }
+
+  @override
+  String get syncNameLabel => '名称';
+
+  @override
+  String get syncNameHint => '例如：照片备份';
+
+  @override
+  String get syncNameRequired => '名称不能为空';
+
+  @override
+  String get syncSourceLabel => '源路径（本地文件夹）';
+
+  @override
+  String get syncSourceHint => '设备上的本地文件夹路径';
+
+  @override
+  String get syncSourceRequired => '源路径不能为空';
+
+  @override
+  String get syncTargetLabel => '目标路径（NAS 文件夹）';
+
+  @override
+  String get syncTargetHint => 'NAS 上的路径（如 /Backups）';
+
+  @override
+  String get syncTargetRequired => '目标路径不能为空';
+
+  @override
+  String get syncIntervalLabel => '同步间隔（秒，0 = 仅手动）';
+
+  @override
+  String get syncIntervalHint => '0 表示仅手动同步';
+
+  @override
+  String get syncPolicyLabel => '同步策略';
+
+  @override
+  String get syncTypeInterval => '时间间隔（秒）';
+
+  @override
+  String get syncTypeDaily => '每天指定时间同步';
+
+  @override
+  String get syncTypeWatch => '监控文件夹变化';
+
+  @override
+  String get syncDailyTimeLabel => '同步时间';
+
+  @override
+  String get syncWatchNote => '源文件夹中文件发生变化时自动同步';
+
+  @override
+  String syncToggleFailed(Object error) {
+    return '切换同步配置失败：$error';
+  }
+
+  @override
+  String syncTriggerFailed(Object error) {
+    return '同步失败：$error';
+  }
+
+  @override
+  String get syncDeleteFailed => '删除同步配置失败';
+
+  @override
+  String syncCreateFailed(Object error) {
+    return '创建同步配置失败：$error';
+  }
+
+  @override
+  String get syncGetFailed => '获取同步配置失败';
+
+  @override
+  String syncUpdateFailed(Object error) {
+    return '更新同步配置失败：$error';
+  }
+
+  @override
+  String get syncTriggerNow => '立即同步';
+
+  @override
+  String syncLastSynced(Object datetime) {
+    return '上次同步：$datetime';
+  }
+
+  @override
+  String get syncBrowseLocalFolder => '浏览本地文件夹';
+
+  @override
+  String get syncBrowseNasFolder => '浏览 NAS 文件夹';
+
+  @override
+  String get syncSelectTargetFolder => '选择目标文件夹';
+
+  @override
+  String get windowSettingsTitle => '窗口设置';
+
+  @override
+  String get windowSettingsRegular => '常规';
+
+  @override
+  String get windowSettingsDialog => '对话框';
+
+  @override
+  String get windowSettingsTooltip => '工具提示';
+
+  @override
+  String get windowSettingsInitialWidth => '初始宽度';
+
+  @override
+  String get windowSettingsInitialHeight => '初始高度';
+
+  @override
+  String get windowSettingsDecorations => '装饰';
+
+  @override
+  String get windowSettingsParentAnchor => '父锚点';
+
+  @override
+  String get windowSettingsChildAnchor => '子锚点';
+
+  @override
+  String get windowSettingsOffset => '偏移';
+
+  @override
+  String get windowSettingsX => 'X';
+
+  @override
+  String get windowSettingsY => 'Y';
+
+  @override
+  String get windowSettingsConstraintAdjustment => '约束调整';
+
+  @override
+  String get windowSettingsFlip => '翻转';
+
+  @override
+  String get windowSettingsSlide => '滑动';
+
+  @override
+  String get windowSettingsResize => '调整大小';
+
+  @override
+  String get editButton => '编辑';
+
+  @override
+  String get syncEditConfig => '编辑同步配置';
+
+  @override
+  String get syncConfigInfo => '配置信息';
+
+  @override
+  String get syncFileList => '文件列表';
+
+  @override
+  String get syncFileListEmpty => '暂无已同步文件';
+
+  @override
+  String get enabledLabel => '已启用';
+
+  @override
+  String get yesLabel => '是';
+
+  @override
+  String get noLabel => '否';
+
+  @override
+  String get syncLastSyncedTime => '上次同步时间';
+
+  @override
+  String get syncDeleteAfterSyncLabel => '同步后删除源文件';
+
+  @override
+  String get syncDeleteAfterSyncHint => '文件同步到目标后删除源文件';
+
+  @override
+  String get syncStats => '统计';
+
+  @override
+  String get syncSourceCount => '源文件';
+
+  @override
+  String get syncTargetCount => '目标文件';
+
+  @override
+  String get syncSyncedCount => '已同步';
+
+  @override
+  String get syncSourceNotFound => '源文件夹不存在';
+
+  @override
+  String get syncSourceEmpty => '源文件夹为空';
+
+  @override
+  String get syncAlreadyUpToDate => '所有文件已是最新';
+
+  @override
+  String get syncSourceFilesRemoved => '同步后已删除源文件';
+
+  @override
+  String get syncPendingCount => '待同步';
+
+  @override
+  String get syncFilesFound => '个文件';
+
+  @override
+  String get syncScanning => '正在扫描...';
+
+  @override
+  String get moreOptions => '更多选项';
+
+  @override
+  String get startSync => '同步到 AINAS';
+
+  @override
+  String get pullToLocal => '拉取到本地';
+
+  @override
+  String get syncCompleted => '同步完成';
+
+  @override
+  String get syncFailed => '同步失败';
 }

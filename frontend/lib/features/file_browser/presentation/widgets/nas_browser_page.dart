@@ -22,6 +22,9 @@ import 'package:ainas_frontend/shared/widgets/viewers/pdf_viewer_page.dart';
 import 'package:ainas_frontend/shared/widgets/viewers/docx_viewer_page.dart';
 import 'package:ainas_frontend/shared/widgets/viewers/image_viewer_page.dart';
 import 'package:ainas_frontend/shared/widgets/viewers/video_viewer_page.dart';
+import 'package:ainas_frontend/features/sync/presentation/widgets/sync_page.dart';
+import 'package:ainas_frontend/features/sync/presentation/widgets/sync_details_page.dart';
+import 'package:ainas_frontend/services/sync_service.dart';
 import 'upload_overlay.dart';
 import 'folder_picker_dialog.dart';
 import 'merge_to_pdf_dialog.dart';
@@ -666,6 +669,16 @@ class _NASBrowserState extends State<NASBrowser> {
           },
         ),
         IconButton(
+          icon: const Icon(Icons.sync),
+          tooltip: l10n.syncTitle,
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SyncPage()),
+            );
+          },
+        ),
+        IconButton(
           icon: const Icon(Icons.refresh),
           tooltip: l10n.refreshTooltip,
           onPressed: _refresh,
@@ -883,6 +896,16 @@ class _NASBrowserState extends State<NASBrowser> {
                   });
                 },
               ),
+              IconButton(
+                icon: const Icon(Icons.sync),
+                tooltip: l10n.syncTitle,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SyncPage()),
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -1051,6 +1074,7 @@ class _NASBrowserState extends State<NASBrowser> {
                     },
                     onItemTap: _onItemTap,
                     onActionSelected: (action, item) => _handleAction(action, item),
+                    onSyncConfigTap: _onSyncConfigTap,
                   );
                 }
               },
@@ -1060,6 +1084,32 @@ class _NASBrowserState extends State<NASBrowser> {
       ),
       // UploadOverlay is shown on demand via the transfer list button
     );
+  }
+
+  void _onSyncConfigTap(FileItem item) async {
+    final syncId = item.syncConfigId;
+    _log.info('_onSyncConfigTap: item=${item.name} syncId=$syncId');
+    if (syncId == null || syncId <= 0) {
+      _log.warning('_onSyncConfigTap: invalid syncId');
+      return;
+    }
+    try {
+      final config = await SyncService().getConfig(syncId);
+      if (!mounted) return;
+      _log.info('_onSyncConfigTap: got config id=${config.id} name=${config.name}');
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SyncDetailsPage(config: config),
+        ),
+      );
+    } catch (e) {
+      _log.warning('Failed to open sync config: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sync config error: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   void _handleAction(String action, FileItem item) {

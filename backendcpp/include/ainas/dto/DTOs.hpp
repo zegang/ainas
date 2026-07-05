@@ -17,6 +17,8 @@ class FileItemDto : public oatpp::DTO {
     DTO_FIELD(Int64, createdAt, "created_at");
     DTO_FIELD(Int64, updatedAt, "updated_at");
     DTO_FIELD(Vector<String>, tags);
+    DTO_FIELD(String, syncConfigName, "sync_config_name");
+    DTO_FIELD(Int64, syncConfigId, "sync_config_id");
 };
 
 class FileDetailResponseDto : public oatpp::DTO {
@@ -234,6 +236,75 @@ class UserLoginResponseDto : public oatpp::DTO {
 class UserActionResponseDto : public oatpp::DTO {
     DTO_INIT(UserActionResponseDto, DTO)
     DTO_FIELD(Boolean, success);
+    DTO_FIELD(String, message);
+};
+
+// ── Sync / File Sync DTOs ───────────────────────────────────────────
+
+class SyncConfigDto : public oatpp::DTO {
+    DTO_INIT(SyncConfigDto, DTO)
+    DTO_FIELD(Int64, id, "id");
+    DTO_FIELD(String, name);
+    DTO_FIELD(String, sourcePath, "source_path");
+    DTO_FIELD(String, targetPath, "target_path");
+    DTO_FIELD(Int64, syncIntervalSecs, "sync_interval_secs");
+    DTO_FIELD(String, syncPolicy, "sync_policy");
+    DTO_FIELD(String, syncTime, "sync_time");
+    DTO_FIELD(String, lastSyncedAt, "last_synced_at");
+    DTO_FIELD(Boolean, enabled);
+    DTO_FIELD(Boolean, deleteAfterSync, "delete_after_sync");
+    DTO_FIELD(String, createdAt, "created_at");
+    DTO_FIELD(String, updatedAt, "updated_at");
+};
+
+class SyncConfigListResponseDto : public oatpp::DTO {
+    DTO_INIT(SyncConfigListResponseDto, DTO)
+    DTO_FIELD(Boolean, success);
+    DTO_FIELD(Vector<Object<SyncConfigDto>>, configs);
+};
+
+class SyncConfigRequestDto : public oatpp::DTO {
+    DTO_INIT(SyncConfigRequestDto, DTO)
+    DTO_FIELD(String, name);
+    DTO_FIELD(String, sourcePath, "source_path");
+    DTO_FIELD(String, targetPath, "target_path");
+    DTO_FIELD(Int64, syncIntervalSecs, "sync_interval_secs");
+    DTO_FIELD(Boolean, deleteAfterSync, "delete_after_sync");
+    DTO_FIELD(String, syncPolicy, "sync_policy");
+    DTO_FIELD(String, syncTime, "sync_time");
+};
+
+class SyncFileEntryDto : public oatpp::DTO {
+    DTO_INIT(SyncFileEntryDto, DTO)
+    DTO_FIELD(String, path);
+    DTO_FIELD(Int64, size);
+    DTO_FIELD(String, modifiedAt, "modified_at");
+    DTO_FIELD(String, reason);
+};
+
+class SyncManifestRequestDto : public oatpp::DTO {
+    DTO_INIT(SyncManifestRequestDto, DTO)
+    DTO_FIELD(Vector<Object<SyncFileEntryDto>>, files);
+};
+
+class SyncManifestResponseDto : public oatpp::DTO {
+    DTO_INIT(SyncManifestResponseDto, DTO)
+    DTO_FIELD(Boolean, success);
+    DTO_FIELD(Vector<Object<SyncFileEntryDto>>, filesToUpload, "files_to_upload");
+    DTO_FIELD(Vector<Object<SyncFileEntryDto>>, serverFiles, "server_files");
+    DTO_FIELD(String, message);
+};
+
+class SyncCommitRequestDto : public oatpp::DTO {
+    DTO_INIT(SyncCommitRequestDto, DTO)
+    DTO_FIELD(Vector<String>, paths);
+};
+
+class SyncStatsResponseDto : public oatpp::DTO {
+    DTO_INIT(SyncStatsResponseDto, DTO)
+    DTO_FIELD(Boolean, success);
+    DTO_FIELD(Int64, targetFileCount, "target_file_count");
+    DTO_FIELD(Int64, syncedFileCount, "synced_file_count");
     DTO_FIELD(String, message);
 };
 

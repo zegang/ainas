@@ -2389,6 +2389,480 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Uploading'**
   String get uploadStatusUploading;
+
+  /// No description provided for @syncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'File Sync'**
+  String get syncTitle;
+
+  /// No description provided for @syncNewConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'New Sync Config'**
+  String get syncNewConfig;
+
+  /// No description provided for @syncEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No sync configurations'**
+  String get syncEmpty;
+
+  /// No description provided for @syncEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a sync to copy files from your device to the NAS'**
+  String get syncEmptyHint;
+
+  /// No description provided for @syncLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load sync configs'**
+  String get syncLoadFailed;
+
+  /// No description provided for @syncDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Sync Config'**
+  String get syncDeleteTitle;
+
+  /// No description provided for @syncDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete \"{name}\"?'**
+  String syncDeleteConfirm(Object name);
+
+  /// No description provided for @syncTriggered.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync completed — {count} file(s) copied'**
+  String syncTriggered(int count);
+
+  /// No description provided for @syncNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get syncNameLabel;
+
+  /// No description provided for @syncNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Photos Backup'**
+  String get syncNameHint;
+
+  /// No description provided for @syncNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required'**
+  String get syncNameRequired;
+
+  /// No description provided for @syncSourceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Source (local folder)'**
+  String get syncSourceLabel;
+
+  /// No description provided for @syncSourceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Path to local folder on this device'**
+  String get syncSourceHint;
+
+  /// No description provided for @syncSourceRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Source path is required'**
+  String get syncSourceRequired;
+
+  /// No description provided for @syncTargetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Target (NAS folder)'**
+  String get syncTargetLabel;
+
+  /// No description provided for @syncTargetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Path on the NAS (e.g. /Backups)'**
+  String get syncTargetHint;
+
+  /// No description provided for @syncTargetRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Target path is required'**
+  String get syncTargetRequired;
+
+  /// No description provided for @syncIntervalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync interval (seconds, 0 = manual only)'**
+  String get syncIntervalLabel;
+
+  /// No description provided for @syncIntervalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'0 for manual sync'**
+  String get syncIntervalHint;
+
+  /// Label for the sync policy/schedule type selector
+  ///
+  /// In en, this message translates to:
+  /// **'Sync Policy'**
+  String get syncPolicyLabel;
+
+  /// Label for interval-based sync type
+  ///
+  /// In en, this message translates to:
+  /// **'Time Interval (seconds)'**
+  String get syncTypeInterval;
+
+  /// Label for daily scheduled sync type
+  ///
+  /// In en, this message translates to:
+  /// **'Daily at specific time'**
+  String get syncTypeDaily;
+
+  /// Label for file-watching sync type
+  ///
+  /// In en, this message translates to:
+  /// **'Watch folder changes'**
+  String get syncTypeWatch;
+
+  /// Label for the daily sync time picker
+  ///
+  /// In en, this message translates to:
+  /// **'Sync time'**
+  String get syncDailyTimeLabel;
+
+  /// Note shown for watch-based sync type
+  ///
+  /// In en, this message translates to:
+  /// **'Syncs automatically when files change in the source folder'**
+  String get syncWatchNote;
+
+  /// No description provided for @syncToggleFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to toggle sync config: {error}'**
+  String syncToggleFailed(Object error);
+
+  /// No description provided for @syncTriggerFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync failed: {error}'**
+  String syncTriggerFailed(Object error);
+
+  /// No description provided for @syncDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete sync config'**
+  String get syncDeleteFailed;
+
+  /// No description provided for @syncCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to create sync config: {error}'**
+  String syncCreateFailed(Object error);
+
+  /// No description provided for @syncGetFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to get sync config'**
+  String get syncGetFailed;
+
+  /// No description provided for @syncUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update sync config: {error}'**
+  String syncUpdateFailed(Object error);
+
+  /// No description provided for @syncTriggerNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get syncTriggerNow;
+
+  /// No description provided for @syncLastSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Last synced: {datetime}'**
+  String syncLastSynced(Object datetime);
+
+  /// No description provided for @syncBrowseLocalFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse local folder'**
+  String get syncBrowseLocalFolder;
+
+  /// No description provided for @syncBrowseNasFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse NAS folder'**
+  String get syncBrowseNasFolder;
+
+  /// No description provided for @syncSelectTargetFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select target folder'**
+  String get syncSelectTargetFolder;
+
+  /// No description provided for @windowSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Window Settings'**
+  String get windowSettingsTitle;
+
+  /// No description provided for @windowSettingsRegular.
+  ///
+  /// In en, this message translates to:
+  /// **'Regular'**
+  String get windowSettingsRegular;
+
+  /// No description provided for @windowSettingsDialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Dialog'**
+  String get windowSettingsDialog;
+
+  /// No description provided for @windowSettingsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tooltip'**
+  String get windowSettingsTooltip;
+
+  /// No description provided for @windowSettingsInitialWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Initial width'**
+  String get windowSettingsInitialWidth;
+
+  /// No description provided for @windowSettingsInitialHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Initial height'**
+  String get windowSettingsInitialHeight;
+
+  /// No description provided for @windowSettingsDecorations.
+  ///
+  /// In en, this message translates to:
+  /// **'Decorations'**
+  String get windowSettingsDecorations;
+
+  /// No description provided for @windowSettingsParentAnchor.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent Anchor'**
+  String get windowSettingsParentAnchor;
+
+  /// No description provided for @windowSettingsChildAnchor.
+  ///
+  /// In en, this message translates to:
+  /// **'Child Anchor'**
+  String get windowSettingsChildAnchor;
+
+  /// No description provided for @windowSettingsOffset.
+  ///
+  /// In en, this message translates to:
+  /// **'Offset'**
+  String get windowSettingsOffset;
+
+  /// No description provided for @windowSettingsX.
+  ///
+  /// In en, this message translates to:
+  /// **'X'**
+  String get windowSettingsX;
+
+  /// No description provided for @windowSettingsY.
+  ///
+  /// In en, this message translates to:
+  /// **'Y'**
+  String get windowSettingsY;
+
+  /// No description provided for @windowSettingsConstraintAdjustment.
+  ///
+  /// In en, this message translates to:
+  /// **'Constraint Adjustment'**
+  String get windowSettingsConstraintAdjustment;
+
+  /// No description provided for @windowSettingsFlip.
+  ///
+  /// In en, this message translates to:
+  /// **'Flip'**
+  String get windowSettingsFlip;
+
+  /// No description provided for @windowSettingsSlide.
+  ///
+  /// In en, this message translates to:
+  /// **'Slide'**
+  String get windowSettingsSlide;
+
+  /// No description provided for @windowSettingsResize.
+  ///
+  /// In en, this message translates to:
+  /// **'Resize'**
+  String get windowSettingsResize;
+
+  /// Edit button label
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get editButton;
+
+  /// Title for editing a sync config
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Sync Config'**
+  String get syncEditConfig;
+
+  /// Section header for config details
+  ///
+  /// In en, this message translates to:
+  /// **'Config Info'**
+  String get syncConfigInfo;
+
+  /// Section header for synced file list
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get syncFileList;
+
+  /// Placeholder when no files have been synced
+  ///
+  /// In en, this message translates to:
+  /// **'No files synced yet'**
+  String get syncFileListEmpty;
+
+  /// No description provided for @enabledLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get enabledLabel;
+
+  /// No description provided for @yesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yesLabel;
+
+  /// No description provided for @noLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get noLabel;
+
+  /// Label for the last synced timestamp on details page
+  ///
+  /// In en, this message translates to:
+  /// **'Last Synced'**
+  String get syncLastSyncedTime;
+
+  /// Label for the 'delete after sync' toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Delete files after sync'**
+  String get syncDeleteAfterSyncLabel;
+
+  /// Hint text explaining what 'delete after sync' does
+  ///
+  /// In en, this message translates to:
+  /// **'Remove source files once they are synced to the target'**
+  String get syncDeleteAfterSyncHint;
+
+  /// Section header for sync statistics
+  ///
+  /// In en, this message translates to:
+  /// **'Stats'**
+  String get syncStats;
+
+  /// Label under source file count on details page
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get syncSourceCount;
+
+  /// Label under target file count on details page
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get syncTargetCount;
+
+  /// Label under synced file count on details page
+  ///
+  /// In en, this message translates to:
+  /// **'Synced'**
+  String get syncSyncedCount;
+
+  /// Error when source folder doesn't exist
+  ///
+  /// In en, this message translates to:
+  /// **'Source folder not found'**
+  String get syncSourceNotFound;
+
+  /// Message when source folder has no files
+  ///
+  /// In en, this message translates to:
+  /// **'Source folder is empty'**
+  String get syncSourceEmpty;
+
+  /// Message when no files need syncing
+  ///
+  /// In en, this message translates to:
+  /// **'All files are up to date'**
+  String get syncAlreadyUpToDate;
+
+  /// Message shown after source files are deleted post-sync
+  ///
+  /// In en, this message translates to:
+  /// **'Source files removed after sync'**
+  String get syncSourceFilesRemoved;
+
+  /// Label under pending file count on details page
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get syncPendingCount;
+
+  /// Text after scan count, e.g. '42 files found'
+  ///
+  /// In en, this message translates to:
+  /// **'files found'**
+  String get syncFilesFound;
+
+  /// Status text while scanning local files
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning...'**
+  String get syncScanning;
+
+  /// Tooltip for menu button
+  ///
+  /// In en, this message translates to:
+  /// **'More options'**
+  String get moreOptions;
+
+  /// Menu item to upload files to server
+  ///
+  /// In en, this message translates to:
+  /// **'Sync to AINAS'**
+  String get startSync;
+
+  /// Menu item to download files from server
+  ///
+  /// In en, this message translates to:
+  /// **'Pull to Local'**
+  String get pullToLocal;
+
+  /// Success message after sync
+  ///
+  /// In en, this message translates to:
+  /// **'Sync completed successfully'**
+  String get syncCompleted;
+
+  /// Error message when sync fails
+  ///
+  /// In en, this message translates to:
+  /// **'Sync failed'**
+  String get syncFailed;
 }
 
 class _AppLocalizationsDelegate

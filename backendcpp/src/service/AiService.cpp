@@ -1,5 +1,6 @@
 #include "ainas/service/AiService.hpp"
 #include "ainas/logging/Logger.hpp"
+#include "ainas/platform/Platform.hpp"
 
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -11,18 +12,6 @@
 #include <sstream>
 #include <thread>
 
-#if defined(_WIN32)
-#include <windows.h>
-#include <process.h>
-#else
-#include <fcntl.h>
-#include <signal.h>
-#include <sys/prctl.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#endif
-
 namespace ainas {
 
 AiService::AiService(std::shared_ptr<Config> config)
@@ -33,20 +22,11 @@ AiService::AiService(std::shared_ptr<Config> config)
     // Config default is "bin/cllama", so this becomes <backend-dir>/bin/cllama.
     auto& binary = m_config->cllamaBinary;
     if (binary.is_relative()) {
-        auto selfDir = [&]() -> std::filesystem::path {
-#if defined(_WIN32)
-            char exePath[MAX_PATH];
-            DWORD len = GetModuleFileNameA(nullptr, exePath, MAX_PATH);
-            if (len > 0) return std::filesystem::path(exePath).parent_path();
-#else
-            std::error_code ec;
-            auto p = std::filesystem::canonical("/proc/self/exe", ec);
-            if (!ec) return p.parent_path();
-#endif
-            return {};
-        }();
-        if (!selfDir.empty())
+        auto selfExe = ainas::platform::executablePath();
+        if (!selfExe.empty()) {
+            auto selfDir = std::filesystem::path(selfExe).parent_path();
             binary = selfDir / binary;
+        }
     }
     LOG_INFO("Cllama binary resolved to: {}", binary.string());
 }
@@ -426,87 +406,25 @@ void AiService::stop() {
     m_aiState->status = "disabled";
 }
 
-#if defined(_WIN32)
-
 bool AiService::spawnCllama() {
     std::string portStr = std::to_string(m_config->cllamaPort);
     std::string modelsFolder = m_config->cllamaModelsFolder.string();
     std::string binary = m_config->cllamaBinary.string();
-    std::string cmdline = binary + " serve start --port " + portStr
-        + " --models-folder \"" + modelsFolder + "\"";
 
-    STARTUPINFOA si{};
-    si.cb = sizeof(si);
-    PROCESS_INFORMATION pi{};
+    std::vector<std::string> args = {
+        "serve", "start",
+        "--port", portStr,
+        "--models-folder", modelsFolder
+    };
 
-    if (!CreateProcessA(nullptr, cmdline.data(), nullptr, nullptr, FALSE,
-                        CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
-        LOG_ERROR("Failed to spawn cllama: error {}", GetLastError());
+    ainas::platform::Pid pid = 0;
+    if (!ainas::platform::spawnProcess(binary, args, pid)) {
+        LOG_ERROR("Failed to spawn cllama server");
         return false;
     }
 
-    m_processHandle = pi.hProcess;
-    m_threadHandle = pi.hThread;
-    m_aiState->pid = static_cast<int>(pi.dwProcessId);
-    LOG_INFO("Spawned cllama server (PID {})", m_aiState->pid);
-    return true;
-}
-
-bool AiService::waitForReady(int timeoutSeconds) {
-    httplib::Client cli("127.0.0.1", m_config->cllamaPort);
-    cli.set_connection_timeout(1);
-    cli.set_read_timeout(2);
-
-    auto start = std::chrono::steady_clock::now();
-    while (true) {
-        auto res = cli.Get("/v1/models");
-        if (res && res->status == 200) return true;
-        auto elapsed = std::chrono::steady_clock::now() - start;
-        if (elapsed > std::chrono::seconds(timeoutSeconds)) return false;
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
-}
-
-void AiService::terminate() {
-    if (!m_processHandle) return;
-    LOG_INFO("Stopping cllama server (PID {})...", m_aiState->pid);
-    TerminateProcess(m_processHandle, 0);
-    WaitForSingleObject(m_processHandle, 5000);
-    CloseHandle(m_processHandle);
-    CloseHandle(m_threadHandle);
-    m_processHandle = nullptr;
-    m_threadHandle = nullptr;
-    m_aiState->pid = 0;
-}
-
-#else // Unix
-
-bool AiService::spawnCllama() {
-    pid_t pid = fork();
-    if (pid == -1) {
-        LOG_ERROR("fork() failed for cllama spawn: {}", std::strerror(errno));
-        return false;
-    }
-    if (pid == 0) {
-        std::string portStr = std::to_string(m_config->cllamaPort);
-        std::string modelsFolder = m_config->cllamaModelsFolder.string();
-        std::string binary = m_config->cllamaBinary.string();
-
-        LOG_INFO("Starting cllama binary: {}", binary);
-        // Place child in its own process group so signals don't propagate back.
-        setpgid(0, 0);
-
-        execlp(binary.c_str(), binary.c_str(),
-               "serve", "start",
-               "--port", portStr.c_str(),
-               "--models-folder", modelsFolder.c_str(),
-               nullptr);
-
-        std::cerr << "cllama exec failed: " << std::strerror(errno) << std::endl;
-        _exit(1);
-    }
     m_aiState->pid = static_cast<int>(pid);
-    LOG_INFO("Spawned cllama server (PID {}) from binary: {}", pid, m_config->cllamaBinary.string());
+    LOG_INFO("Spawned cllama server (PID {}) from binary: {}", pid, binary);
     return true;
 }
 
@@ -526,26 +444,14 @@ bool AiService::waitForReady(int timeoutSeconds) {
 }
 
 void AiService::terminate() {
-    int pid = m_aiState->pid;
-    if (pid <= 0) return;
-    LOG_INFO("Stopping cllama server (PID {})...", pid);
+    ainas::platform::Pid pid = static_cast<ainas::platform::Pid>(m_aiState->pid);
+    if (pid == 0) return;
+    LOG_INFO("Stopping cllama server (PID {})...", m_aiState->pid);
 
-    kill(pid, SIGTERM);
-    for (int i = 0; i < 50; ++i) {
-        if (kill(pid, 0) != 0) {
-            LOG_INFO("Cllama server stopped.");
-            m_aiState->pid = -1;
-            return;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (!ainas::platform::killProcess(pid)) {
+        LOG_WARN("Cllama server (PID {}) may already be stopped", m_aiState->pid);
     }
-
-    LOG_WARN("Cllama server not responding, sending SIGKILL");
-    kill(pid, SIGKILL);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     m_aiState->pid = -1;
 }
-
-#endif
 
 } // namespace ainas

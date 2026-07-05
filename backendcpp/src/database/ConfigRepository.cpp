@@ -1,5 +1,7 @@
 #include "ainas/database/ConfigRepository.hpp"
 
+#include <sqlite3.h>
+
 namespace ainas {
 
 ConfigRepository::ConfigRepository(Database& db)
@@ -53,7 +55,7 @@ bool ConfigRepository::remove(const std::string& key) {
         "DELETE FROM app_config WHERE key = ?");
     stmt.bind(1, key);
     stmt.step();
-    return m_db.lastInsertRowId() > 0;
+    return sqlite3_changes(m_db.handle()) > 0;
 }
 
 } // namespace ainas
