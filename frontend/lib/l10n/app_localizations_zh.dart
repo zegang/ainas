@@ -1490,4 +1490,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get syncFailed => '同步失败';
+
+  @override
+  String get syncNextSyncIn => '距下次同步';
 }

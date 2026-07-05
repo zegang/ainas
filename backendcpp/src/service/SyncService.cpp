@@ -1,7 +1,9 @@
 #include "ainas/service/SyncService.hpp"
 #include "ainas/logging/Logger.hpp"
 
+#include <chrono>
 #include <filesystem>
+#include <sstream>
 #include <system_error>
 
 namespace ainas {
@@ -143,6 +145,14 @@ void SyncService::commitFiles(int64_t configId,
         auto fileSize = std::filesystem::file_size(fullPath, ec);
         if (!ec) {
             entry.fileSize = static_cast<int64_t>(fileSize);
+        }
+        auto modTime = std::filesystem::last_write_time(fullPath, ec);
+        if (!ec) {
+            auto modTimeSys = std::chrono::clock_cast<std::chrono::system_clock>(modTime);
+            auto modTimeT = std::chrono::system_clock::to_time_t(modTimeSys);
+            std::ostringstream ss;
+            ss << std::put_time(std::gmtime(&modTimeT), "%Y-%m-%dT%H:%M:%SZ");
+            entry.modifiedAt = ss.str();
         }
 
         m_manifestRepo.upsert(entry);

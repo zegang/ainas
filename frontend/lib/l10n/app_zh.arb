@@ -779,5 +779,9 @@
   "syncFailed": "同步失败",
   "@syncFailed": {
     "description": "Error message when sync fails"
+  },
+  "syncNextSyncIn": "距下次同步",
+  "@syncNextSyncIn": {
+    "description": "Label showing countdown to next scheduled sync"
   }
 }

@@ -10,43 +10,26 @@ void SyncFileManifestRepository::migrate() {
     auto& db = m_db;
 
     db.execute(R"(
-        CREATE TABLE IF NOT EXISTS schema_version (
-            version INTEGER PRIMARY KEY
+        CREATE TABLE IF NOT EXISTS sync_file_manifest (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            sync_config_id    INTEGER NOT NULL,
+            relative_path     TEXT    NOT NULL,
+            file_size         INTEGER NOT NULL DEFAULT 0,
+            modified_at       TEXT    NOT NULL DEFAULT '',
+            synced_at         TEXT    NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (sync_config_id) REFERENCES sync_configs(id) ON DELETE CASCADE
         )
     )");
 
-    int version = 0;
+    db.execute(R"(
+        CREATE INDEX IF NOT EXISTS idx_manifest_config_path
+            ON sync_file_manifest(sync_config_id, relative_path)
+    )");
+
     {
         auto stmt = Database::Statement(db,
-            "SELECT COALESCE(MAX(version), 0) FROM schema_version");
-        if (stmt.step()) {
-            version = static_cast<int>(stmt.columnInt64(0));
-        }
-    }
-
-    if (version < 10) {
-        db.execute(R"(
-            CREATE TABLE IF NOT EXISTS sync_file_manifest (
-                id                INTEGER PRIMARY KEY AUTOINCREMENT,
-                sync_config_id    INTEGER NOT NULL,
-                relative_path     TEXT    NOT NULL,
-                file_size         INTEGER NOT NULL DEFAULT 0,
-                modified_at       TEXT    NOT NULL DEFAULT '',
-                synced_at         TEXT    NOT NULL DEFAULT (datetime('now')),
-                FOREIGN KEY (sync_config_id) REFERENCES sync_configs(id) ON DELETE CASCADE
-            )
-        )");
-
-        db.execute(R"(
-            CREATE INDEX IF NOT EXISTS idx_manifest_config_path
-                ON sync_file_manifest(sync_config_id, relative_path)
-        )");
-
-        {
-            auto stmt = Database::Statement(db,
-                "INSERT INTO schema_version (version) VALUES (10)");
-            stmt.step();
-        }
+            "INSERT OR IGNORE INTO schema_version (version) VALUES (10)");
+        stmt.step();
     }
 }
 

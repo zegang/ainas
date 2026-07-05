@@ -2863,6 +2863,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sync failed'**
   String get syncFailed;
+
+  /// Label showing countdown to next scheduled sync
+  ///
+  /// In en, this message translates to:
+  /// **'Next sync in'**
+  String get syncNextSyncIn;
 }
 
 class _AppLocalizationsDelegate

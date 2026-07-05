@@ -797,6 +797,10 @@
   "syncFailed": "Sync failed",
   "@syncFailed": {
     "description": "Error message when sync fails"
+  },
+  "syncNextSyncIn": "Next sync in",
+  "@syncNextSyncIn": {
+    "description": "Label showing countdown to next scheduled sync"
   }
 }
 

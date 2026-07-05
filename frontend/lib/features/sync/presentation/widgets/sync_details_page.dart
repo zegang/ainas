@@ -572,7 +572,7 @@ class _SyncDetailsPageState extends State<SyncDetailsPage> {
                           children: [
                             SizedBox(
                               width: 140,
-                              child: Text('Next sync in',
+                              child: Text(l10n.syncNextSyncIn,
                                 style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                               ),
                             ),
@@ -784,7 +784,7 @@ class _SyncDetailsPageState extends State<SyncDetailsPage> {
     final h = remaining.inHours;
     final m = remaining.inMinutes.remainder(60);
     final s = remaining.inSeconds.remainder(60);
-    _countdownText = '${h}h ${m}m ${s}s';
+    _countdownText = '${h.toString().padLeft(2, '0')}h ${m.toString().padLeft(2, '0')}m ${s.toString().padLeft(2, '0')}s';
     if (mounted) setState(() {});
   }
 

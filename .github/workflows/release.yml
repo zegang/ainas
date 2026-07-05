@@ -235,6 +235,25 @@ jobs:
           fi
           flutter pub get
 
+      - name: Patch isar_flutter_libs compileSdkVersion (pub-cache workaround)
+        run: |
+          PUB_CACHE_DIR="${PUB_CACHE:-$HOME/.pub-cache}"
+          ISAR_DIR="$PUB_CACHE_DIR/hosted/pub.dev/isar_flutter_libs-*/android"
+          for f in $ISAR_DIR/build.gradle $ISAR_DIR/build.gradle.kts; do
+            if [ -f "$f" ]; then
+              echo "Patching $f"
+              sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 34/' "$f"
+              sed -i 's/compileSdk = [0-9]\+/compileSdk = 34/' "$f"
+            fi
+          done
+          # Also patch the AndroidManifest package attribute workaround
+          for f in "$PUB_CACHE_DIR"/hosted/pub.dev/isar_flutter_libs-*/android/src/main/AndroidManifest.xml; do
+            if [ -f "$f" ]; then
+              echo "Patching $f"
+              sed -i 's/ package="[^"]*"//g' "$f" || true
+            fi
+          done
+
       - name: Build APK
         working-directory: frontend
         run: flutter build apk --release --android-skip-build-dependency-validation
@@ -910,6 +929,11 @@ jobs:
           cp "$REL"/bin/*.dll staging/bin/ 2>/dev/null || true
           tar czf ainas-backendcpp-windows7.tar.gz -C staging .
           rm -rf staging
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ainas-backendcpp-windows7
+          path: ainas-backendcpp-windows7.tar.gz
 
   # ─── Full bundles: Flutter frontend + C++ backend ──────────────────
   ainas-full-linux:
