@@ -3,6 +3,11 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
 #include <fstream>
 #include <mutex>
 #include <sstream>
@@ -32,7 +37,11 @@ int64_t nowUs() {
 }
 
 int64_t processPid() {
+#ifdef _WIN32
+    static int64_t pid = static_cast<int64_t>(::_getpid());
+#else
     static int64_t pid = static_cast<int64_t>(::getpid());
+#endif
     return pid;
 }
 

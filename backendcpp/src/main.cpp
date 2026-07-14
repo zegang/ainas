@@ -123,12 +123,14 @@ void terminateHandler() {
     abort();
 }
 
+#ifndef _WIN32
 void sigusr1Handler(int) {
     signal(SIGUSR1, sigusr1Handler);
     static const char msg[] = "[tracing] SIGUSR1 — will flush from main loop\n";
-    ainas::platform::safeWrite(STDERR_FILENO, msg);
+    ainas::platform::safeWrite(2, msg);
     TRACE_REQUEST_FLUSH();
 }
+#endif
 
 void sigabrtHandler(int) {
     crashLog("FATAL: SIGABRT received (direct abort() or assertion failure)");
@@ -208,7 +210,9 @@ int main(int argc, const char* argv[]) {
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
     signal(SIGABRT, sigabrtHandler);
+#ifndef _WIN32
     signal(SIGUSR1, sigusr1Handler);
+#endif
 
     auto config = [&] {
         TRACE_DURATION("lifecycle", "Config::load");

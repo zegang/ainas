@@ -660,7 +660,8 @@ jobs:
         working-directory: backendcpp
         run: |
           mkdir -p build
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$(brew --prefix)"
 
       - name: Build
         working-directory: backendcpp

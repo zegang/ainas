@@ -61,9 +61,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         if [ -f /usr/local/cuda/lib64/stubs/libcuda.so ] && [ ! -f /usr/local/cuda/lib64/stubs/libcuda.so.1 ]; then \
             ln -sf libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; \
         fi && \
-        CMAKE_ARGS="$LLAMA_CPP_CMAKE_ARGS" uv sync --frozen --no-dev ${TORCH_INDEX_URL:+--index-url "$TORCH_INDEX_URL"}; \
+        CMAKE_ARGS="$LLAMA_CPP_CMAKE_ARGS" uv sync --frozen --no-dev ${TORCH_INDEX_URL:+--index-url "$TORCH_INDEX_URL"} && \
+        uv cache clean; \
     else \
-        uv sync --frozen --no-dev ${TORCH_INDEX_URL:+--index-url "$TORCH_INDEX_URL"}; \
+        uv sync --frozen --no-dev ${TORCH_INDEX_URL:+--index-url "$TORCH_INDEX_URL"} && \
+        uv cache clean; \
     fi
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -2,18 +2,14 @@
 #include "ainas/logging/Logger.hpp"
 #include "perfetto/tracing_ext.h"
 
-// clock_cast is C++20 but not in all libc++ versions (e.g. Android NDK).
-// Use file_clock::to_sys directly as a portable alternative.
+// clock_cast is C++20 but not in all libc++ versions (e.g. Android NDK, macOS).
+// Use a portable workaround that avoids clock_cast entirely.
 namespace {
 inline std::chrono::system_clock::time_point
 portable_filetime_to_sys(const std::filesystem::file_time_type& ft) {
-#if defined(__cpp_lib_chrono) && __cpp_lib_chrono >= 201907L
-    return std::chrono::clock_cast<std::chrono::system_clock>(ft);
-#else
-    // file_clock::to_sys is C++20 but usually available in NDK r27+.
-    // It's the standard way to convert file_time to system_time.
-    return std::chrono::file_clock::to_sys(ft);
-#endif
+    return std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+        std::chrono::system_clock::now() +
+        (ft - std::filesystem::file_time_type::clock::now()));
 }
 } // anonymous namespace
 
