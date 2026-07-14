@@ -2,12 +2,13 @@
 
 #include <atomic>
 #include <chrono>
-#include <format>
 #include <fstream>
 #include <mutex>
 #include <source_location>
 #include <string>
 #include <string_view>
+
+#include <fmt/format.h>
 
 namespace ainas {
 
@@ -41,12 +42,12 @@ public:
     template<typename... Args>
     void log(LogLevel level,
              std::source_location loc,
-             std::format_string<Args...> fmt,
+             fmt::format_string<Args...> fmt,
              Args&&... args)
     {
         if (static_cast<uint8_t>(level) < static_cast<uint8_t>(m_config.level))
             return;
-        write(level, loc, std::format(fmt, std::forward<Args>(args)...));
+        write(level, loc, fmt::format(fmt, std::forward<Args>(args)...));
     }
 
     // Runtime message (no compile-time format check)

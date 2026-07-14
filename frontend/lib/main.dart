@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:developer' as developer;
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
+import 'shared/utils/tracing.dart';
 import 'l10n/app_localizations.dart';
 import 'shared/utils/backend_process_manager.dart';
 import 'features/file_browser/presentation/widgets/nas_browser_page.dart';
@@ -23,6 +24,7 @@ import 'features/ai_assistant/presentation/widgets/ai_assistant_page.dart';
 void main() async {
   _setupLogging();
   WidgetsFlutterBinding.ensureInitialized();
+  Tracing.init();
 
   if (BackendProcessManager.isDesktopSupported) {
     await windowManager.ensureInitialized();
@@ -152,13 +154,17 @@ class _MainShellState extends State<MainShell> with WindowListener, TrayListener
 
   void _updateTrayMenu() {
     final l10n = context.mounted ? AppLocalizations.of(context) : null;
-    trayManager.setContextMenu(Menu(
-      items: [
-        MenuItem(key: 'show', label: l10n?.showWindow ?? 'Show Window'),
-        MenuItem.separator(),
-        MenuItem(key: 'quit', label: l10n?.quitApp ?? 'Quit'),
-      ],
-    ));
+    try {
+      trayManager.setContextMenu(Menu(
+        items: [
+          MenuItem(key: 'show', label: l10n?.showWindow ?? 'Show Window'),
+          MenuItem.separator(),
+          MenuItem(key: 'quit', label: l10n?.quitApp ?? 'Quit'),
+        ],
+      ));
+    } catch (e) {
+      developer.log('Tray menu update failed: $e');
+    }
   }
 
   @override

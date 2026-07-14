@@ -1,5 +1,21 @@
 #include "ainas/service/SyncService.hpp"
 #include "ainas/logging/Logger.hpp"
+#include "perfetto/tracing_ext.h"
+
+// clock_cast is C++20 but not in all libc++ versions (e.g. Android NDK).
+// Use file_clock::to_sys directly as a portable alternative.
+namespace {
+inline std::chrono::system_clock::time_point
+portable_filetime_to_sys(const std::filesystem::file_time_type& ft) {
+#if defined(__cpp_lib_chrono) && __cpp_lib_chrono >= 201907L
+    return std::chrono::clock_cast<std::chrono::system_clock>(ft);
+#else
+    // file_clock::to_sys is C++20 but usually available in NDK r27+.
+    // It's the standard way to convert file_time to system_time.
+    return std::chrono::file_clock::to_sys(ft);
+#endif
+}
+} // anonymous namespace
 
 #include <chrono>
 #include <filesystem>
@@ -52,6 +68,7 @@ SyncService::DiffResult SyncService::diffManifest(
     int64_t configId,
     const std::vector<FileEntry>& clientFiles)
 {
+    TRACE_DURATION("sync", "diffManifest");
     LOG_INFO("diffManifest: configId={} clientFiles={}",
              static_cast<long>(configId), static_cast<long>(clientFiles.size()));
 
@@ -130,6 +147,7 @@ int64_t SyncService::getSyncedFileCount(int64_t configId) const {
 void SyncService::commitFiles(int64_t configId,
                                const std::vector<std::string>& paths)
 {
+    TRACE_DURATION("sync", "commitFiles");
     LOG_INFO("commitFiles: configId={} paths={}",
              static_cast<long>(configId), static_cast<long>(paths.size()));
 
@@ -148,7 +166,7 @@ void SyncService::commitFiles(int64_t configId,
         }
         auto modTime = std::filesystem::last_write_time(fullPath, ec);
         if (!ec) {
-            auto modTimeSys = std::chrono::clock_cast<std::chrono::system_clock>(modTime);
+            auto modTimeSys = portable_filetime_to_sys(modTime);
             auto modTimeT = std::chrono::system_clock::to_time_t(modTimeSys);
             std::ostringstream ss;
             ss << std::put_time(std::gmtime(&modTimeT), "%Y-%m-%dT%H:%M:%SZ");

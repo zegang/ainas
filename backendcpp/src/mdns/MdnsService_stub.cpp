@@ -21,16 +21,13 @@ MdnsService::MdnsService(const std::string& host, uint16_t port)
     : m_host(host)
     , m_port(port)
     , m_serviceName("AiNAS on " + getHostname())
-    , m_poll(nullptr)
     , m_client(nullptr)
-    , m_group(nullptr)
+    , m_entryGroup(nullptr)
+    , m_simplePoll(nullptr)
     , m_running(false)
 {}
 
 MdnsService::~MdnsService() { stop(); }
-
-void MdnsService::mdnsClientCallback(void*, int, void*) {}
-void MdnsService::mdnsGroupCallback(void*, int, void*) {}
 
 //===----------------------------------------------------------------------===//
 //  Stub start / stop

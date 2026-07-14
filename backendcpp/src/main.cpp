@@ -21,6 +21,7 @@
 #include "ainas/controller/SyncController.hpp"
 #include "ainas/mdns/MdnsService.hpp"
 #include "ainas/util/cflag.hpp"
+#include "perfetto/tracing_ext.h"
 
 #include "oatpp/network/Server.hpp"
 #include "oatpp/network/tcp/server/ConnectionProvider.hpp"
@@ -31,6 +32,7 @@
 
 #include <atomic>
 #include <csignal>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <exception>
@@ -121,6 +123,13 @@ void terminateHandler() {
     abort();
 }
 
+void sigusr1Handler(int) {
+    signal(SIGUSR1, sigusr1Handler);
+    static const char msg[] = "[tracing] SIGUSR1 — will flush from main loop\n";
+    ainas::platform::safeWrite(STDERR_FILENO, msg);
+    TRACE_REQUEST_FLUSH();
+}
+
 void sigabrtHandler(int) {
     crashLog("FATAL: SIGABRT received (direct abort() or assertion failure)");
 
@@ -177,6 +186,8 @@ ainas::LogLevel parseLogLevel() {
 } // anonymous namespace
 
 int main(int argc, const char* argv[]) {
+    TRACE_INIT();
+
     ainas::util::FlagParser flags(argc, argv);
 
     applyFlags(flags);
@@ -192,9 +203,20 @@ int main(int argc, const char* argv[]) {
 
     oatpp::Environment::init();
 
-    auto config = std::make_shared<ainas::Config>(ainas::Config::load());
+    // Register signal handlers early so SIGUSR1 (trace flush) works
+    // even during long initialization (e.g. AI model loading).
+    signal(SIGINT, signalHandler);
+    signal(SIGTERM, signalHandler);
+    signal(SIGABRT, sigabrtHandler);
+    signal(SIGUSR1, sigusr1Handler);
+
+    auto config = [&] {
+        TRACE_DURATION("lifecycle", "Config::load");
+        return std::make_shared<ainas::Config>(ainas::Config::load());
+    }();
 
     {
+        TRACE_DURATION("lifecycle", "Logger::init");
         ainas::Logger::Config logCfg;
         logCfg.level = parseLogLevel();
         logCfg.console = !isDaemon;
@@ -282,12 +304,11 @@ int main(int argc, const char* argv[]) {
 
     oatpp::network::Server server(connectionProvider, connectionHandler);
 
-    signal(SIGINT, signalHandler);
-    signal(SIGTERM, signalHandler);
-    signal(SIGABRT, sigabrtHandler);
-
     LOG_INFO("Server running. Press Ctrl+C to stop.");
-    server.run([&]() { return running().load(); });
+    server.run([&]() {
+        TRACE_CHECK_FLUSH();
+        return running().load();
+    });
 
     LOG_INFO("Server stopped.");
     aiService->stop();

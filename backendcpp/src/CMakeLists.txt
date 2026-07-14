@@ -145,6 +145,7 @@ add_executable(ainas-backend-cpp
     database/SyncFileManifestRepository.cpp
     service/SyncService.cpp
     controller/SyncController.cpp
+    perfetto/TracingExt.cpp
     ${MDNS_SOURCE}
     ${PLATFORM_SOURCE}
 )
@@ -155,12 +156,15 @@ target_link_libraries(ainas-backend-cpp PRIVATE
     ${SQLITE3_LIBRARIES}
     httplib::httplib
     nlohmann_json::nlohmann_json
+    fmt::fmt
 )
 
 if(POPPLER_FOUND)
+    target_compile_definitions(ainas-backend-cpp PRIVATE AINAS_HAVE_POPPLER)
     target_link_libraries(ainas-backend-cpp PRIVATE ${POPPLER_LIBRARIES})
 endif()
 if(QPDF_FOUND)
+    target_compile_definitions(ainas-backend-cpp PRIVATE AINAS_HAVE_QPDF)
     target_link_libraries(ainas-backend-cpp PRIVATE ${QPDF_LIBRARIES})
 endif()
 

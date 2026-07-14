@@ -15,14 +15,18 @@
 #include <unordered_set>
 #include <vector>
 
+#ifdef AINAS_HAVE_POPPLER
 #include <poppler/cpp/poppler-document.h>
 #include <poppler/cpp/poppler-page.h>
 #include <poppler/cpp/poppler-image.h>
 #include <poppler/cpp/poppler-page-renderer.h>
+#endif
 
+#ifdef AINAS_HAVE_QPDF
 #include <qpdf/QPDF.hh>
 #include <qpdf/QPDFWriter.hh>
 #include <qpdf/QUtil.hh>
+#endif
 
 // stb implementation macros are in ThumbnailService.cpp — only declarations here
 #include "stb_image.h"
@@ -66,6 +70,9 @@ std::vector<PdfService::PdfToImagePage> PdfService::pdfToImages(
     const std::filesystem::path& sourcePath,
     const std::filesystem::path& outputDir)
 {
+#ifndef AINAS_HAVE_POPPLER
+    throw std::runtime_error("pdfToImages: poppler not available (recompile with poppler-cpp)");
+#else
     auto srcStr = sourcePath.string();
     auto start = std::chrono::steady_clock::now();
     LOG_DEBUG("pdfToImages: loading PDF \"{}\"", srcStr);
@@ -160,12 +167,16 @@ std::vector<PdfService::PdfToImagePage> PdfService::pdfToImages(
         std::chrono::steady_clock::now() - start).count();
     LOG_INFO("pdfToImages: done ({} pages, {} images, {}ms)", totalPages, results.size(), elapsed);
     return results;
+#endif
 }
 
 void PdfService::mergeToPdf(
     const std::vector<std::filesystem::path>& filePaths,
     const std::filesystem::path& outputPath)
 {
+#ifndef AINAS_HAVE_QPDF
+    throw std::runtime_error("mergeToPdf: qpdf not available (recompile with libqpdf)");
+#else
     auto start = std::chrono::steady_clock::now();
     LOG_INFO("mergeToPdf: merging {} files -> \"{}\"", filePaths.size(), outputPath.string());
 
@@ -245,6 +256,7 @@ void PdfService::mergeToPdf(
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - start).count();
     LOG_INFO("mergeToPdf: done -> \"{}\" ({}ms)", outputPath.string(), elapsed);
+#endif
 }
 
 std::string PdfService::createMinimalPdfFromImage(

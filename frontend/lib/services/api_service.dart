@@ -58,7 +58,9 @@ class ApiService with ChangeNotifier {
   Future<void> loadSettings() async {
     await settings.loadSettings();
     await user.loadSettings();
-    await sync.listConfigs();
+    sync.listConfigs().catchError((e) {
+      _log.warning('Backend unreachable, starting with offline defaults: $e');
+    });
     sync.startAutoSync();
   }
   Future<void> updateBaseUrl(String url) => settings.updateBaseUrl(url);

@@ -1,6 +1,7 @@
 #include "ainas/service/AiService.hpp"
 #include "ainas/logging/Logger.hpp"
 #include "ainas/platform/Platform.hpp"
+#include "perfetto/tracing_ext.h"
 
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -283,6 +284,7 @@ bool AiService::stopAllRunners() {
 }
 
 std::string AiService::chatCompletions(const std::string& jsonBody) const {
+    TRACE_DURATION("ai", "chatCompletions");
     httplib::Client cli("127.0.0.1", m_config->cllamaPort);
     cli.set_connection_timeout(5);
     cli.set_read_timeout(120);
@@ -296,6 +298,7 @@ std::string AiService::chatCompletions(const std::string& jsonBody) const {
 }
 
 std::string AiService::completions(const std::string& jsonBody) const {
+    TRACE_DURATION("ai", "completions");
     httplib::Client cli("127.0.0.1", m_config->cllamaPort);
     cli.set_connection_timeout(5);
     cli.set_read_timeout(120);

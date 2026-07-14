@@ -87,7 +87,7 @@ std::string Logger::formatTimestamp(std::chrono::system_clock::time_point now) {
     ainas::platform::localtime(&t, &bt);
     char buf[64];
     std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &bt);
-    return std::format("{}.{:03d}", buf, static_cast<int>(ms.count()));
+    return fmt::format("{}.{:03d}", buf, static_cast<int>(ms.count()));
 }
 
 //===----------------------------------------------------------------------===//
@@ -124,11 +124,11 @@ void Logger::write(LogLevel level, std::source_location loc, std::string&& messa
                         ? fullPath.substr(lastSlash + 1)
                         : fullPath;
 
-    auto source = std::format("{}:{}", filename, loc.line());
+    auto source = fmt::format("{}:{}", filename, loc.line());
 
     // --- Console (ANSI-coloured) ---
     if (m_config.console) {
-        auto line = std::format(
+        auto line = fmt::format(
             "{}[{}] [{}] [{}] [{}] {}{}",
             colorEscape(level),
             timestamp,
@@ -146,7 +146,7 @@ void Logger::write(LogLevel level, std::source_location loc, std::string&& messa
 
     // --- File (plain text) ---
     if (m_fileStream.is_open()) {
-        m_fileStream << std::format(
+        m_fileStream << fmt::format(
             "[{}] [{}] [{}] {}\n", timestamp, lvl, source, message);
         m_fileStream.flush();
     }

@@ -23,8 +23,21 @@ find_package(Threads REQUIRED)
 get_filename_component(OATPP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/oatpp ABSOLUTE)
 add_subdirectory(${OATPP_DIR} ${CMAKE_BINARY_DIR}/oatpp)
 
-# ── Header-only HTTP client & JSON (for AiController proxy) ──────
+# ── Perfetto tracing (Chrome Trace Event format, zero deps) ─────
+option(AINAS_ENABLE_TRACING "Enable Perfetto-compatible tracing" OFF)
+if(AINAS_ENABLE_TRACING)
+    add_definitions(-DAINAS_ENABLE_TRACING=1)
+    message(STATUS "Perfetto tracing: ENABLED")
+endif()
+
+# ── {fmt} (portable std::format replacement for iOS < 16.3) ─────
 include(FetchContent)
+FetchContent_Declare(fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    GIT_TAG 11.1.4)
+FetchContent_MakeAvailable(fmt)
+
+# ── Header-only HTTP client & JSON (for AiController proxy) ──────
 FetchContent_Declare(httplib
     GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
     GIT_TAG v0.18.2)

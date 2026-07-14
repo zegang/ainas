@@ -1145,7 +1145,6 @@ jobs:
           Section "C++ Backend & CLI Tools" SEC_BACKEND
             SetOutPath "\$INSTDIR"
             File /r "${{ github.workspace }}\bundle\bin\*"
-            File /r "${{ github.workspace }}\bundle\lib\*"
           SectionEnd
 
           Section "Start Menu Shortcuts" SEC_STARTMENU
@@ -1289,7 +1288,6 @@ jobs:
           Section "C++ Backend & CLI Tools" SEC_BACKEND
             SetOutPath "\$INSTDIR"
             File /r "${{ github.workspace }}\bundle\bin\*"
-            File /r "${{ github.workspace }}\bundle\lib\*"
           SectionEnd
 
           Section "Start Menu Shortcuts" SEC_STARTMENU
