@@ -27,6 +27,7 @@ void main() async {
   if (BackendProcessManager.isDesktopSupported) {
     await windowManager.ensureInitialized();
     await windowManager.setPreventClose(true);
+    await windowManager.show();
   }
 
   // Initialize the singleton and load saved settings
