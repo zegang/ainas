@@ -31,7 +31,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
   late Animation<double> _borderAnimation;
   late FocusNode _textFocusNode;
   StreamSubscription<String>? _localSubscription;
-  final FlutterTts _flutterTts = FlutterTts();
+  FlutterTts? _flutterTts;
   String? _speakingMessageId;
 
   late final ChatRepository _repository = HttpChatRepository(
@@ -178,7 +178,7 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
 
   @override
   void dispose() {
-    _flutterTts.stop();
+    try { _flutterTts?.stop(); } catch (_) {}
     _textFocusNode.dispose();
     _borderAnimController.dispose();
     _localSubscription = null;
@@ -189,14 +189,20 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
 
   void _toggleSpeech(String messageId, String text) {
     if (_speakingMessageId == messageId) {
-      _flutterTts.stop();
+      try { _flutterTts?.stop(); } catch (_) {}
       _speakingMessageId = null;
     } else {
-      _flutterTts.stop();
-      final locale = Localizations.localeOf(context);
-      _flutterTts.setLanguage(locale.languageCode == 'zh' ? 'zh-CN' : 'en-US');
-      _flutterTts.speak(text);
-      _speakingMessageId = messageId;
+      _flutterTts ??= FlutterTts();
+      try {
+        _flutterTts?.stop();
+        final locale = Localizations.localeOf(context);
+        _flutterTts?.setLanguage(locale.languageCode == 'zh' ? 'zh-CN' : 'en-US');
+        _flutterTts?.speak(text);
+        _speakingMessageId = messageId;
+      } catch (_) {
+        _speakingMessageId = null;
+        _flutterTts = null;
+      }
     }
     setState(() {});
   }

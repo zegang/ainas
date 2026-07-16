@@ -19,11 +19,24 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
+// Hide instead of destroy on close (system tray app).
+static gboolean on_window_delete_event(GtkWidget* widget, GdkEvent* event,
+                                       gpointer user_data) {
+  gtk_widget_hide(widget);
+  return TRUE;
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
+
+  // Intercept delete-event so the window hides (not destroys) on "X" click.
+  // This is needed because window_manager's setPreventClose(true) does not
+  // reliably intercept the GtkHeaderBar close button on all Linux setups.
+  g_signal_connect(window, "delete-event", G_CALLBACK(on_window_delete_event),
+                   nullptr);
 
   // Use a header bar when running in GNOME as this is the common style used
   // by applications and is the setup most users will be using (e.g. Ubuntu

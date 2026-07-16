@@ -1493,4 +1493,55 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get syncNextSyncIn => '距下次同步';
+
+  @override
+  String get licenseTitle => '许可证激活';
+
+  @override
+  String get licenseUnlicensed => '未授权';
+
+  @override
+  String get licenseLicensed => '已授权';
+
+  @override
+  String get licenseCopyHardwareInfo => '复制硬件信息';
+
+  @override
+  String get licenseImportFile => '导入许可证文件';
+
+  @override
+  String get licenseCopied => '硬件信息已复制到剪贴板';
+
+  @override
+  String get licenseImportSuccess => '许可证导入成功';
+
+  @override
+  String get licenseImportFailed => '许可证导入失败';
+
+  @override
+  String get licenseChecking => '正在检查许可证...';
+
+  @override
+  String get licenseCpuSerial => 'CPU 序列号';
+
+  @override
+  String get licenseMotherboardSerial => '主板序列号';
+
+  @override
+  String get licenseDiskSerial => '磁盘序列号';
+
+  @override
+  String get licenseDeviceFingerprint => '设备指纹';
+
+  @override
+  String get licenseSendToDeveloper => '请将以下硬件信息发送给开发者以获取许可证文件。';
+
+  @override
+  String get licensePasteContent => '或在此粘贴许可证文件内容';
+
+  @override
+  String get licenseImportButton => '导入';
+
+  @override
+  String get licenseNotLicensed => '未授权';
 }

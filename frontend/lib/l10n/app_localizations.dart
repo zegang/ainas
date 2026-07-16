@@ -2869,6 +2869,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Next sync in'**
   String get syncNextSyncIn;
+
+  /// No description provided for @licenseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'License Activation'**
+  String get licenseTitle;
+
+  /// No description provided for @licenseUnlicensed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlicensed'**
+  String get licenseUnlicensed;
+
+  /// No description provided for @licenseLicensed.
+  ///
+  /// In en, this message translates to:
+  /// **'Licensed'**
+  String get licenseLicensed;
+
+  /// No description provided for @licenseCopyHardwareInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Hardware Info'**
+  String get licenseCopyHardwareInfo;
+
+  /// No description provided for @licenseImportFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Import License File'**
+  String get licenseImportFile;
+
+  /// No description provided for @licenseCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware info copied to clipboard'**
+  String get licenseCopied;
+
+  /// No description provided for @licenseImportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'License imported successfully'**
+  String get licenseImportSuccess;
+
+  /// No description provided for @licenseImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'License import failed'**
+  String get licenseImportFailed;
+
+  /// No description provided for @licenseChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking license...'**
+  String get licenseChecking;
+
+  /// No description provided for @licenseCpuSerial.
+  ///
+  /// In en, this message translates to:
+  /// **'CPU Serial'**
+  String get licenseCpuSerial;
+
+  /// No description provided for @licenseMotherboardSerial.
+  ///
+  /// In en, this message translates to:
+  /// **'Motherboard Serial'**
+  String get licenseMotherboardSerial;
+
+  /// No description provided for @licenseDiskSerial.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk Serial'**
+  String get licenseDiskSerial;
+
+  /// No description provided for @licenseDeviceFingerprint.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Fingerprint'**
+  String get licenseDeviceFingerprint;
+
+  /// No description provided for @licenseSendToDeveloper.
+  ///
+  /// In en, this message translates to:
+  /// **'Please send the hardware info below to the developer to obtain a license file.'**
+  String get licenseSendToDeveloper;
+
+  /// No description provided for @licensePasteContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Or paste license file content below'**
+  String get licensePasteContent;
+
+  /// No description provided for @licenseImportButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get licenseImportButton;
+
+  /// No description provided for @licenseNotLicensed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Licensed'**
+  String get licenseNotLicensed;
 }
 
 class _AppLocalizationsDelegate

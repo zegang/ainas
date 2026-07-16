@@ -110,6 +110,9 @@ if(NOT SQLITE3_FOUND)
         endif()
         add_library(sqlite3_amalg STATIC "${SQLITE3_C_FILE}")
         set_source_files_properties("${SQLITE3_C_FILE}" PROPERTIES LANGUAGE C)
+        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+            target_compile_options(sqlite3_amalg PRIVATE -x c)
+        endif()
         target_include_directories(sqlite3_amalg PUBLIC "${SQLITE3_INCLUDE_DIRS}")
         set(SQLITE3_FOUND TRUE)
         set(SQLITE3_LIBRARIES sqlite3_amalg)
@@ -124,6 +127,42 @@ if(NOT SQLITE3_FOUND)
             message(FATAL_ERROR "sqlite3 development library not found")
         endif()
     endif()
+endif()
+
+# ── License: embedded public key & platform sources ──────────
+find_package(OpenSSL REQUIRED)
+
+set(LIC_PUBLIC_KEY_CONTENTS "placeholder")
+if(DEFINED LIC_PUBLIC_KEY_PATH AND EXISTS "${LIC_PUBLIC_KEY_PATH}")
+    file(READ "${LIC_PUBLIC_KEY_PATH}" LIC_PUBLIC_KEY_CONTENTS_RAW)
+    string(REPLACE "\\" "\\\\" LIC_PUBLIC_KEY_CONTENTS "${LIC_PUBLIC_KEY_CONTENTS_RAW}")
+    string(REPLACE "\"" "\\\"" LIC_PUBLIC_KEY_CONTENTS "${LIC_PUBLIC_KEY_CONTENTS}")
+    message(STATUS "lic: embedding public key from ${LIC_PUBLIC_KEY_PATH}")
+else()
+    message(WARNING "lic: LIC_PUBLIC_KEY_PATH not set — using placeholder key "
+                    "(all license verifications will fail)")
+endif()
+
+set(LIC_PUBLIC_KEY_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/lic/generated")
+file(MAKE_DIRECTORY "${LIC_PUBLIC_KEY_GEN_DIR}")
+file(WRITE "${LIC_PUBLIC_KEY_GEN_DIR}/lic_public_key.h"
+"#pragma once\n\n"
+"static constexpr const char* kLicPublicKey =\n"
+"    \"${LIC_PUBLIC_KEY_CONTENTS}\";\n"
+)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(LIC_PLATFORM_SRC hardware_info_linux.cpp)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(LIC_PLATFORM_SRC hardware_info_macos.cpp)
+    find_library(COCOA_FRAMEWORK Cocoa)
+    find_library(IOKIT_FRAMEWORK IOKit)
+    find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(LIC_PLATFORM_SRC hardware_info_windows.cpp)
+else()
+    message(WARNING "lic: unsupported platform ${CMAKE_SYSTEM_NAME}")
+    set(LIC_PLATFORM_SRC "")
 endif()
 
 add_executable(ainas-backend-cpp
@@ -146,12 +185,19 @@ add_executable(ainas-backend-cpp
     database/SyncFileManifestRepository.cpp
     service/SyncService.cpp
     controller/SyncController.cpp
+    controller/LicenseController.cpp
     perfetto/TracingExt.cpp
     ${MDNS_SOURCE}
     ${PLATFORM_SOURCE}
+    lic/crypto.cpp
+    lic/fingerprint.cpp
+    lic/license.cpp
+    lic/${LIC_PLATFORM_SRC}
 )
 
 target_link_libraries(ainas-backend-cpp PRIVATE
+    OpenSSL::SSL
+    OpenSSL::Crypto
     oatpp
     Threads::Threads
     ${SQLITE3_LIBRARIES}
@@ -159,6 +205,19 @@ target_link_libraries(ainas-backend-cpp PRIVATE
     nlohmann_json::nlohmann_json
     fmt::fmt
 )
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_link_libraries(ainas-backend-cpp PRIVATE
+        ${COCOA_FRAMEWORK}
+        ${IOKIT_FRAMEWORK}
+        ${COREFOUNDATION_FRAMEWORK}
+    )
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(ainas-backend-cpp PRIVATE
+        ole32 oleaut32 wbemuuid
+    )
+endif()
 
 if(POPPLER_FOUND)
     target_compile_definitions(ainas-backend-cpp PRIVATE AINAS_HAVE_POPPLER)
@@ -205,6 +264,7 @@ endif()
 target_include_directories(ainas-backend-cpp PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/stb
+    ${LIC_PUBLIC_KEY_GEN_DIR}
     ${SQLITE3_INCLUDE_DIRS}
 )
 

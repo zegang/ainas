@@ -8,10 +8,10 @@ import 'dart:developer' as developer;
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'shared/utils/tracing.dart';
+import 'shared/widgets/login_dialog.dart';
 import 'l10n/app_localizations.dart';
 import 'shared/utils/backend_process_manager.dart';
 import 'features/file_browser/presentation/widgets/nas_browser_page.dart';
-import 'shared/widgets/login_dialog.dart';
 import 'features/mine/presentation/widgets/mine_page.dart';
 import 'features/mine/presentation/widgets/storage_page.dart';
 import 'features/mine/presentation/widgets/ai_config_page.dart';
@@ -120,11 +120,10 @@ class _MainShellState extends State<MainShell> with WindowListener, TrayListener
   @override
   void initState() {
     super.initState();
+    Logger('MainShell').info('isDesktopSupported=${BackendProcessManager.isDesktopSupported} (kIsWeb=$kIsWeb, linux=${Platform.isLinux})');
     if (BackendProcessManager.isDesktopSupported) {
       windowManager.addListener(this);
-      trayManager.addListener(this);
-      _setupTray();
-      WidgetsBinding.instance.addPostFrameCallback((_) => _updateTrayMenu());
+      WidgetsBinding.instance.addPostFrameCallback((_) => _setupTray());
     }
     // Perform an immediate sync on startup
     _syncNasStatus();
@@ -136,62 +135,102 @@ class _MainShellState extends State<MainShell> with WindowListener, TrayListener
   }
 
   Future<void> _setupTray() async {
+    final log = Logger('Tray');
     try {
       final ext = Platform.isWindows ? 'ico' : 'png';
       final assetPath = 'assets/tray_icon.$ext';
-      final byteData = await rootBundle.load(assetPath);
-      final tempDir = Directory.systemTemp;
-      final iconFile = File('${tempDir.path}/ainas_tray_icon.$ext');
-      await iconFile.writeAsBytes(byteData.buffer.asUint8List());
-      await trayManager.setIcon(iconFile.path);
-      await trayManager.setToolTip('AI-NAS');
-      // Menu will be set with localized text after first build
-      _updateTrayMenu();
-    } catch (e) {
-      developer.log('Tray setup failed: $e');
-    }
-  }
+      await rootBundle.load(assetPath);
+      log.info('Asset loaded: $assetPath');
 
-  void _updateTrayMenu() {
-    final l10n = context.mounted ? AppLocalizations.of(context) : null;
-    try {
-      trayManager.setContextMenu(Menu(
-        items: [
-          MenuItem(key: 'show', label: l10n?.showWindow ?? 'Show Window'),
+      String iconPath;
+      try {
+        iconPath = await _installXdgResources(assetPath);
+        log.info('XDG resources installed: $iconPath');
+      } catch (e) {
+        log.warning('XDG icon install failed, using temp fallback: $e');
+        final tempDir = Directory.systemTemp;
+        final tempFile = File('${tempDir.path}/ainas_tray_icon.$ext');
+        await tempFile.writeAsBytes(
+          (await rootBundle.load(assetPath)).buffer.asUint8List(),
+        );
+        iconPath = tempFile.path;
+        log.info('Temp fallback icon: $iconPath');
+      }
+
+      if (Platform.isLinux) {
+        trayManager.addListener(this);
+        await trayManager.setIcon(iconPath);
+        log.info('trayManager.setIcon called');
+        await trayManager.setContextMenu(Menu(items: [
+          MenuItem(key: 'show_window', label: 'Show Window'),
           MenuItem.separator(),
-          MenuItem(key: 'quit', label: l10n?.quitApp ?? 'Quit'),
-        ],
-      ));
+          MenuItem(key: 'quit', label: 'Quit'),
+        ]));
+        log.info('trayManager.setContextMenu called');
+      }
+      log.info('Tray setup complete (icon=$iconPath)');
     } catch (e) {
-      developer.log('Tray menu update failed: $e');
+      log.severe('Tray setup failed: $e');
     }
   }
 
-  @override
-  void onWindowClose() async {
-    await windowManager.hide();
+  /// Write the .desktop file and icon to ~/.local/share/ so the tray host
+  /// can find them via the StatusNotifierItem protocol.
+  /// Returns the absolute path to the installed icon file.
+  Future<String> _installXdgResources(String assetPath) async {
+    final home = Platform.environment['HOME'];
+    if (home == null || home.isEmpty) {
+      throw Exception('HOME not set');
+    }
+
+    final iconData = await rootBundle.load(assetPath);
+
+    // Icon
+    final iconDir = Directory(
+      '$home/.local/share/icons/hicolor/48x48/apps',
+    );
+    await iconDir.create(recursive: true);
+    final iconFile = File('${iconDir.path}/org.zlab.ainas_frontend.png');
+    await iconFile.writeAsBytes(iconData.buffer.asUint8List());
+    Logger('Tray').info('Installed tray icon to ${iconFile.path}');
+
+    // .desktop file
+    final appsDir = Directory('$home/.local/share/applications');
+    await appsDir.create(recursive: true);
+    await File('${appsDir.path}/org.zlab.ainas_frontend.desktop')
+        .writeAsString(_kDesktopFile);
+    Logger('Tray').info('Installed .desktop to ${appsDir.path}');
+
+    return iconFile.path;
   }
 
-  @override
-  void onTrayIconMouseDown() {
-    windowManager.show();
-  }
+  static const String _kDesktopFile = '''
+[Desktop Entry]
+Type=Application
+Name=AI-NAS
+Comment=AI-powered NAS management application
+Exec=ainas_frontend
+Icon=org.zlab.ainas_frontend
+Terminal=false
+Categories=Utility;Network;
+StartupNotify=false
+''';
 
   @override
-  void onTrayIconRightMouseDown() {
-    trayManager.popUpContextMenu(bringAppToFront: true);
-  }
-
-  @override
-  void onTrayMenuItemClick(MenuItem item) {
-    switch (item.key) {
-      case 'show':
+  void onTrayMenuItemClick(MenuItem menuItem) {
+    switch (menuItem.key) {
+      case 'show_window':
         windowManager.show();
         break;
       case 'quit':
         _handleQuit();
         break;
     }
+  }
+
+  @override
+  void onWindowClose() async {
+    await windowManager.hide();
   }
 
   Future<void> _handleQuit() async {
@@ -228,7 +267,10 @@ class _MainShellState extends State<MainShell> with WindowListener, TrayListener
     _statusSyncTimer?.cancel();
     if (BackendProcessManager.isDesktopSupported) {
       windowManager.removeListener(this);
-      trayManager.removeListener(this);
+      if (Platform.isLinux) {
+        trayManager.destroy();
+        trayManager.removeListener(this);
+      }
     }
     super.dispose();
   }

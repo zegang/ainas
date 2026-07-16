@@ -1511,4 +1511,56 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncNextSyncIn => 'Next sync in';
+
+  @override
+  String get licenseTitle => 'License Activation';
+
+  @override
+  String get licenseUnlicensed => 'Unlicensed';
+
+  @override
+  String get licenseLicensed => 'Licensed';
+
+  @override
+  String get licenseCopyHardwareInfo => 'Copy Hardware Info';
+
+  @override
+  String get licenseImportFile => 'Import License File';
+
+  @override
+  String get licenseCopied => 'Hardware info copied to clipboard';
+
+  @override
+  String get licenseImportSuccess => 'License imported successfully';
+
+  @override
+  String get licenseImportFailed => 'License import failed';
+
+  @override
+  String get licenseChecking => 'Checking license...';
+
+  @override
+  String get licenseCpuSerial => 'CPU Serial';
+
+  @override
+  String get licenseMotherboardSerial => 'Motherboard Serial';
+
+  @override
+  String get licenseDiskSerial => 'Disk Serial';
+
+  @override
+  String get licenseDeviceFingerprint => 'Device Fingerprint';
+
+  @override
+  String get licenseSendToDeveloper =>
+      'Please send the hardware info below to the developer to obtain a license file.';
+
+  @override
+  String get licensePasteContent => 'Or paste license file content below';
+
+  @override
+  String get licenseImportButton => 'Import';
+
+  @override
+  String get licenseNotLicensed => 'Not Licensed';
 }

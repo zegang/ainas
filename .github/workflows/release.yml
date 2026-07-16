@@ -654,14 +654,15 @@ jobs:
         run: git -C vendor/cllama submodule deinit -f third_party/cpprestsdk 2>/dev/null || true
 
       - name: Install PDF dependencies
-        run: brew install poppler qpdf boost
+        run: brew install pkg-config poppler qpdf boost
 
       - name: Configure CMake
         working-directory: backendcpp
         run: |
           mkdir -p build
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$(brew --prefix)"
+            -DCMAKE_PREFIX_PATH="$(brew --prefix)" \
+            -DCMAKE_LIBRARY_PATH="$(brew --prefix)/lib"
 
       - name: Build
         working-directory: backendcpp
@@ -1122,13 +1123,13 @@ jobs:
         run: |
           $ver = "${{ github.ref_name }}" -replace '^v', ''
           @"
-          !define PRODUCT_NAME "AI-NAS"
+          !define PRODUCT_NAME "ainas"
           !define PRODUCT_VERSION "$ver"
           !define PRODUCT_PUBLISHER "ainas"
 
-          Name "\${PRODUCT_NAME} \${PRODUCT_VERSION}"
+          Name "AI-NAS \${PRODUCT_VERSION}"
           OutFile "${{ github.workspace }}\ainas-full-windows-installer.exe"
-          InstallDir "\$PROGRAMFILES64\${PRODUCT_NAME}"
+          InstallDir "\$PROGRAMFILES64\ainas"
           RequestExecutionLevel admin
 
           Page components
@@ -1138,19 +1139,21 @@ jobs:
           Section "AI-NAS Application (required)" SEC_APP
             SectionIn RO
             SetOutPath "\$INSTDIR"
-            File "${{ github.workspace }}\bundle\*.exe"
+            File "${{ github.workspace }}\bundle\ainas_frontend.exe"
+            File "${{ github.workspace }}\bundle\flutter_windows.dll"
             File "${{ github.workspace }}\bundle\*.dll"
-            File /r "${{ github.workspace }}\bundle\data\*"
+            File /r "${{ github.workspace }}\bundle\data"
           SectionEnd
 
           Section "C++ Backend & CLI Tools" SEC_BACKEND
             SetOutPath "\$INSTDIR"
-            File /r "${{ github.workspace }}\bundle\bin\*"
+            File "${{ github.workspace }}\bundle\ainas-backend-cpp.exe"
+            File /r "${{ github.workspace }}\bundle\bin"
           SectionEnd
 
           Section "Start Menu Shortcuts" SEC_STARTMENU
-            CreateDirectory "\$SMPROGRAMS\${PRODUCT_NAME}"
-            CreateShortCut "\$SMPROGRAMS\${PRODUCT_NAME}\AI-NAS.lnk" "\$INSTDIR\ainas_frontend.exe"
+            CreateDirectory "\$SMPROGRAMS\ainas"
+            CreateShortCut "\$SMPROGRAMS\ainas\AI-NAS.lnk" "\$INSTDIR\ainas_frontend.exe"
           SectionEnd
 
           Section "Desktop Shortcut" SEC_DESKTOP
@@ -1159,8 +1162,8 @@ jobs:
 
           Section "Uninstall"
             RMDir /r "\$INSTDIR"
-            Delete "\$SMPROGRAMS\${PRODUCT_NAME}\AI-NAS.lnk"
-            RMDir "\$SMPROGRAMS\${PRODUCT_NAME}"
+            Delete "\$SMPROGRAMS\ainas\AI-NAS.lnk"
+            RMDir "\$SMPROGRAMS\ainas"
             Delete "\$DESKTOP\AI-NAS.lnk"
           SectionEnd
           "@ | Out-File -FilePath installer.nsi -Encoding ASCII
@@ -1265,13 +1268,13 @@ jobs:
         run: |
           $ver = "${{ github.ref_name }}" -replace '^v', ''
           @"
-          !define PRODUCT_NAME "AI-NAS"
+          !define PRODUCT_NAME "ainas"
           !define PRODUCT_VERSION "$ver"
           !define PRODUCT_PUBLISHER "ainas"
 
-          Name "\${PRODUCT_NAME} \${PRODUCT_VERSION}"
+          Name "AI-NAS \${PRODUCT_VERSION}"
           OutFile "${{ github.workspace }}\ainas-full-windows7-installer.exe"
-          InstallDir "\$PROGRAMFILES64\${PRODUCT_NAME}"
+          InstallDir "\$PROGRAMFILES64\ainas"
           RequestExecutionLevel admin
 
           Page components
@@ -1281,19 +1284,21 @@ jobs:
           Section "AI-NAS Application (required)" SEC_APP
             SectionIn RO
             SetOutPath "\$INSTDIR"
-            File "${{ github.workspace }}\bundle\*.exe"
+            File "${{ github.workspace }}\bundle\ainas_frontend.exe"
+            File "${{ github.workspace }}\bundle\flutter_windows.dll"
             File "${{ github.workspace }}\bundle\*.dll"
-            File /r "${{ github.workspace }}\bundle\data\*"
+            File /r "${{ github.workspace }}\bundle\data"
           SectionEnd
 
           Section "C++ Backend & CLI Tools" SEC_BACKEND
             SetOutPath "\$INSTDIR"
-            File /r "${{ github.workspace }}\bundle\bin\*"
+            File "${{ github.workspace }}\bundle\ainas-backend-cpp.exe"
+            File /r "${{ github.workspace }}\bundle\bin"
           SectionEnd
 
           Section "Start Menu Shortcuts" SEC_STARTMENU
-            CreateDirectory "\$SMPROGRAMS\${PRODUCT_NAME}"
-            CreateShortCut "\$SMPROGRAMS\${PRODUCT_NAME}\AI-NAS.lnk" "\$INSTDIR\ainas_frontend.exe"
+            CreateDirectory "\$SMPROGRAMS\ainas"
+            CreateShortCut "\$SMPROGRAMS\ainas\AI-NAS.lnk" "\$INSTDIR\ainas_frontend.exe"
           SectionEnd
 
           Section "Desktop Shortcut" SEC_DESKTOP
@@ -1302,8 +1307,8 @@ jobs:
 
           Section "Uninstall"
             RMDir /r "\$INSTDIR"
-            Delete "\$SMPROGRAMS\${PRODUCT_NAME}\AI-NAS.lnk"
-            RMDir "\$SMPROGRAMS\${PRODUCT_NAME}"
+            Delete "\$SMPROGRAMS\ainas\AI-NAS.lnk"
+            RMDir "\$SMPROGRAMS\ainas"
             Delete "\$DESKTOP\AI-NAS.lnk"
           SectionEnd
           "@ | Out-File -FilePath installer.nsi -Encoding ASCII

@@ -128,6 +128,18 @@ install(CODE "
 install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
 
+# Install .desktop file and tray icon so libappindicator can find them
+# via the StatusNotifierItem protocol.
+set(INSTALL_BUNDLE_APPS_DIR "${CMAKE_INSTALL_PREFIX}/share/applications")
+set(INSTALL_BUNDLE_ICONS_DIR "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/48x48/apps")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/org.zlab.ainas_frontend.desktop"
+  DESTINATION "${INSTALL_BUNDLE_APPS_DIR}"
+  COMPONENT Runtime)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../assets/tray_icon.png"
+  DESTINATION "${INSTALL_BUNDLE_ICONS_DIR}"
+  RENAME "org.zlab.ainas_frontend.png"
+  COMPONENT Runtime)
+
 # Install the AOT library on non-Debug builds only.
 if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"

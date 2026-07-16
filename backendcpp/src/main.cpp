@@ -15,6 +15,7 @@
 #include "ainas/controller/SystemController.hpp"
 #include "ainas/controller/AiController.hpp"
 #include "ainas/controller/UserController.hpp"
+#include "ainas/controller/LicenseController.hpp"
 #include "ainas/database/SyncConfigRepository.hpp"
 #include "ainas/database/SyncFileManifestRepository.hpp"
 #include "ainas/service/SyncService.hpp"
@@ -286,6 +287,8 @@ int main(int argc, const char* argv[]) {
     syncManifestRepo->migrate();
     auto syncService = std::make_shared<ainas::SyncService>(config, *syncRepo, *syncManifestRepo);
     router->addController(ainas::SyncController::createShared(objectMapper, syncRepo, syncService));
+
+    router->addController(ainas::LicenseController::createShared(objectMapper));
 
     oatpp::network::Address address(
         config->addr.c_str(),

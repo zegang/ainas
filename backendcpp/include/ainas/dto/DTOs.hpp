@@ -308,6 +308,27 @@ class SyncStatsResponseDto : public oatpp::DTO {
     DTO_FIELD(String, message);
 };
 
+// ── License DTOs ───────────────────────────────────────────────────────
+
+class LicenseHardwareInfoDto : public oatpp::DTO {
+    DTO_INIT(LicenseHardwareInfoDto, DTO)
+    DTO_FIELD(String, cpuSerial, "cpu_serial");
+    DTO_FIELD(String, motherboardSerial, "motherboard_serial");
+    DTO_FIELD(String, diskSerial, "disk_serial");
+    DTO_FIELD(String, deviceFingerprint, "device_fingerprint");
+};
+
+class LicenseStatusDto : public oatpp::DTO {
+    DTO_INIT(LicenseStatusDto, DTO)
+    DTO_FIELD(Boolean, licensed);
+    DTO_FIELD(String, info);
+};
+
+class LicenseImportRequestDto : public oatpp::DTO {
+    DTO_INIT(LicenseImportRequestDto, DTO)
+    DTO_FIELD(String, content);
+};
+
 } // namespace ainas
 
 #include OATPP_CODEGEN_END(DTO)

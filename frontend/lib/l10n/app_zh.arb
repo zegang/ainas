@@ -783,5 +783,22 @@
   "syncNextSyncIn": "距下次同步",
   "@syncNextSyncIn": {
     "description": "Label showing countdown to next scheduled sync"
-  }
+  },
+  "licenseTitle": "许可证激活",
+  "licenseUnlicensed": "未授权",
+  "licenseLicensed": "已授权",
+  "licenseCopyHardwareInfo": "复制硬件信息",
+  "licenseImportFile": "导入许可证文件",
+  "licenseCopied": "硬件信息已复制到剪贴板",
+  "licenseImportSuccess": "许可证导入成功",
+  "licenseImportFailed": "许可证导入失败",
+  "licenseChecking": "正在检查许可证...",
+  "licenseCpuSerial": "CPU 序列号",
+  "licenseMotherboardSerial": "主板序列号",
+  "licenseDiskSerial": "磁盘序列号",
+  "licenseDeviceFingerprint": "设备指纹",
+  "licenseSendToDeveloper": "请将以下硬件信息发送给开发者以获取许可证文件。",
+  "licensePasteContent": "或在此粘贴许可证文件内容",
+  "licenseImportButton": "导入",
+  "licenseNotLicensed": "未授权"
 }

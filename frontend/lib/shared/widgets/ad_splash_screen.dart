@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:ainas_frontend/services/lic_service.dart';
+import 'package:ainas_frontend/features/license/license_page.dart' as lic;
 
 class AdSplashScreen extends StatefulWidget {
   final Widget child;
@@ -13,18 +15,35 @@ class AdSplashScreen extends StatefulWidget {
 
 class _AdSplashScreenState extends State<AdSplashScreen> {
   bool _showChild = false;
+  bool _showLicenseCheck = false;
 
   @override
   void initState() {
     super.initState();
-    Timer(widget.duration, () {
+    Timer(widget.duration, () async {
       if (!mounted) return;
-      setState(() => _showChild = true);
+      final licensed = await LicService().isLicensed();
+      if (!mounted) return;
+      if (licensed) {
+        setState(() => _showChild = true);
+      } else {
+        setState(() => _showLicenseCheck = true);
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_showLicenseCheck) {
+      return lic.LicActivationPage(
+        onLicensed: () {
+          if (mounted) setState(() {
+            _showLicenseCheck = false;
+            _showChild = true;
+          });
+        },
+      );
+    }
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 400),
       switchInCurve: Curves.easeOutCubic,

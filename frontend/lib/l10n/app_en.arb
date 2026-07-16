@@ -801,6 +801,23 @@
   "syncNextSyncIn": "Next sync in",
   "@syncNextSyncIn": {
     "description": "Label showing countdown to next scheduled sync"
-  }
+  },
+  "licenseTitle": "License Activation",
+  "licenseUnlicensed": "Unlicensed",
+  "licenseLicensed": "Licensed",
+  "licenseCopyHardwareInfo": "Copy Hardware Info",
+  "licenseImportFile": "Import License File",
+  "licenseCopied": "Hardware info copied to clipboard",
+  "licenseImportSuccess": "License imported successfully",
+  "licenseImportFailed": "License import failed",
+  "licenseChecking": "Checking license...",
+  "licenseCpuSerial": "CPU Serial",
+  "licenseMotherboardSerial": "Motherboard Serial",
+  "licenseDiskSerial": "Disk Serial",
+  "licenseDeviceFingerprint": "Device Fingerprint",
+  "licenseSendToDeveloper": "Please send the hardware info below to the developer to obtain a license file.",
+  "licensePasteContent": "Or paste license file content below",
+  "licenseImportButton": "Import",
+  "licenseNotLicensed": "Not Licensed"
 }
 

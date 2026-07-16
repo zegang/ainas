@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=AI-NAS
+Comment=AI-powered NAS management application
+Exec=ainas_frontend
+Icon=org.zlab.ainas_frontend
+Terminal=false
+Categories=Utility;Network;
+StartupNotify=false

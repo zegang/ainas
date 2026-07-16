@@ -81,3 +81,9 @@ ExternalProject_Add(cllama
 )
 
 add_subdirectory(src)
+
+# ── License management CLI tool ────────────────────────────────────
+option(AINAS_BUILD_LIC_GEN "Build the lic_gen CLI tool" ON)
+if(AINAS_BUILD_LIC_GEN)
+    add_subdirectory(tools/lic_gen)
+endif()
