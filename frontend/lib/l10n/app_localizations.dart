@@ -2282,6 +2282,12 @@ abstract class AppLocalizations {
   /// **'View and share app logs'**
   String get logViewerSubtitle;
 
+  /// No description provided for @frontendLogViewerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Frontend Log'**
+  String get frontendLogViewerTitle;
+
   /// No description provided for @backendLogViewerTitle.
   ///
   /// In en, this message translates to:
@@ -2971,6 +2977,228 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not Licensed'**
   String get licenseNotLicensed;
+
+  /// No description provided for @licenseMenuTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'License'**
+  String get licenseMenuTitle;
+
+  /// No description provided for @licenseMenuSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Activation status and import'**
+  String get licenseMenuSubtitle;
+
+  /// No description provided for @developerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer'**
+  String get developerTitle;
+
+  /// No description provided for @developerContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get developerContact;
+
+  /// No description provided for @compressImageTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Compress image'**
+  String get compressImageTooltip;
+
+  /// No description provided for @compressImageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Compress Image'**
+  String get compressImageTitle;
+
+  /// No description provided for @compressQualityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality (1-100)'**
+  String get compressQualityLabel;
+
+  /// No description provided for @compressQualityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Higher = better quality, larger file'**
+  String get compressQualityHint;
+
+  /// No description provided for @currentDimensionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current dimensions'**
+  String get currentDimensionLabel;
+
+  /// No description provided for @compressWidthLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Width (px)'**
+  String get compressWidthLabel;
+
+  /// No description provided for @compressHeightLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Height (px)'**
+  String get compressHeightLabel;
+
+  /// No description provided for @compressButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Compress'**
+  String get compressButton;
+
+  /// No description provided for @compressFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Compression failed'**
+  String get compressFailed;
+
+  /// No description provided for @compressSuccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Image compressed successfully'**
+  String get compressSuccessTitle;
+
+  /// No description provided for @currentSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current size'**
+  String get currentSizeLabel;
+
+  /// No description provided for @originalSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Original size'**
+  String get originalSizeLabel;
+
+  /// No description provided for @compressedSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Compressed size'**
+  String get compressedSizeLabel;
+
+  /// No description provided for @reductionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reduction'**
+  String get reductionLabel;
+
+  /// No description provided for @compressDimensionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Dimensions'**
+  String get compressDimensionLabel;
+
+  /// No description provided for @compressSaveAsCopyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as copy'**
+  String get compressSaveAsCopyLabel;
+
+  /// No description provided for @compressSaveAsCopyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Creates a new file, original is kept'**
+  String get compressSaveAsCopyHint;
+
+  /// No description provided for @compressOverwriteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Replaces the original file'**
+  String get compressOverwriteHint;
+
+  /// No description provided for @compressOutputNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Output filename'**
+  String get compressOutputNameLabel;
+
+  /// No description provided for @licenseIssued.
+  ///
+  /// In en, this message translates to:
+  /// **'Issued'**
+  String get licenseIssued;
+
+  /// No description provided for @licenseExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires'**
+  String get licenseExpires;
+
+  /// No description provided for @licenseDaysRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Days remaining'**
+  String get licenseDaysRemaining;
+
+  /// No description provided for @licenseFile.
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get licenseFile;
+
+  /// No description provided for @licensePermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions'**
+  String get licensePermissions;
+
+  /// No description provided for @licenseExpiresSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'License expires soon — please renew'**
+  String get licenseExpiresSoon;
+
+  /// No description provided for @licenseDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get licenseDelete;
+
+  /// No description provided for @licenseUpdateRenew.
+  ///
+  /// In en, this message translates to:
+  /// **'Update / Renew'**
+  String get licenseUpdateRenew;
+
+  /// No description provided for @licenseDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete License'**
+  String get licenseDeleteTitle;
+
+  /// No description provided for @licenseDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to remove the license? This action cannot be undone.'**
+  String get licenseDeleteConfirm;
+
+  /// No description provided for @licenseCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get licenseCancel;
+
+  /// No description provided for @licenseDeleteSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'License deleted'**
+  String get licenseDeleteSuccess;
+
+  /// No description provided for @licenseDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete license'**
+  String get licenseDeleteFailed;
+
+  /// No description provided for @licenseImportTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Import license'**
+  String get licenseImportTooltip;
 }
 
 class _AppLocalizationsDelegate

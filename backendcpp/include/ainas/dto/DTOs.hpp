@@ -329,6 +329,27 @@ class LicenseImportRequestDto : public oatpp::DTO {
     DTO_FIELD(String, content);
 };
 
+// ── Compress Image DTOs ──────────────────────────────────────────────
+
+class CompressImageRequestDto : public oatpp::DTO {
+    DTO_INIT(CompressImageRequestDto, DTO)
+    DTO_FIELD(String, path);
+    DTO_FIELD(Int32, quality, "quality");
+    DTO_FIELD(Int32, maxWidth, "max_width");
+    DTO_FIELD(Int32, maxHeight, "max_height");
+    DTO_FIELD(String, outputPath, "output_path");
+};
+
+class CompressImageResponseDto : public oatpp::DTO {
+    DTO_INIT(CompressImageResponseDto, DTO)
+    DTO_FIELD(String, path);
+    DTO_FIELD(Int64, originalSize, "original_size");
+    DTO_FIELD(Int64, compressedSize, "compressed_size");
+    DTO_FIELD(Int32, quality);
+    DTO_FIELD(Int32, width);
+    DTO_FIELD(Int32, height);
+};
+
 } // namespace ainas
 
 #include OATPP_CODEGEN_END(DTO)

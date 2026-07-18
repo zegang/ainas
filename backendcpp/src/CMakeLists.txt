@@ -130,7 +130,14 @@ if(NOT SQLITE3_FOUND)
 endif()
 
 # ── License: embedded public key & platform sources ──────────
-find_package(OpenSSL REQUIRED)
+find_package(OpenSSL QUIET)
+if(OpenSSL_FOUND)
+    set(LIC_CRYPTO_SRC lic/crypto.cpp)
+    message(STATUS "lic: OpenSSL found — license crypto enabled")
+else()
+    set(LIC_CRYPTO_SRC lic/crypto_stub.cpp)
+    message(STATUS "lic: OpenSSL not found — using crypto stubs")
+endif()
 
 set(LIC_PUBLIC_KEY_CONTENTS "placeholder")
 if(DEFINED LIC_PUBLIC_KEY_PATH AND EXISTS "${LIC_PUBLIC_KEY_PATH}")
@@ -161,8 +168,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(LIC_PLATFORM_SRC hardware_info_windows.cpp)
 else()
-    message(WARNING "lic: unsupported platform ${CMAKE_SYSTEM_NAME}")
-    set(LIC_PLATFORM_SRC "")
+    message(STATUS "lic: unsupported platform ${CMAKE_SYSTEM_NAME} — using hardware info stubs")
+    set(LIC_PLATFORM_SRC hardware_info_stub.cpp)
 endif()
 
 add_executable(ainas-backend-cpp
@@ -189,15 +196,13 @@ add_executable(ainas-backend-cpp
     perfetto/TracingExt.cpp
     ${MDNS_SOURCE}
     ${PLATFORM_SOURCE}
-    lic/crypto.cpp
+    ${LIC_CRYPTO_SRC}
     lic/fingerprint.cpp
     lic/license.cpp
     lic/${LIC_PLATFORM_SRC}
 )
 
 target_link_libraries(ainas-backend-cpp PRIVATE
-    OpenSSL::SSL
-    OpenSSL::Crypto
     oatpp
     Threads::Threads
     ${SQLITE3_LIBRARIES}
@@ -205,6 +210,14 @@ target_link_libraries(ainas-backend-cpp PRIVATE
     nlohmann_json::nlohmann_json
     fmt::fmt
 )
+
+if(OpenSSL_FOUND)
+    target_compile_definitions(ainas-backend-cpp PRIVATE AINAS_HAVE_OPENSSL)
+    target_link_libraries(ainas-backend-cpp PRIVATE
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_link_libraries(ainas-backend-cpp PRIVATE

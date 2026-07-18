@@ -7,6 +7,7 @@ import 'package:ainas_frontend/features/mine/presentation/widgets/storage_page.d
 import 'package:ainas_frontend/features/mine/presentation/widgets/user_info_page.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/ai_config_page.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/version_page.dart';
+import 'package:ainas_frontend/features/license/license_page.dart';
 
 class MinePage extends StatelessWidget {
   const MinePage({super.key});
@@ -159,6 +160,15 @@ class MinePage extends StatelessWidget {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const StoragePage()),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.verified_user),
+                    title: Text(l10n.licenseMenuTitle),
+                    subtitle: Text(l10n.licenseMenuSubtitle),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const LicActivationPage()),
                     ),
                   ),
                   ListTile(

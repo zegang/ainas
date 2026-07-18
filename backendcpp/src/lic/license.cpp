@@ -98,10 +98,33 @@ std::string configDir() {
 
 // ── Now helpers ────────────────────────────────────────────────────────
 
-int64_t nowEpochDays() {
+std::string nowIsoTimestamp() {
     auto now = std::chrono::system_clock::now();
-    auto dur = now.time_since_epoch();
-    return std::chrono::duration_cast<std::chrono::hours>(dur).count() / 24;
+    auto tt = std::chrono::system_clock::to_time_t(now);
+    auto tm = std::gmtime(&tt);
+    char buf[32];
+    std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", tm);
+    return std::string(buf);
+}
+
+int64_t isoToEpochMs(const std::string& iso) {
+    // Parse "YYYY-MM-DDTHH:MM:SSZ"
+    int y = 0, M = 0, d = 0, h = 0, m = 0, s = 0;
+    if (sscanf(iso.c_str(), "%d-%d-%dT%d:%d:%dZ", &y, &M, &d, &h, &m, &s) < 3)
+        return 0;
+    struct tm tm = {};
+    tm.tm_year = y - 1900;
+    tm.tm_mon  = M - 1;
+    tm.tm_mday = d;
+    tm.tm_hour = h;
+    tm.tm_min  = m;
+    tm.tm_sec  = s;
+#ifdef _MSC_VER
+    auto tt = _mkgmtime(&tm);
+#else
+    auto tt = timegm(&tm);
+#endif
+    return static_cast<int64_t>(tt) * 1000;
 }
 
 // ── Build license payload JSON (before signing) ───────────────────────
@@ -109,15 +132,23 @@ int64_t nowEpochDays() {
 std::string buildLicenseJson(const std::string& fingerprint,
                               int validityDays,
                               const std::vector<std::string>& permissions) {
-    auto issued = nowEpochDays();
-    auto expires = issued + validityDays;
+    auto issued = nowIsoTimestamp();
+    // Compute expiry as ISO timestamp by adding days to current time
+    auto nowMs = isoToEpochMs(issued);
+    auto expMs = nowMs + static_cast<int64_t>(validityDays) * 86400000LL;
+    // Convert back to ISO
+    time_t expT = static_cast<time_t>(expMs / 1000);
+    auto tm = std::gmtime(&expT);
+    char buf[32];
+    std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", tm);
+    std::string expires(buf);
 
     std::ostringstream json;
     json << "{\"machine_fingerprint\":\""
          << fingerprint
-         << "\",\"issued\":" << issued
-         << ",\"expires\":" << expires
-         << ",\"permissions\":[";
+         << "\",\"issued\":\"" << issued
+         << "\",\"expires\":\"" << expires
+         << "\",\"permissions\":[";
     for (size_t i = 0; i < permissions.size(); ++i) {
         if (i > 0) json << ",";
         json << "\"" << permissions[i] << "\"";
@@ -128,7 +159,7 @@ std::string buildLicenseJson(const std::string& fingerprint,
 
 // Parse a license JSON string and extract fields.
 bool parseLicenseJson(const std::string& json, std::string& fingerprint,
-                      int64_t& issued, int64_t& expires,
+                      std::string& issued, std::string& expires,
                       std::vector<std::string>& permissions) {
     // Simple JSON parser for known key-value format. Not a full JSON parser.
     auto extract = [&](const std::string& key) -> std::string {
@@ -154,14 +185,8 @@ bool parseLicenseJson(const std::string& json, std::string& fingerprint,
     };
 
     fingerprint = extract("machine_fingerprint");
-    auto issStr = extract("issued");
-    auto expStr = extract("expires");
-
-    if (fingerprint.empty()) return false;
-    if (issStr.empty() || expStr.empty()) return false;
-
-    issued = std::stoll(issStr);
-    expires = std::stoll(expStr);
+    issued = extract("issued");
+    expires = extract("expires");
 
     // Extract permissions array
     auto permStart = json.find("\"permissions\"");
@@ -247,7 +272,7 @@ bool importLicense(const std::string& licenseFilePath) {
 
     // Verify device binding
     std::string fp;
-    int64_t issued = 0, expires = 0;
+    std::string issued, expires;
     std::vector<std::string> permissions;
     if (!parseLicenseJson(payload, fp, issued, expires, permissions))
         return false;
@@ -256,8 +281,14 @@ bool importLicense(const std::string& licenseFilePath) {
     if (deviceFp.empty() || fp != deviceFp)
         return false;
 
+    auto nowMs = isoToEpochMs(nowIsoTimestamp());
+
+    // Check not before issued
+    if (nowMs < isoToEpochMs(issued))
+        return false;
+
     // Check expiry
-    if (nowEpochDays() > expires)
+    if (nowMs > isoToEpochMs(expires))
         return false;
 
     // Encrypt and store locally
@@ -309,7 +340,7 @@ bool isLicenseValid() {
 
     // Parse and verify
     std::string fp;
-    int64_t issued = 0, expires = 0;
+    std::string issued, expires;
     std::vector<std::string> permissions;
     if (!parseLicenseJson(payload, fp, issued, expires, permissions))
         return false;
@@ -319,8 +350,14 @@ bool isLicenseValid() {
     if (deviceFp.empty() || fp != deviceFp)
         return false;
 
+    auto nowMs = isoToEpochMs(nowIsoTimestamp());
+
+    // Check not before issued
+    if (nowMs < isoToEpochMs(issued))
+        return false;
+
     // Check expiry
-    if (nowEpochDays() > expires)
+    if (nowMs > isoToEpochMs(expires))
         return false;
 
     return true;

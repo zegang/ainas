@@ -60,7 +60,7 @@ class FileService with ChangeNotifier {
       }
     }
 
-    final url = '$baseUrl/api/files?path=$path';
+    final url = '$baseUrl/api/files?path=$path&_t=${DateTime.now().millisecondsSinceEpoch}';
     _log.info('--> GET $url');
 
     final response = await http.get(Uri.parse(url));
@@ -194,6 +194,29 @@ class FileService with ChangeNotifier {
       return json.decode(response.body);
     }
     throw Exception('PDF-to-images failed: ${response.body}');
+  }
+
+  Future<Map<String, dynamic>> compressImage(String path, int quality, {int? maxWidth, int? maxHeight, String? outputPath}) async {
+    final url = Uri.parse('$baseUrl/api/files/compress-image');
+    final body = <String, dynamic>{'path': path, 'quality': quality};
+    if (maxWidth != null && maxWidth > 0) {
+      body['max_width'] = maxWidth;
+    }
+    if (maxHeight != null && maxHeight > 0) {
+      body['max_height'] = maxHeight;
+    }
+    if (outputPath != null && outputPath.isNotEmpty) {
+      body['output_path'] = outputPath;
+    }
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(body),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Compress image failed: ${response.body}');
   }
 
   Future<Map<String, dynamic>> mergeToPdf(

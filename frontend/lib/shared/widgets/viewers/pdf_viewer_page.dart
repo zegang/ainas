@@ -36,6 +36,8 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
   final _log = Logger('PdfViewerPage');
   final PdfViewerController _pdfController = PdfViewerController();
   double _currentZoom = 1.0;
+  int _currentPage = 0;
+  int _totalPages = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +48,33 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
         actions: kIsWeb
             ? null
             : [
+                if (_totalPages > 0) ...[
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    tooltip: 'Previous page',
+                    onPressed: _currentPage > 1 ? () => _jumpToPage(_currentPage - 1) : null,
+                  ),
+                  GestureDetector(
+                    onTap: _gotoPageDialog,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade500),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '$_currentPage / $_totalPages',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    tooltip: 'Next page',
+                    onPressed: _currentPage < _totalPages ? () => _jumpToPage(_currentPage + 1) : null,
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 IconButton(
                   icon: const Icon(Icons.zoom_out),
                   tooltip: 'Zoom out',
@@ -121,6 +150,12 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
       child: SfPdfViewer.network(
         widget.url,
         controller: _pdfController,
+        onDocumentLoaded: (details) {
+          setState(() => _totalPages = details.document.pages.count);
+        },
+        onPageChanged: (details) {
+          setState(() => _currentPage = details.newPageNumber);
+        },
         onZoomLevelChanged: (details) {
           setState(() => _currentZoom = details.newZoomLevel);
         },
@@ -138,6 +173,42 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
       _pdfController.zoomLevel = level;
     }
     setState(() => _currentZoom = level);
+  }
+
+  void _jumpToPage(int page) {
+    _pdfController.jumpToPage(page);
+  }
+
+  Future<void> _gotoPageDialog() async {
+    final controller = TextEditingController(text: _currentPage.toString());
+    final page = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Go to page'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Page (1 – $_totalPages)',
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final n = int.tryParse(controller.text);
+              if (n != null && n >= 1 && n <= _totalPages) {
+                Navigator.pop(ctx, n);
+              }
+            },
+            child: const Text('Go'),
+          ),
+        ],
+      ),
+    );
+    if (page != null) _jumpToPage(page);
   }
 
   Future<void> _splitToImages(BuildContext context, FileItem item) async {
@@ -196,7 +267,7 @@ class _SplitToImagesDialogState extends State<_SplitToImagesDialog> {
     final item = widget.item;
     final slash = item.path.lastIndexOf('/');
     final parent = slash >= 0 ? item.path.substring(0, slash) : '';
-    final baseName = item.name.replaceAll('.pdf', '_images');
+    final baseName = item.name.replaceAll(RegExp(r'\.[^.]+$'), '');
     outputDir = parent.isEmpty ? baseName : '$parent/$baseName';
   }
 

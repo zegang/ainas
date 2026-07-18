@@ -108,6 +108,40 @@ void attachFilesToRequest(const nlohmann::json& reqJson,
     }
 }
 
+/// Replaces invalid UTF-8 byte sequences with '?' so that nlohmann::json::parse
+/// does not throw type_error.316 on malformed model output.
+std::string sanitizeUtf8(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    size_t i = 0;
+    while (i < s.size()) {
+        unsigned char c = static_cast<unsigned char>(s[i]);
+        if (c <= 0x7F) {
+            out += c; ++i;
+            continue;
+        }
+        int n;
+        if (c >= 0xC2 && c <= 0xDF) n = 2;
+        else if (c >= 0xE0 && c <= 0xEF) n = 3;
+        else if (c >= 0xF0 && c <= 0xF4) n = 4;
+        else { out += '?'; ++i; continue; }
+        bool ok = true;
+        for (int j = 1; j < n; ++j) {
+            if (i + j >= s.size() || (static_cast<unsigned char>(s[i + j]) & 0xC0) != 0x80) {
+                ok = false; break;
+            }
+        }
+        if (ok) {
+            for (int j = 0; j < n; ++j) out += s[i + j];
+            i += n;
+        } else {
+            out += '?';
+            ++i;
+        }
+    }
+    return out;
+}
+
 } // anonymous namespace
 
 // ReadCallback that parses cllama SSE response and streams chunks through oatpp.
@@ -141,13 +175,15 @@ public:
             if (line.rfind("data: ", 0) == 0) {
                 std::string jsonStr = line.substr(6);
                 if (jsonStr == "[DONE]") break;
+                jsonStr = sanitizeUtf8(jsonStr);
                 try {
                     auto j = nlohmann::json::parse(jsonStr);
                     auto& choices = j["choices"];
                     if (!choices.empty() && choices[0].contains("delta")) {
                         auto& delta = choices[0]["delta"];
                         if (delta.contains("content")) {
-                            m_chunks.push(delta["content"].get<std::string>());
+                            auto content = delta["content"].get<std::string>();
+                            m_chunks.push(sanitizeUtf8(content));
                         }
                     }
                 } catch (...) {}
@@ -562,7 +598,8 @@ public:
             return OutgoingResponse::createShared(Status::CODE_200, respBody);
         }
         try {
-            auto reqJson = nlohmann::json::parse(bodyStr->c_str());
+            std::string raw = bodyStr ? *bodyStr : "";
+            auto reqJson = nlohmann::json::parse(sanitizeUtf8(raw));
             std::string text = reqJson.value("text", "");
             nlohmann::json cllamaReq;
             cllamaReq["model"] = reqJson.value("model", m_aiService->getFeatureModel("chat"));
@@ -582,7 +619,7 @@ public:
             cllamaReq["stream"] = false;
 
             auto respBodyStr = m_aiService->chatCompletions(cllamaReq.dump());
-            auto respJson = nlohmann::json::parse(respBodyStr);
+            auto respJson = nlohmann::json::parse(sanitizeUtf8(respBodyStr));
             if (respJson.contains("error")) {
                 auto json = oatpp::String(respBodyStr);
                 auto respBody = oatpp::web::protocol::http::outgoing::BufferBody::createShared(json, "application/json");
@@ -619,7 +656,8 @@ public:
         }
         auto bodyStr = request->readBodyToString();
         try {
-            auto reqJson = nlohmann::json::parse(bodyStr->c_str());
+            std::string raw = bodyStr ? *bodyStr : "";
+            auto reqJson = nlohmann::json::parse(sanitizeUtf8(raw));
             std::string text = reqJson.value("text", "");
             nlohmann::json cllamaReq;
             cllamaReq["model"] = reqJson.value("model", m_aiService->getFeatureModel("chat"));

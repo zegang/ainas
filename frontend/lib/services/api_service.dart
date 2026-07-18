@@ -101,6 +101,8 @@ class ApiService with ChangeNotifier {
   Future<void> retryUpload(String taskId) => files.retryUpload(taskId);
   Future<Map<String, dynamic>> pdfToImages(String path, String outputDir) =>
       files.pdfToImages(path, outputDir);
+  Future<Map<String, dynamic>> compressImage(String path, int quality, {int? maxWidth, int? maxHeight, String? outputPath}) =>
+      files.compressImage(path, quality, maxWidth: maxWidth, maxHeight: maxHeight, outputPath: outputPath);
   Future<Map<String, dynamic>> mergeToPdf(List<String> filePaths, String outputPath) =>
       files.mergeToPdf(filePaths, outputPath);
   Future<void> uploadFile(String fileName, Uint8List bytes, {String? parentPath}) =>

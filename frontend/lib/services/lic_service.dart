@@ -10,6 +10,24 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pointycastle/export.dart';
 import 'package:pointycastle/asn1.dart';
 
+class LicenseStatus {
+  final bool valid;
+  final Map<String, dynamic>? data;
+  final int daysRemaining;
+  final DateTime? issuedDate;
+  final DateTime? expiresDate;
+  final String? message;
+
+  LicenseStatus({
+    required this.valid,
+    this.data,
+    this.daysRemaining = 0,
+    this.issuedDate,
+    this.expiresDate,
+    this.message,
+  });
+}
+
 class LicService {
   LicService._internal();
   static final LicService _instance = LicService._internal();
@@ -241,6 +259,12 @@ yQIDAQAB
     return File('${dir.path}/license.enc');
   }
 
+  /// Returns the full path of the stored license file.
+  Future<String> licenseFilePath() async {
+    final file = await _storageFile();
+    return file.path;
+  }
+
   // ── RSA Signature Verification ──────────────────────────────────────
 
   bool _rsaVerify(String message, Uint8List signature) {
@@ -335,14 +359,20 @@ yQIDAQAB
     }
   }
 
-  int _nowEpochDays() {
-    return DateTime.now().millisecondsSinceEpoch ~/ (1000 * 60 * 60 * 24);
+  DateTime _nowUtc() => DateTime.now().toUtc();
+
+  // ── Platform check ──────────────────────────────────────────────────
+
+  static bool isDesktop() {
+    if (kIsWeb) return false;
+    return Platform.isLinux || Platform.isMacOS || Platform.isWindows;
   }
 
   // ── Public API ──────────────────────────────────────────────────────
 
   /// Check whether a valid, non-expired, device-bound license exists.
   Future<bool> isLicensed() async {
+    if (!isDesktop()) return true;
     try {
       final file = await _storageFile();
       if (!await file.exists()) return false;
@@ -364,9 +394,13 @@ yQIDAQAB
       final deviceFp = generateDeviceFingerprint();
       if (deviceFp.isEmpty || data['machine_fingerprint'] != deviceFp) return false;
 
+      // Check not before issued
+      final issued = DateTime.tryParse(data['issued'] as String);
+      if (issued == null || _nowUtc().isBefore(issued)) return false;
+
       // Check expiry
-      final expires = data['expires'];
-      if (_nowEpochDays() > expires) return false;
+      final expires = DateTime.tryParse(data['expires'] as String);
+      if (expires == null || _nowUtc().isAfter(expires)) return false;
 
       return true;
     } catch (e) {
@@ -377,6 +411,7 @@ yQIDAQAB
 
   /// Returns the license JSON payload if a valid license exists, or null.
   Future<Map<String, dynamic>?> licenseInfo() async {
+    if (!isDesktop()) return null;
     try {
       final file = await _storageFile();
       if (!await file.exists()) return null;
@@ -397,6 +432,7 @@ yQIDAQAB
 
   /// Import a license file's content. Returns true on success.
   Future<bool> importLicense(String licenseContent) async {
+    if (!isDesktop()) return true;
     try {
       final lines = licenseContent.trim().split('\n');
       if (lines.length < 2) return false;
@@ -417,9 +453,13 @@ yQIDAQAB
       final deviceFp = generateDeviceFingerprint();
       if (deviceFp.isEmpty || data['machine_fingerprint'] != deviceFp) return false;
 
+      // Check not before issued
+      final issued = DateTime.tryParse(data['issued'] as String);
+      if (issued == null || _nowUtc().isBefore(issued)) return false;
+
       // Check expiry
-      final expires = data['expires'];
-      if (_nowEpochDays() > expires) return false;
+      final expires = DateTime.tryParse(data['expires'] as String);
+      if (expires == null || _nowUtc().isAfter(expires)) return false;
 
       // Encrypt and store
       final key = _storageKey();
@@ -434,6 +474,128 @@ yQIDAQAB
     } catch (e) {
       _log.warning('importLicense failed: $e');
       return false;
+    }
+  }
+
+  /// Returns a list of all license files on this device.
+  /// Currently only a single encrypted license file is supported.
+  Future<List<LicenseStatus>> listLicenses() async {
+    final status = await licenseStatus();
+    return status.valid ? [status] : [];
+  }
+
+  /// Delete the stored license file from disk.
+  Future<bool> deleteLicense() async {
+    if (!isDesktop()) return false;
+    try {
+      final file = await _storageFile();
+      if (await file.exists()) {
+        await file.delete();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _log.warning('deleteLicense failed: $e');
+      return false;
+    }
+  }
+
+  /// Days until the license expires. Returns -1 if no valid license.
+  Future<int> daysRemaining() async {
+    final info = await licenseInfo();
+    if (info == null) return -1;
+    final expiresStr = info['expires'] as String?;
+    if (expiresStr == null) return -1;
+    final expires = DateTime.tryParse(expiresStr);
+    if (expires == null) return -1;
+    return expires.difference(_nowUtc()).inDays;
+  }
+
+  /// Returns a [LicenseStatus] with full validity detail.
+  Future<LicenseStatus> licenseStatus() async {
+    if (!isDesktop()) {
+      return LicenseStatus(valid: true, daysRemaining: 36500,
+          message: 'Not required on this platform');
+    }
+    try {
+      final file = await _storageFile();
+      if (!await file.exists()) {
+        return LicenseStatus(valid: false, message: 'No license file');
+      }
+
+      final blob = await file.readAsBytes();
+      if (blob.length < 12 + 16) {
+        return LicenseStatus(valid: false, message: 'Corrupted license data');
+      }
+
+      final key = _storageKey();
+      if (key.isEmpty) {
+        return LicenseStatus(valid: false, message: 'No device key');
+      }
+
+      final plaintext = _aesDecrypt(Uint8List.fromList(blob), key);
+      if (plaintext == null) {
+        return LicenseStatus(valid: false, message: 'Decryption failed');
+      }
+
+      final payload = utf8.decode(plaintext);
+      final data = _parseLicenseJson(payload);
+      if (data == null) {
+        return LicenseStatus(valid: false, message: 'Invalid license format');
+      }
+
+      // Check device binding
+      final deviceFp = generateDeviceFingerprint();
+      final issuedDate = DateTime.tryParse(data['issued'] as String);
+      final expiresDate = DateTime.tryParse(data['expires'] as String);
+
+      if (deviceFp.isEmpty || data['machine_fingerprint'] != deviceFp) {
+        return LicenseStatus(
+          valid: false,
+          data: data,
+          message: 'Device mismatch',
+          issuedDate: issuedDate,
+          expiresDate: expiresDate,
+        );
+      }
+
+      final now = _nowUtc();
+      final remaining = expiresDate != null
+          ? expiresDate.difference(now).inDays
+          : 0;
+
+      if (issuedDate == null || now.isBefore(issuedDate)) {
+        return LicenseStatus(
+          valid: false,
+          data: data,
+          daysRemaining: remaining,
+          issuedDate: issuedDate,
+          expiresDate: expiresDate,
+          message: 'License not yet valid',
+        );
+      }
+
+      if (expiresDate == null || now.isAfter(expiresDate)) {
+        return LicenseStatus(
+          valid: false,
+          data: data,
+          daysRemaining: remaining,
+          issuedDate: issuedDate,
+          expiresDate: expiresDate,
+          message: 'License expired',
+        );
+      }
+
+      return LicenseStatus(
+        valid: true,
+        data: data,
+        daysRemaining: remaining,
+        issuedDate: issuedDate,
+        expiresDate: expiresDate,
+        message: remaining <= 30 ? 'Expiring soon' : null,
+      );
+    } catch (e) {
+      return LicenseStatus(valid: false, message: 'Error: $e');
     }
   }
 

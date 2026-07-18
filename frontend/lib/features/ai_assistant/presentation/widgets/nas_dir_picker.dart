@@ -56,7 +56,7 @@ class _NasDirPickerState extends State<NasDirPicker> {
   }
 
   String get _currentDir {
-    return _pathStack.last;
+    return _pathStack.skip(1).join('/');
   }
 
   void _selectCurrentDir() {

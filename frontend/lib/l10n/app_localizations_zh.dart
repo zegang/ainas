@@ -21,7 +21,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsTooltip => '设置';
 
   @override
-  String get refreshTooltip => '保存并刷新';
+  String get refreshTooltip => '刷新';
 
   @override
   String get searchHint => '搜索文件或标签';
@@ -1175,10 +1175,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get versionSubtitle => '应用版本和日志';
 
   @override
-  String get logViewerTitle => '前端日志';
+  String get logViewerTitle => '日志';
 
   @override
   String get logViewerSubtitle => '查看和分享应用日志';
+
+  @override
+  String get frontendLogViewerTitle => '前端日志';
 
   @override
   String get backendLogViewerTitle => '后端日志';
@@ -1544,4 +1547,115 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get licenseNotLicensed => '未授权';
+
+  @override
+  String get licenseMenuTitle => '许可证';
+
+  @override
+  String get licenseMenuSubtitle => '激活状态与导入';
+
+  @override
+  String get developerTitle => '开发者';
+
+  @override
+  String get developerContact => '联系方式';
+
+  @override
+  String get compressImageTooltip => '压缩图片';
+
+  @override
+  String get compressImageTitle => '压缩图片';
+
+  @override
+  String get compressQualityLabel => '质量 (1-100)';
+
+  @override
+  String get compressQualityHint => '数值越高，质量越好，文件越大';
+
+  @override
+  String get currentDimensionLabel => '当前尺寸';
+
+  @override
+  String get compressWidthLabel => '宽度 (像素)';
+
+  @override
+  String get compressHeightLabel => '高度 (像素)';
+
+  @override
+  String get compressButton => '压缩';
+
+  @override
+  String get compressFailed => '压缩失败';
+
+  @override
+  String get compressSuccessTitle => '图片压缩成功';
+
+  @override
+  String get currentSizeLabel => '当前大小';
+
+  @override
+  String get originalSizeLabel => '原始大小';
+
+  @override
+  String get compressedSizeLabel => '压缩后大小';
+
+  @override
+  String get reductionLabel => '压缩率';
+
+  @override
+  String get compressDimensionLabel => '尺寸';
+
+  @override
+  String get compressSaveAsCopyLabel => '保存为新文件';
+
+  @override
+  String get compressSaveAsCopyHint => '创建新文件，保留原文件';
+
+  @override
+  String get compressOverwriteHint => '替换原始文件';
+
+  @override
+  String get compressOutputNameLabel => '输出文件名';
+
+  @override
+  String get licenseIssued => '颁发日期';
+
+  @override
+  String get licenseExpires => '到期日期';
+
+  @override
+  String get licenseDaysRemaining => '剩余天数';
+
+  @override
+  String get licenseFile => '文件路径';
+
+  @override
+  String get licensePermissions => '权限';
+
+  @override
+  String get licenseExpiresSoon => '许可证即将到期 — 请续期';
+
+  @override
+  String get licenseDelete => '删除';
+
+  @override
+  String get licenseUpdateRenew => '更新 / 续期';
+
+  @override
+  String get licenseDeleteTitle => '删除许可证';
+
+  @override
+  String get licenseDeleteConfirm => '确认要删除许可证吗？此操作不可撤销。';
+
+  @override
+  String get licenseCancel => '取消';
+
+  @override
+  String get licenseDeleteSuccess => '许可证已删除';
+
+  @override
+  String get licenseDeleteFailed => '删除许可证失败';
+
+  @override
+  String get licenseImportTooltip => '导入许可证';
 }

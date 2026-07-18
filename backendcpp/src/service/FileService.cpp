@@ -3,12 +3,17 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <ctime>
 #include <fstream>
 #include <iomanip>
 #include <random>
 #include <sstream>
+
+#include "stb_image.h"
+#include "stb_image_resize.h"
+#include "stb_image_write.h"
 
 namespace ainas {
 
@@ -425,10 +430,10 @@ oatpp::Object<ApiResponseDto> FileService::deleteFile(const oatpp::String& pathS
         return response;
     }
 
-    // Delete from database
+    // Delete from database (recursively — handles children & file_tags FK)
     {
         auto relPath = normalizeRelative(str(pathStr));
-        m_repo.deleteByPath(relPath);
+        m_repo.deleteRecursive(relPath);
     }
 
     LOG_INFO("deleteFile: removed {} item(s) from \"{}\"", count, str(pathStr));
@@ -576,8 +581,8 @@ oatpp::Object<ApiResponseDto> FileService::moveFile(const oatpp::Object<MoveRequ
         return response;
     }
 
-    // Update database paths
-    {
+    // Update database paths (non-fatal — file already moved on disk)
+    try {
         auto srcRecord = m_repo.findByPath(srcRel);
         if (srcRecord) {
             srcRecord->path = dstRel;
@@ -590,6 +595,8 @@ oatpp::Object<ApiResponseDto> FileService::moveFile(const oatpp::Object<MoveRequ
 
             m_repo.update(*srcRecord);
         }
+    } catch (const std::exception& e) {
+        LOG_ERROR("moveFile: DB update failed after successful move: {}", e.what());
     }
 
     response->success = true;
@@ -779,8 +786,8 @@ oatpp::Object<ApiResponseDto> FileService::renameFile(const oatpp::Object<Rename
         return response;
     }
 
-    // Update database
-    {
+    // Update database (non-fatal — file already renamed on disk)
+    try {
         auto oldRel = normalizeRelative(str(body->path));
         auto newRel = normalizeRelative(
             std::filesystem::path(str(body->path)).parent_path().generic_string() + "/" + newName);
@@ -791,6 +798,8 @@ oatpp::Object<ApiResponseDto> FileService::renameFile(const oatpp::Object<Rename
             record->path = newRel;
             m_repo.update(*record);
         }
+    } catch (const std::exception& e) {
+        LOG_ERROR("renameFile: DB update failed after successful rename: {}", e.what());
     }
 
     LOG_INFO("renameFile: renamed to \"{}\"",
@@ -986,6 +995,131 @@ oatpp::Object<ApiResponseDto> FileService::deleteFileById(int64_t id) {
     response->success = true;
     response->message = "Deleted successfully";
     response->path = oatpp::String(record->path);
+    return response;
+}
+
+oatpp::Object<CompressImageResponseDto> FileService::compressImage(
+    const oatpp::Object<CompressImageRequestDto>& body)
+{
+    auto response = CompressImageResponseDto::createShared();
+
+    if (!body->path || body->path->empty()) {
+        throw FileServiceError(FileServiceError::Kind::BadRequest, "path is required");
+    }
+    if (!body->quality || body->quality < 1 || body->quality > 100) {
+        throw FileServiceError(FileServiceError::Kind::BadRequest, "quality must be 1-100");
+    }
+
+    auto fullPath = resolveExistingPath(str(body->path));
+    auto origSize = std::filesystem::file_size(fullPath);
+    response->originalSize = static_cast<int64_t>(origSize);
+    response->quality = body->quality;
+
+    int w, h, channels;
+    unsigned char* img = stbi_load(fullPath.string().c_str(), &w, &h, &channels, 0);
+    if (!img) {
+        throw FileServiceError(FileServiceError::Kind::BadRequest,
+                               "Failed to load image: " + std::string(stbi_failure_reason()));
+    }
+
+    int outW = w, outH = h;
+    int maxW = body->maxWidth ? static_cast<int>(body->maxWidth) : 0;
+    int maxH = body->maxHeight ? static_cast<int>(body->maxHeight) : 0;
+    if (maxW > 0 && maxH > 0) {
+        double scale = std::min(static_cast<double>(maxW) / w, static_cast<double>(maxH) / h);
+        if (scale < 1.0) {
+            outW = std::max(1, static_cast<int>(w * scale));
+            outH = std::max(1, static_cast<int>(h * scale));
+        }
+    } else if (maxW > 0 && w > maxW) {
+        outW = maxW;
+        outH = std::max(1, h * maxW / w);
+    } else if (maxH > 0 && h > maxH) {
+        outH = maxH;
+        outW = std::max(1, w * maxH / h);
+    }
+
+    unsigned char* outImg = img;
+    if (outW != w || outH != h) {
+        outImg = static_cast<unsigned char*>(std::malloc(outW * outH * channels));
+        if (!outImg) {
+            stbi_image_free(img);
+            throw FileServiceError(FileServiceError::Kind::Internal, "malloc failed");
+        }
+        stbir_resize_uint8_linear(img, w, h, 0, outImg, outW, outH, 0,
+                                  static_cast<stbir_pixel_layout>(channels));
+    }
+
+    response->width = outW;
+    response->height = outH;
+
+    auto tempPath = fullPath;
+    tempPath += ".compress_tmp";
+
+    int writeChannels = channels >= 3 ? 3 : channels;
+    unsigned char* writeImg = outImg;
+    unsigned char* rgbBuf = nullptr;
+
+    if (channels == 1) {
+        rgbBuf = static_cast<unsigned char*>(std::malloc(outW * outH * 3));
+        if (rgbBuf) {
+            for (int i = 0; i < outW * outH; ++i) {
+                rgbBuf[i * 3]     = outImg[i];
+                rgbBuf[i * 3 + 1] = outImg[i];
+                rgbBuf[i * 3 + 2] = outImg[i];
+            }
+            writeImg = rgbBuf;
+            writeChannels = 3;
+        }
+    }
+
+    int quality = static_cast<int>(body->quality);
+    int success = stbi_write_jpg(tempPath.string().c_str(), outW, outH, writeChannels, writeImg, quality);
+
+    if (rgbBuf) std::free(rgbBuf);
+    if (outImg != img) std::free(outImg);
+    stbi_image_free(img);
+
+    if (!success) {
+        std::error_code ec;
+        std::filesystem::remove(tempPath, ec);
+        throw FileServiceError(FileServiceError::Kind::Internal, "Failed to write compressed image");
+    }
+
+    auto compressedSize = std::filesystem::file_size(tempPath);
+    response->compressedSize = static_cast<int64_t>(compressedSize);
+
+    std::error_code ec;
+    auto outPath = fullPath;
+    auto relPath = str(body->path);
+    if (body->outputPath && !body->outputPath->empty()) {
+        auto outStr = str(body->outputPath);
+        while (!outStr.empty() && outStr.front() == '/') outStr.erase(0, 1);
+        outPath = m_config->dataPath / outStr;
+        std::filesystem::create_directories(outPath.parent_path(), ec);
+    }
+    std::filesystem::rename(tempPath, outPath, ec);
+    if (ec) {
+        std::filesystem::remove(tempPath, ec);
+        throw FileServiceError(FileServiceError::Kind::Internal,
+                               "Failed to write compressed image: " + ec.message());
+    }
+
+    if (outPath == fullPath) {
+        // overwrote original — update response path
+        while (!relPath.empty() && relPath.front() == '/') relPath.erase(0, 1);
+        response->path = oatpp::String("/" + relPath);
+    } else {
+        // saved as copy — compute response path from outputPath
+        auto outRel = std::filesystem::relative(outPath, m_config->dataPath).generic_string();
+        response->path = oatpp::String("/" + outRel);
+        response->originalSize = int64_t(0);
+    }
+
+    LOG_INFO("compressImage: {} ({}x{}, q={}, {} -> {} bytes, {}% reduction)",
+             relPath, outW, outH, quality, origSize, compressedSize,
+             origSize > 0 ? (100ULL - compressedSize * 100ULL / origSize) : 0ULL);
+
     return response;
 }
 

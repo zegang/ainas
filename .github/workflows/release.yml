@@ -658,6 +658,8 @@ jobs:
 
       - name: Configure CMake
         working-directory: backendcpp
+        env:
+          PKG_CONFIG_PATH: "$(brew --prefix)/lib/pkgconfig"
         run: |
           mkdir -p build
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \

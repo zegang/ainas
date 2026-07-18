@@ -1192,6 +1192,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get logViewerSubtitle => 'View and share app logs';
 
   @override
+  String get frontendLogViewerTitle => 'Frontend Log';
+
+  @override
   String get backendLogViewerTitle => 'Backend Log';
 
   @override
@@ -1563,4 +1566,116 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get licenseNotLicensed => 'Not Licensed';
+
+  @override
+  String get licenseMenuTitle => 'License';
+
+  @override
+  String get licenseMenuSubtitle => 'Activation status and import';
+
+  @override
+  String get developerTitle => 'Developer';
+
+  @override
+  String get developerContact => 'Contact';
+
+  @override
+  String get compressImageTooltip => 'Compress image';
+
+  @override
+  String get compressImageTitle => 'Compress Image';
+
+  @override
+  String get compressQualityLabel => 'Quality (1-100)';
+
+  @override
+  String get compressQualityHint => 'Higher = better quality, larger file';
+
+  @override
+  String get currentDimensionLabel => 'Current dimensions';
+
+  @override
+  String get compressWidthLabel => 'Width (px)';
+
+  @override
+  String get compressHeightLabel => 'Height (px)';
+
+  @override
+  String get compressButton => 'Compress';
+
+  @override
+  String get compressFailed => 'Compression failed';
+
+  @override
+  String get compressSuccessTitle => 'Image compressed successfully';
+
+  @override
+  String get currentSizeLabel => 'Current size';
+
+  @override
+  String get originalSizeLabel => 'Original size';
+
+  @override
+  String get compressedSizeLabel => 'Compressed size';
+
+  @override
+  String get reductionLabel => 'Reduction';
+
+  @override
+  String get compressDimensionLabel => 'Dimensions';
+
+  @override
+  String get compressSaveAsCopyLabel => 'Save as copy';
+
+  @override
+  String get compressSaveAsCopyHint => 'Creates a new file, original is kept';
+
+  @override
+  String get compressOverwriteHint => 'Replaces the original file';
+
+  @override
+  String get compressOutputNameLabel => 'Output filename';
+
+  @override
+  String get licenseIssued => 'Issued';
+
+  @override
+  String get licenseExpires => 'Expires';
+
+  @override
+  String get licenseDaysRemaining => 'Days remaining';
+
+  @override
+  String get licenseFile => 'File';
+
+  @override
+  String get licensePermissions => 'Permissions';
+
+  @override
+  String get licenseExpiresSoon => 'License expires soon — please renew';
+
+  @override
+  String get licenseDelete => 'Delete';
+
+  @override
+  String get licenseUpdateRenew => 'Update / Renew';
+
+  @override
+  String get licenseDeleteTitle => 'Delete License';
+
+  @override
+  String get licenseDeleteConfirm =>
+      'Are you sure you want to remove the license? This action cannot be undone.';
+
+  @override
+  String get licenseCancel => 'Cancel';
+
+  @override
+  String get licenseDeleteSuccess => 'License deleted';
+
+  @override
+  String get licenseDeleteFailed => 'Failed to delete license';
+
+  @override
+  String get licenseImportTooltip => 'Import license';
 }

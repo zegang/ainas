@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
-find_package(OpenSSL REQUIRED)
+find_package(OpenSSL QUIET)
+if(NOT OpenSSL_FOUND)
+    message(STATUS "lic_gen: OpenSSL not found — using crypto stubs")
+endif()
 
 # Generate the public-key header (same logic as src/CMakeLists.txt) so
 # the tool can also call importLicense / isLicenseValid if desired.
@@ -46,7 +49,9 @@ target_include_directories(lic_gen PRIVATE
     ${LIC_PUBLIC_KEY_GEN_DIR}
 )
 
-target_link_libraries(lic_gen PRIVATE
-    OpenSSL::SSL
-    OpenSSL::Crypto
-)
+if(OpenSSL_FOUND)
+    target_link_libraries(lic_gen PRIVATE
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+endif()

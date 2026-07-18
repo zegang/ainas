@@ -37,7 +37,7 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
   String _logLevel = 'info';
   bool _runAsDaemon = true;
   Map<String, dynamic>? _usageData;
-  List<int> _pids = [];
+  List<ProcessInfo> _processes = [];
   bool _loadingUsage = true;
   bool _loadingPids = true;
   bool _stoppingPid = false;
@@ -147,17 +147,17 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
   Future<void> _loadPids() async {
     setState(() => _loadingPids = true);
     try {
-      _pids = await BackendProcessManager.listPids();
+      _processes = await BackendProcessManager.listProcessDetails();
     } catch (_) {
-      _pids = [];
+      _processes = [];
     }
-    if (_pids.isNotEmpty && _activeCommandLine == null) {
+    if (_processes.isNotEmpty && _activeCommandLine == null) {
       _activeCommandLine = _reconstructCommandLine();
     }
-    if (_pids.isEmpty) _activeCommandLine = null;
+    if (_processes.isEmpty) _activeCommandLine = null;
     if (mounted) {
       setState(() => _loadingPids = false);
-      if (_pids.isNotEmpty && _usageData == null) {
+      if (_processes.isNotEmpty && _usageData == null) {
         _fetchAndShowConfig();
       }
     }
@@ -420,7 +420,7 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
   }
 
   Widget _buildProcessCard(AppLocalizations l10n, ThemeData theme) {
-    final bool anyRunning = _pids.isNotEmpty;
+    final bool anyRunning = _processes.isNotEmpty;
 
     return Card(
       child: Padding(
@@ -452,7 +452,7 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
                 child: Center(child: Text(l10n.noProcessFound)),
               )
             else
-              ..._pids.map((pid) => _buildPidTile(pid, l10n, theme)),
+              ..._processes.map((p) => _buildPidTile(p, l10n, theme)),
             if (_processMessage != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -529,7 +529,7 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
   }
 
   Widget _buildOptionsFields(AppLocalizations l10n) {
-    final bool running = _pids.isNotEmpty;
+    final bool running = _processes.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -657,7 +657,8 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
     );
   }
 
-  Widget _buildPidTile(int pid, AppLocalizations l10n, ThemeData theme) {
+  Widget _buildPidTile(ProcessInfo proc, AppLocalizations l10n, ThemeData theme) {
+    final pid = proc.pid;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -691,7 +692,7 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
                       child: Text(
                         l10n.processRunning,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: Colors.green.shade700,
                         ),
@@ -699,7 +700,23 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
                     ),
                   ],
                 ),
-                if (_activeCommandLine != null && _activeCommandLine!.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    if (proc.memoryKb > 0) ...[
+                      _metaChip('Mem', _formatBytes(proc.memoryKb * 1024), Colors.blue),
+                      const SizedBox(width: 8),
+                    ],
+                    if (proc.cpuPercent > 0) ...[
+                      _metaChip('CPU', '${proc.cpuPercent.toStringAsFixed(1)}%', Colors.indigo),
+                      const SizedBox(width: 8),
+                    ],
+                    if (proc.uptime.isNotEmpty) ...[
+                      _metaChip('Up', proc.uptime, Colors.teal),
+                    ],
+                  ],
+                ),
+                if (proc.commandLine.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Container(
                     width: double.infinity,
@@ -709,9 +726,9 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: SelectableText(
-                      _activeCommandLine!,
+                      proc.commandLine,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 13,
                         fontFamily: 'monospace',
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -735,5 +752,30 @@ class _StorageDesktopPageState extends State<StorageDesktopPage> {
         ],
       ),
     );
+  }
+
+  Widget _metaChip(String label, String value, MaterialColor color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: color.shade700,
+        ),
+      ),
+    );
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes >= 1073741824) return '${(bytes / 1073741824).toStringAsFixed(1)} GB';
+    if (bytes >= 1048576) return '${(bytes / 1048576).toStringAsFixed(1)} MB';
+    if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '$bytes B';
   }
 }

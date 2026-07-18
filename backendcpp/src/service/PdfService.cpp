@@ -24,6 +24,7 @@
 
 #ifdef AINAS_HAVE_QPDF
 #include <qpdf/QPDF.hh>
+#include <qpdf/QPDFPageDocumentHelper.hh>
 #include <qpdf/QPDFWriter.hh>
 #include <qpdf/QUtil.hh>
 #endif
@@ -92,6 +93,11 @@ std::vector<PdfService::PdfToImagePage> PdfService::pdfToImages(
     LOG_INFO("pdfToImages: loaded \"{}\" ({} pages, {} bytes)", srcStr, totalPages, fileSize);
 
     std::filesystem::create_directories(outputDir);
+    // Clear any stale files from previous runs so orphaned images don't persist
+    for (auto& entry : std::filesystem::directory_iterator(outputDir)) {
+        std::error_code ec;
+        std::filesystem::remove(entry.path(), ec);
+    }
     LOG_DEBUG("pdfToImages: output directory \"{}\"", outputDir.string());
 
     auto base = sourcePath.stem().string();
@@ -217,6 +223,7 @@ void PdfService::mergeToPdf(
         // Use QPDF to merge all PDFs into one
         QPDF out;
         out.emptyPDF();
+        QPDFPageDocumentHelper outHelper(out);
 
         int totalPagesMerged = 0;
         for (size_t i = 0; i < pdfPaths.size(); ++i) {
@@ -224,10 +231,11 @@ void PdfService::mergeToPdf(
             LOG_DEBUG("mergeToPdf: processing source [{}/{}] \"{}\"", i + 1, pdfPaths.size(), p.string());
             QPDF in;
             in.processFile(p.string().c_str());
-            auto pages = in.getAllPages();
+            QPDFPageDocumentHelper inHelper(in);
+            auto pages = inHelper.getAllPages();
             LOG_DEBUG("mergeToPdf: source [{}/{}] has {} pages", i + 1, pdfPaths.size(), pages.size());
             for (auto& page : pages) {
-                out.addPage(page, true);
+                outHelper.addPage(page, false);
                 ++totalPagesMerged;
             }
         }

@@ -37,6 +37,7 @@ public:
     bool deleteById(int64_t id);
     bool deleteByPath(const std::string& path);
     int64_t deleteByParentId(int64_t parentId);
+    int deleteRecursive(const std::string& path);
 
     void setTags(int64_t fileId, const std::vector<std::string>& tags);
     std::vector<std::string> getTags(int64_t fileId);

@@ -37,6 +37,9 @@ public:
     oatpp::Object<ApiResponseDto> renameFile(const oatpp::Object<RenameRequestDto>& body);
     oatpp::Object<ApiResponseDto> createFolder(const oatpp::String& pathStr);
 
+    oatpp::Object<CompressImageResponseDto> compressImage(
+        const oatpp::Object<CompressImageRequestDto>& body);
+
     oatpp::Object<FileDetailResponseDto> getFileById(int64_t id);
     oatpp::Object<FileDetailResponseDto> updateFile(int64_t id,
         const oatpp::Object<UpdateFileRequestDto>& body);

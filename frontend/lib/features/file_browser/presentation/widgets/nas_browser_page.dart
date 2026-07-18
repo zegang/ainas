@@ -38,7 +38,7 @@ class NASBrowser extends StatefulWidget {
   State<NASBrowser> createState() => _NASBrowserState();
 }
 
-class _NASBrowserState extends State<NASBrowser> {
+class _NASBrowserState extends State<NASBrowser> with WidgetsBindingObserver {
   final _log = Logger('NASBrowser');
   final ApiService api = ApiService();
   final FileBrowserController _controller = FileBrowserController();
@@ -63,12 +63,21 @@ class _NASBrowserState extends State<NASBrowser> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _refresh();
     api.addListener(_onUploadStateChanged);
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refresh();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _stopPolling();
     api.removeListener(_onUploadStateChanged);
@@ -235,7 +244,6 @@ class _NASBrowserState extends State<NASBrowser> {
 
   Future<void> _handleDelete(FileItem item) async {
     final l10n = AppLocalizations.of(context)!;
-    final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -249,17 +257,24 @@ class _NASBrowserState extends State<NASBrowser> {
     );
     if (confirmed == true) {
       try {
-        await api.deleteItem(fullPath);
+        await api.deleteItem(item.path);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.deleteAction + " ${item.name}")),
+        );
         _refresh(forceRefresh: true);
       } catch (e) {
         _log.severe("Delete failed", e);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Delete failed: $e"), backgroundColor: Colors.red),
+        );
       }
     }
   }
 
   Future<void> _handleRename(FileItem item) async {
     final l10n = AppLocalizations.of(context)!;
-    final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
     final controller = TextEditingController(text: item.name);
     final newName = await showDialog<String>(
       context: context,
@@ -273,14 +288,21 @@ class _NASBrowserState extends State<NASBrowser> {
       ),
     );
     if (newName != null && newName.isNotEmpty && newName != item.name) {
-      await api.renameItem(fullPath, newName);
-      _refresh(forceRefresh: true);
+      try {
+        await api.renameItem(item.path, newName);
+        _refresh(forceRefresh: true);
+      } catch (e) {
+        _log.severe("Rename failed", e);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Rename failed: $e"), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
   Future<void> _handleMove(FileItem item) async {
     final l10n = AppLocalizations.of(context)!;
-    final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
     final targetDir = await showDialog<String>(
       context: context,
       builder: (context) => FolderPickerDialog(
@@ -290,10 +312,18 @@ class _NASBrowserState extends State<NASBrowser> {
         actionIcon: Icons.drive_file_move_outlined,
       ),
     );
-    if (targetDir != null && targetDir.isNotEmpty && targetDir != pathStack.last) {
+    if (targetDir != null && targetDir != pathStack.last) {
       final newPath = targetDir.isEmpty ? item.name : "$targetDir/${item.name}";
-      await api.moveItem(fullPath, newPath);
-      _refresh(forceRefresh: true);
+      try {
+        await api.moveItem(item.path, newPath);
+        _refresh(forceRefresh: true);
+      } catch (e) {
+        _log.severe("Move failed", e);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Move failed: $e"), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -308,9 +338,17 @@ class _NASBrowserState extends State<NASBrowser> {
         actionIcon: Icons.content_copy,
       ),
     );
-    if (targetDir != null && targetDir.isNotEmpty && targetDir != pathStack.last) {
-      await api.copyItem(item.path, targetDir);
-      _refresh(forceRefresh: true);
+    if (targetDir != null && targetDir != pathStack.last) {
+      try {
+        await api.copyItem(item.path, targetDir);
+        _refresh(forceRefresh: true);
+      } catch (e) {
+        _log.severe("Copy failed", e);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Copy failed: $e"), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -325,10 +363,18 @@ class _NASBrowserState extends State<NASBrowser> {
         actionIcon: Icons.content_copy,
       ),
     );
-    if (targetDir != null && targetDir.isNotEmpty && targetDir != pathStack.last) {
-      final paths = _selectedItems.map((item) => item.path).toList();
-      await api.copyItems(paths, targetDir);
-      _refresh(forceRefresh: true);
+    if (targetDir != null && targetDir != pathStack.last) {
+      try {
+        final paths = _selectedItems.map((item) => item.path).toList();
+        await api.copyItems(paths, targetDir);
+        _refresh(forceRefresh: true);
+      } catch (e) {
+        _log.severe("Batch copy failed", e);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Copy failed: $e"), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -351,37 +397,40 @@ class _NASBrowserState extends State<NASBrowser> {
       ),
     );
     if (confirmed == true) {
-      try {
-        final futures = _selectedItems.map((item) {
-          final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
-          return api.deleteItem(fullPath);
-        });
-        await Future.wait(futures);
-        _refresh(forceRefresh: true);
-      } catch (e) {
-        _log.severe("Batch delete failed", e);
+      final results = await Future.wait(
+        _selectedItems.map((item) => api.deleteItem(item.path).then((r) => null).catchError((e) => e)),
+      );
+      final errors = results.where((r) => r != null).toList();
+      final successCount = results.length - errors.length;
+      if (!mounted) return;
+      if (errors.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.deleteAction + " $successCount item(s)")),
+        );
+      } else if (successCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Deleted $successCount item(s), ${errors.length} failed"), backgroundColor: Colors.orange),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Delete failed for all items"), backgroundColor: Colors.red),
+        );
       }
+      _refresh(forceRefresh: true);
     }
   }
 
   void _handleAttachToAi(FileItem item) {
-    final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
-    api.stageFilesForAi([fullPath]);
-    // Switch to the AI Assistant tab (Index 2)
+    api.stageFilesForAi([item.path]);
     api.setTabIndex(2);
   }
 
   void _handleBatchAttachToAi() {
     if (_selectedItems.isEmpty) return;
-    
-    final paths = _selectedItems.map((item) {
-      return pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
-    }).toList();
-    
+    final paths = _selectedItems.map((item) => item.path).toList();
     api.stageFilesForAi(paths);
     final count = _selectedItems.length;
     setState(() => _selectedItems.clear());
-    // Switch to the AI Assistant tab (Index 2)
     api.setTabIndex(2);
   }
 
@@ -391,9 +440,7 @@ class _NASBrowserState extends State<NASBrowser> {
 
   Future<void> _handleMergeToPdf() async {
     final l10n = AppLocalizations.of(context)!;
-    final paths = _selectedItems.map((item) {
-      return pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
-    }).toList();
+    final paths = _selectedItems.map((item) => item.path).toList();
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => MergeToPdfDialog(
@@ -429,14 +476,21 @@ class _NASBrowserState extends State<NASBrowser> {
       context: context,
       builder: (context) => FolderPickerDialog(currentPath: pathStack.last),
     );
-    if (targetDir != null && targetDir.isNotEmpty && targetDir != pathStack.last) {
-      final futures = _selectedItems.map((item) {
-        final fullPath = pathStack.last.isEmpty ? item.name : "${pathStack.last}/${item.name}";
-        final newPath = targetDir.isEmpty ? item.name : "$targetDir/${item.name}";
-        return api.moveItem(fullPath, newPath);
-      });
-      await Future.wait(futures);
-      _refresh(forceRefresh: true);
+    if (targetDir != null && targetDir != pathStack.last) {
+      try {
+        final futures = _selectedItems.map((item) {
+          final newPath = targetDir.isEmpty ? item.name : "$targetDir/${item.name}";
+          return api.moveItem(item.path, newPath);
+        });
+        await Future.wait(futures);
+        _refresh(forceRefresh: true);
+      } catch (e) {
+        _log.severe("Batch move failed", e);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Move failed: $e"), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 

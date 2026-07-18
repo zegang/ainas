@@ -269,6 +269,29 @@ int64_t FileRepository::deleteByParentId(int64_t parentId) {
     return sqlite3_changes(m_db.handle());
 }
 
+int FileRepository::deleteRecursive(const std::string& path) {
+    Database::Transaction tx(m_db);
+    {
+        auto stmt = Database::Statement(m_db,
+            "DELETE FROM file_tags WHERE file_id IN ("
+            "  SELECT id FROM file_metadata WHERE path = ? OR path LIKE ?)"
+        );
+        stmt.bind(1, path);
+        stmt.bind(2, path + "/%");
+        stmt.step();
+    }
+    {
+        auto stmt = Database::Statement(m_db,
+            "DELETE FROM file_metadata WHERE path = ? OR path LIKE ?"
+        );
+        stmt.bind(1, path);
+        stmt.bind(2, path + "/%");
+        stmt.step();
+    }
+    tx.commit();
+    return sqlite3_changes(m_db.handle());
+}
+
 //===----------------------------------------------------------------------===//
 //  Tags
 //===----------------------------------------------------------------------===//

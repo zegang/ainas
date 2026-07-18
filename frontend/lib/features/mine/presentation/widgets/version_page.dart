@@ -57,8 +57,38 @@ class VersionPage extends StatelessWidget {
                     ),
                   ),
                   ListTile(
-                    title: Text('v1.0.0+1'),
+                    title: Text('v0.0.1'),
                     subtitle: Text('App version'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Card(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+                    child: Text(
+                      l10n.developerTitle,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.person_outline),
+                    title: const Text('Zegang Luo'),
+                    subtitle: Text(l10n.developerTitle),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.email_outlined),
+                    title: const SelectableText('zegang.luo@qq.com'),
+                    subtitle: Text(l10n.developerContact),
                   ),
                 ],
               ),
@@ -82,7 +112,7 @@ class VersionPage extends StatelessWidget {
                   ),
                   ListTile(
                     leading: const Icon(Icons.article_outlined),
-                    title: Text(l10n.logViewerTitle),
+                    title: Text(l10n.frontendLogViewerTitle),
                     subtitle: Text(l10n.logViewerSubtitle),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(

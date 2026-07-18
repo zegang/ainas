@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:ainas_frontend/services/lic_service.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 
@@ -19,6 +20,8 @@ class _LicActivationPageState extends State<LicActivationPage> {
   bool _loading = true;
   bool _importing = false;
   bool _licensed = false;
+  LicenseStatus? _licenseStatus;
+  String? _licensePath;
   Map<String, String> _hardwareInfo = {};
   String? _errorText;
 
@@ -39,20 +42,24 @@ class _LicActivationPageState extends State<LicActivationPage> {
       _loading = true;
       _errorText = null;
     });
-    // Run hardware info and license check in parallel
+    // Run license status, path, and hardware info in parallel
     final results = await Future.wait([
-      _lic.isLicensed(),
+      _lic.licenseStatus(),
+      _lic.licenseFilePath(),
       Future.value(_lic.hardwareInfo()),
     ]);
     if (!mounted) return;
-    final licensed = results[0] as bool;
-    final info = results[1] as Map<String, String>;
+    final status = results[0] as LicenseStatus;
+    final path = results[1] as String;
+    final info = results[2] as Map<String, String>;
     setState(() {
       _loading = false;
-      _licensed = licensed;
+      _licensed = status.valid;
+      _licenseStatus = status;
+      _licensePath = path;
       _hardwareInfo = info;
     });
-    if (licensed && widget.onLicensed != null) {
+    if (status.valid && widget.onLicensed != null) {
       widget.onLicensed!();
     }
   }
@@ -131,17 +138,17 @@ class _LicActivationPageState extends State<LicActivationPage> {
 
     if (_licensed) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.licenseTitle)),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.verified, size: 72, color: Colors.green),
-              const SizedBox(height: 16),
-              Text(l10n.licenseLicensed, style: theme.textTheme.headlineSmall),
-            ],
-          ),
+        appBar: AppBar(
+          title: Text(l10n.licenseTitle),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: l10n.licenseImportTooltip,
+              onPressed: _pickAndImportFile,
+            ),
+          ],
         ),
+        body: _buildLicensedList(),
       );
     }
 
@@ -166,23 +173,8 @@ class _LicActivationPageState extends State<LicActivationPage> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            if (_hardwareInfo['cpu_serial']!.isNotEmpty) ...[
-              _infoRow(l10n.licenseCpuSerial, _hardwareInfo['cpu_serial']!),
-              const SizedBox(height: 8),
-            ],
-            if (_hardwareInfo['motherboard_serial']!.isNotEmpty) ...[
-              _infoRow(l10n.licenseMotherboardSerial, _hardwareInfo['motherboard_serial']!),
-              const SizedBox(height: 8),
-            ],
-            if (_hardwareInfo['disk_serial']!.isNotEmpty) ...[
-              _infoRow(l10n.licenseDiskSerial, _hardwareInfo['disk_serial']!),
-              const SizedBox(height: 8),
-            ],
-            if (_hardwareInfo['device_fingerprint']!.isNotEmpty) ...[
-              _infoRow(l10n.licenseDeviceFingerprint, _hardwareInfo['device_fingerprint']!),
-              const SizedBox(height: 8),
-            ],
-            const SizedBox(height: 16),
+            _buildHardwareCard(l10n, theme),
+            const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _copyHardwareInfo,
               icon: const Icon(Icons.copy),
@@ -232,18 +224,243 @@ class _LicActivationPageState extends State<LicActivationPage> {
     );
   }
 
-  Widget _infoRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildLicensedList() {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final dateFormat = DateFormat('yyyy-MM-dd');
+    final isExpiringSoon = _licenseStatus != null &&
+        _licenseStatus!.daysRemaining >= 0 &&
+        _licenseStatus!.daysRemaining <= 30;
+
+    final permissions = _licenseStatus?.data?['permissions'];
+    final features = <String>[];
+    if (permissions is List) {
+      for (final p in permissions) {
+        features.add(p.toString());
+      }
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
       children: [
-        SizedBox(
-          width: 140,
-          child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        _buildHardwareCard(l10n, theme),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      isExpiringSoon
+                          ? Icons.warning_amber_rounded
+                          : Icons.verified,
+                      color: isExpiringSoon ? Colors.orange : Colors.green,
+                      size: 32,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        l10n.licenseLicensed,
+                        style: theme.textTheme.titleLarge,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                if (_licenseStatus?.issuedDate != null)
+                  _detailRow(
+                    l10n.licenseIssued,
+                    dateFormat.format(_licenseStatus!.issuedDate!),
+                  ),
+                if (_licenseStatus?.expiresDate != null)
+                  _detailRow(
+                    l10n.licenseExpires,
+                    dateFormat.format(_licenseStatus!.expiresDate!),
+                  ),
+                _detailRow(l10n.licenseDaysRemaining, '${_licenseStatus!.daysRemaining}'),
+                if (_licensePath != null) _detailRow(l10n.licenseFile, _licensePath!),
+                if (features.isNotEmpty) ...[
+                  const Divider(),
+                  Text(l10n.licensePermissions,
+                      style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: features
+                        .map((f) => Chip(
+                              label: Text(f,
+                                  style: const TextStyle(fontSize: 14)),
+                              visualDensity: VisualDensity.compact,
+                            ))
+                        .toList(),
+                  ),
+                ],
+                if (isExpiringSoon) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      l10n.licenseExpiresSoon,
+                      style: TextStyle(color: Colors.orange.shade800),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
-        Expanded(
-          child: SelectableText(value, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _confirmDeleteLicense,
+                icon: const Icon(Icons.delete_outline),
+                label: Text(l10n.licenseDelete),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _pickAndImportFile,
+                icon: const Icon(Icons.refresh),
+                label: Text(l10n.licenseUpdateRenew),
+              ),
+            ),
+          ],
         ),
       ],
+    );
+  }
+
+  Future<void> _confirmDeleteLicense() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.licenseDeleteTitle),
+        content: Text(l10n.licenseDeleteConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.licenseCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(l10n.licenseDelete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final ok = await _lic.deleteLicense();
+    if (!mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.licenseDeleteSuccess)),
+      );
+      await _check();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.licenseDeleteFailed)),
+      );
+    }
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(label,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 15)),
+          ),
+          Expanded(
+            child: SelectableText(
+              value,
+              style: const TextStyle(
+                  fontFamily: 'monospace', fontSize: 14, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHardwareCard(AppLocalizations l10n, ThemeData theme) {
+    final entries = [
+      if (_hardwareInfo['cpu_serial']!.isNotEmpty)
+        (_hardwareInfo['cpu_serial']!, l10n.licenseCpuSerial),
+      if (_hardwareInfo['motherboard_serial']!.isNotEmpty)
+        (_hardwareInfo['motherboard_serial']!, l10n.licenseMotherboardSerial),
+      if (_hardwareInfo['disk_serial']!.isNotEmpty)
+        (_hardwareInfo['disk_serial']!, l10n.licenseDiskSerial),
+      if (_hardwareInfo['device_fingerprint']!.isNotEmpty)
+        (_hardwareInfo['device_fingerprint']!, l10n.licenseDeviceFingerprint),
+    ];
+    if (entries.isEmpty) return const SizedBox.shrink();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.precision_manufacturing_outlined, size: 24,
+                    color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text('Hardware Info',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600)),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 20),
+                  tooltip: l10n.licenseCopyHardwareInfo,
+                  onPressed: _copyHardwareInfo,
+                ),
+              ],
+            ),
+            const Divider(),
+            for (final (value, label) in entries) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 13,
+                            color: Colors.grey)),
+                    const SizedBox(height: 2),
+                    SelectableText(value,
+                        style: const TextStyle(
+                            fontFamily: 'monospace', fontSize: 14,
+                            height: 1.4)),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

@@ -493,6 +493,31 @@ public:
             return createDtoResponse(Status::CODE_500, error);
         }
     }
+
+    ENDPOINT("POST", "/api/files/compress-image", compressImage,
+             BODY_DTO(Object<CompressImageRequestDto>, body)) {
+        LOG_INFO("POST /api/files/compress-image (path=\"{}\")", detail::str(body->path));
+        try {
+            auto result = m_fileService->compressImage(body);
+            m_thumbnailService->remove(stripLeadingSlash(detail::str(body->path)));
+            return createDtoResponse(Status::CODE_200, result);
+        } catch (const FileServiceError& e) {
+            auto status = e.kind == FileServiceError::Kind::NotFound
+                          ? Status::CODE_404 : Status::CODE_400;
+            LOG_WARN("POST /api/files/compress-image: FileServiceError (status={}): {}",
+                     status.code, e.what());
+            auto error = ApiResponseDto::createShared();
+            error->success = false;
+            error->message = oatpp::String(e.what());
+            return createDtoResponse(status, error);
+        } catch (const std::exception& e) {
+            LOG_ERROR("POST /api/files/compress-image: exception: {}", e.what());
+            auto error = ApiResponseDto::createShared();
+            error->success = false;
+            error->message = oatpp::String(e.what());
+            return createDtoResponse(Status::CODE_500, error);
+        }
+    }
 };
 
 } // namespace ainas
