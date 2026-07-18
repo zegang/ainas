@@ -838,5 +838,14 @@
   "licenseCancel": "取消",
   "licenseDeleteSuccess": "许可证已删除",
   "licenseDeleteFailed": "删除许可证失败",
-  "licenseImportTooltip": "导入许可证"
+  "licenseImportTooltip": "导入许可证",
+  "licenseAiRequired": "AI 功能需要包含 ai 权限的许可证",
+  "licenseFeatureAll": "所有功能",
+  "licenseFeatureAi": "AI 助手",
+  "licenseFeatureMultiuser": "多用户",
+  "licenseFeatureSync": "同步",
+  "licenseFeatureStorage": "存储",
+  "licensePermissionGranted": "已授权",
+  "licensePermissionDenied": "未授权",
+  "licenseAdditionalPermissions": "额外权限：{features}"
 }

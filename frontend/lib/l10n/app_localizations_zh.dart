@@ -1658,4 +1658,33 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get licenseImportTooltip => '导入许可证';
+
+  @override
+  String get licenseAiRequired => 'AI 功能需要包含 ai 权限的许可证';
+
+  @override
+  String get licenseFeatureAll => '所有功能';
+
+  @override
+  String get licenseFeatureAi => 'AI 助手';
+
+  @override
+  String get licenseFeatureMultiuser => '多用户';
+
+  @override
+  String get licenseFeatureSync => '同步';
+
+  @override
+  String get licenseFeatureStorage => '存储';
+
+  @override
+  String get licensePermissionGranted => '已授权';
+
+  @override
+  String get licensePermissionDenied => '未授权';
+
+  @override
+  String licenseAdditionalPermissions(Object features) {
+    return '额外权限：$features';
+  }
 }

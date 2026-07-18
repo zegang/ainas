@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/services/api_service.dart';
+import 'package:ainas_frontend/services/lic_service.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/settings_page.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/storage_page.dart';
 import 'package:ainas_frontend/features/mine/presentation/widgets/user_info_page.dart';
@@ -9,15 +10,47 @@ import 'package:ainas_frontend/features/mine/presentation/widgets/ai_config_page
 import 'package:ainas_frontend/features/mine/presentation/widgets/version_page.dart';
 import 'package:ainas_frontend/features/license/license_page.dart';
 
-class MinePage extends StatelessWidget {
+class MinePage extends StatefulWidget {
   const MinePage({super.key});
 
+  @override
+  State<MinePage> createState() => _MinePageState();
+}
+
+class _MinePageState extends State<MinePage> {
+  final _lic = LicService();
+  bool _hasMultiuser = true;
+  bool _hasAi = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFeatures();
+    _lic.addListener(_onLicChanged);
+  }
+
+  @override
+  void dispose() {
+    _lic.removeListener(_onLicChanged);
+    super.dispose();
+  }
+
+  void _onLicChanged() {
+    _checkFeatures();
+  }
+
+  Future<void> _checkFeatures() async {
+    final m = await _lic.hasFeature(LicService.featureMultiuser);
+    final a = await _lic.hasFeature(LicService.featureAi);
+    if (mounted) setState(() { _hasMultiuser = m; _hasAi = a; });
+  }
+
   void _onAiScanPressed(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    if (!_hasAi) return;
     final api = ApiService();
-    if (!api.isLoggedIn) {
+    if (_hasMultiuser && !api.isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.aiScanLoginRequired)),
+        SnackBar(content: Text(AppLocalizations.of(context)!.aiScanLoginRequired)),
       );
       return;
     }
@@ -37,11 +70,16 @@ class MinePage extends StatelessWidget {
           padding: const EdgeInsets.only(left: 12.0),
           icon: CircleAvatar(
             backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            child: const Icon(Icons.person, color: Colors.white),
+            child: Icon(
+              _hasMultiuser ? Icons.person : Icons.person_off,
+              color: Colors.white,
+            ),
           ),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const UserInfoPage()),
-          ),
+          onPressed: _hasMultiuser
+              ? () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const UserInfoPage()),
+                  )
+              : null,
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,11 +91,12 @@ class MinePage extends StatelessWidget {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            tooltip: l10n.aiScanTooltip,
-            onPressed: () => _onAiScanPressed(context),
-          ),
+          if (_hasAi)
+            IconButton(
+              icon: const Icon(Icons.qr_code_scanner),
+              tooltip: l10n.aiScanTooltip,
+              onPressed: () => _onAiScanPressed(context),
+            ),
         ],
       ),
       body: ListView(
@@ -172,13 +211,16 @@ class MinePage extends StatelessWidget {
                     ),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.auto_awesome),
+                    leading: Icon(_hasAi ? Icons.auto_awesome : Icons.lock_outline),
                     title: Text(l10n.aiTileTitle),
                     subtitle: Text(l10n.aiTileSubtitle),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AiConfigPage()),
-                    ),
+                    enabled: _hasAi,
+                    onTap: _hasAi
+                        ? () => Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const AiConfigPage()),
+                            )
+                        : null,
                   ),
                   const Divider(height: 1),
                   ListTile(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ainas_frontend/services/api_service.dart';
+import 'package:ainas_frontend/services/lic_service.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 import 'package:ainas_frontend/shared/widgets/ai_config_widget.dart';
 
@@ -225,7 +226,41 @@ class _AiConfigPageState extends State<AiConfigPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
+    final lic = LicService();
+    return FutureBuilder<bool>(
+      future: lic.hasFeature(LicService.featureAi),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.data != true) {
+          return Scaffold(
+            appBar: AppBar(title: Text(l10n.aiConfigTitle)),
+            body: Center(
+              child: Card(
+                margin: const EdgeInsets.all(32),
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        l10n.licenseAiRequired,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+        return Scaffold(
       appBar: AppBar(title: Text(l10n.aiConfigTitle)),
       body: RefreshIndicator(
         onRefresh: () => _loadData(isRefresh: true),
@@ -284,6 +319,8 @@ class _AiConfigPageState extends State<AiConfigPage> {
                   ),
       ),
     );
+        },
+      );
   }
 
 }

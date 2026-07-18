@@ -20,6 +20,8 @@ bool importLicense(const std::string& licenseFilePath);
 bool isLicenseValid();
 std::string licenseInfo();
 bool isLicensed();
+bool hasPermission(const std::string& permission);
+std::vector<std::string> grantedPermissions();
 std::string defaultLicenseStoragePath();
 
 } // namespace ainas::lic

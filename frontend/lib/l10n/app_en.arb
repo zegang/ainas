@@ -856,6 +856,20 @@
   "licenseCancel": "Cancel",
   "licenseDeleteSuccess": "License deleted",
   "licenseDeleteFailed": "Failed to delete license",
-  "licenseImportTooltip": "Import license"
+  "licenseImportTooltip": "Import license",
+  "licenseAiRequired": "AI features require a license with ai permission",
+  "licenseFeatureAll": "All Features",
+  "licenseFeatureAi": "AI Assistant",
+  "licenseFeatureMultiuser": "Multi-User",
+  "licenseFeatureSync": "Sync",
+  "licenseFeatureStorage": "Storage",
+  "licensePermissionGranted": "Licensed",
+  "licensePermissionDenied": "Unlicensed",
+  "licenseAdditionalPermissions": "Additional permissions: {features}",
+  "@licenseAdditionalPermissions": {
+    "placeholders": {
+      "features": {}
+    }
+  }
 }
 

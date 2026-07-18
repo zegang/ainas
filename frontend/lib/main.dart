@@ -9,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'shared/utils/tracing.dart';
 import 'shared/widgets/login_dialog.dart';
+import 'services/lic_service.dart';
 import 'l10n/app_localizations.dart';
 import 'shared/utils/backend_process_manager.dart';
 import 'features/file_browser/presentation/widgets/nas_browser_page.dart';
@@ -280,6 +281,9 @@ StartupNotify=false
   Future<bool> _ensureLoggedIn(BuildContext context) async {
     final api = ApiService();
     if (api.isLoggedIn) {
+      return true;
+    }
+    if (!await LicService().hasFeature(LicService.featureMultiuser)) {
       return true;
     }
     return await showLoginDialog(context);

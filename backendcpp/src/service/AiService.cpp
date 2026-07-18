@@ -1,6 +1,7 @@
 #include "ainas/service/AiService.hpp"
 #include "ainas/logging/Logger.hpp"
 #include "ainas/platform/Platform.hpp"
+#include "ainas/string_util.hpp"
 #include "perfetto/tracing_ext.h"
 
 #include <httplib.h>
@@ -98,9 +99,13 @@ bool AiService::start() {
         // Mark features as ready with current model
         std::string modelName = "";
         {
-            auto modelsJson = nlohmann::json::parse(listModels());
-            if (modelsJson.contains("models") && !modelsJson["models"].empty()) {
-                modelName = modelsJson["models"][0].value("id", "");
+            try {
+                auto modelsJson = nlohmann::json::parse(listModels());
+                if (modelsJson.contains("models") && !modelsJson["models"].empty()) {
+                    modelName = modelsJson["models"][0].value("id", "");
+                }
+            } catch (const std::exception& e) {
+                LOG_ERROR("Failed to parse model list: {}", e.what());
             }
         }
         updateFeatureState("chat",      modelName, "ready", "");
@@ -132,7 +137,7 @@ int AiService::availableModels() const {
     auto res = cli.Get("/v1/models");
     if (!res || res->status != 200) return 0;
     try {
-        auto j = nlohmann::json::parse(res->body);
+        auto j = nlohmann::json::parse(sanitizeUtf8(res->body));
         if (j.contains("data")) return static_cast<int>(j["data"].size());
     } catch (...) {}
     return 0;
@@ -151,7 +156,7 @@ std::string AiService::listModels() const {
     }
     // Translate OpenAI format {object,data} → frontend {models}
     try {
-        auto j = nlohmann::json::parse(res->body);
+        auto j = nlohmann::json::parse(sanitizeUtf8(res->body));
         nlohmann::json out;
         out["models"] = nlohmann::json::array();
         if (j.contains("data")) {
@@ -192,7 +197,7 @@ std::string AiService::showModel(const std::string& name) const {
         return err.dump();
     }
     try {
-        auto j = nlohmann::json::parse(res->body);
+        auto j = nlohmann::json::parse(sanitizeUtf8(res->body));
         if (j.contains("data")) {
             for (const auto& m : j["data"]) {
                 if (m.value("id", "") == name) {
@@ -240,7 +245,7 @@ StartRunnerResult AiService::startRunner(const std::string& modelName,
         return {false, "", "Failed to connect to AI server"};
     }
     try {
-        auto j = nlohmann::json::parse(res->body);
+        auto j = nlohmann::json::parse(sanitizeUtf8(res->body));
         if (j.value("status", "") == "error") {
             return {false, "", j.value("error", "unknown error")};
         }

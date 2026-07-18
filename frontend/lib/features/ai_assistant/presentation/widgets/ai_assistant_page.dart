@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:logging/logging.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:ainas_frontend/services/api_service.dart';
+import 'package:ainas_frontend/services/lic_service.dart';
 import 'package:ainas_frontend/features/ai_assistant/domain/chat_repository_impl.dart';
 import 'package:ainas_frontend/shared/models/chat_message.dart';
 import './nas_file_picker.dart';
@@ -234,7 +235,38 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
+    final lic = LicService();
+    return FutureBuilder<bool>(
+      future: lic.hasFeature(LicService.featureAi),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.data != true) {
+          return Scaffold(
+            body: Center(
+              child: Card(
+                margin: const EdgeInsets.all(32),
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        l10n.licenseAiRequired,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+        return Scaffold(
       body: Column(
         children: [
           Container(
@@ -272,6 +304,8 @@ class _AIAssistantPageState extends State<AIAssistantPage> with SingleTickerProv
         ],
       ),
     );
+        },
+      );
   }
 
   bool _isImage(String filePath) {

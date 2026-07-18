@@ -322,6 +322,7 @@ class LicenseStatusDto : public oatpp::DTO {
     DTO_INIT(LicenseStatusDto, DTO)
     DTO_FIELD(Boolean, licensed);
     DTO_FIELD(String, info);
+    DTO_FIELD(Vector<String>, permissions);
 };
 
 class LicenseImportRequestDto : public oatpp::DTO {

@@ -3199,6 +3199,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Import license'**
   String get licenseImportTooltip;
+
+  /// No description provided for @licenseAiRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'AI features require a license with ai permission'**
+  String get licenseAiRequired;
+
+  /// No description provided for @licenseFeatureAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All Features'**
+  String get licenseFeatureAll;
+
+  /// No description provided for @licenseFeatureAi.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Assistant'**
+  String get licenseFeatureAi;
+
+  /// No description provided for @licenseFeatureMultiuser.
+  ///
+  /// In en, this message translates to:
+  /// **'Multi-User'**
+  String get licenseFeatureMultiuser;
+
+  /// No description provided for @licenseFeatureSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get licenseFeatureSync;
+
+  /// No description provided for @licenseFeatureStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get licenseFeatureStorage;
+
+  /// No description provided for @licensePermissionGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Licensed'**
+  String get licensePermissionGranted;
+
+  /// No description provided for @licensePermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlicensed'**
+  String get licensePermissionDenied;
+
+  /// No description provided for @licenseAdditionalPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional permissions: {features}'**
+  String licenseAdditionalPermissions(Object features);
 }
 
 class _AppLocalizationsDelegate

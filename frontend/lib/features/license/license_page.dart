@@ -282,22 +282,12 @@ class _LicActivationPageState extends State<LicActivationPage> {
                   ),
                 _detailRow(l10n.licenseDaysRemaining, '${_licenseStatus!.daysRemaining}'),
                 if (_licensePath != null) _detailRow(l10n.licenseFile, _licensePath!),
-                if (features.isNotEmpty) ...[
+                ...[
                   const Divider(),
                   Text(l10n.licensePermissions,
                       style: theme.textTheme.titleSmall),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: features
-                        .map((f) => Chip(
-                              label: Text(f,
-                                  style: const TextStyle(fontSize: 14)),
-                              visualDensity: VisualDensity.compact,
-                            ))
-                        .toList(),
-                  ),
+                  ..._buildFeatureList(features, theme, l10n),
                 ],
                 if (isExpiringSoon) ...[
                   const SizedBox(height: 12),
@@ -378,6 +368,65 @@ class _LicActivationPageState extends State<LicActivationPage> {
         SnackBar(content: Text(l10n.licenseDeleteFailed)),
       );
     }
+  }
+
+  List<Widget> _buildFeatureList(List<String> permissions, ThemeData theme, AppLocalizations l10n) {
+    final hasAll = permissions.contains('all');
+    final granted = <String>{};
+    for (final p in permissions) {
+      granted.add(p);
+    }
+    final items = <Widget>[];
+
+    void addFeature(String name, IconData icon, String label) {
+      if (name == 'all') return;
+      final isGranted = hasAll || granted.contains(name);
+      items.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Icon(
+                isGranted ? Icons.check_circle : Icons.lock_outline,
+                color: isGranted ? Colors.green : Colors.grey,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Text(label, style: const TextStyle(fontSize: 14)),
+              const Spacer(),
+              Text(
+                isGranted ? l10n.licensePermissionGranted : l10n.licensePermissionDenied,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isGranted ? Colors.green : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    addFeature('all',       Icons.all_inclusive,  l10n.licenseFeatureAll);
+    addFeature('ai',        Icons.auto_awesome,   l10n.licenseFeatureAi);
+    addFeature('multiuser', Icons.people,         l10n.licenseFeatureMultiuser);
+    addFeature('sync',      Icons.sync,           l10n.licenseFeatureSync);
+    addFeature('storage',   Icons.storage,        l10n.licenseFeatureStorage);
+
+    if (hasAll && permissions.length > 1) {
+      items.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            l10n.licenseAdditionalPermissions(permissions.where((p) => p != 'all').join(', ')),
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+        ),
+      );
+    }
+    return items;
   }
 
   Widget _detailRow(String label, String value) {

@@ -2,8 +2,10 @@
 
 #include "ainas/config/Config.hpp"
 #include "ainas/dto/DTOs.hpp"
+#include "ainas/lic/lic.h"
 #include "ainas/logging/Logger.hpp"
 #include "ainas/service/AiService.hpp"
+#include "ainas/string_util.hpp"
 
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -108,40 +110,6 @@ void attachFilesToRequest(const nlohmann::json& reqJson,
     }
 }
 
-/// Replaces invalid UTF-8 byte sequences with '?' so that nlohmann::json::parse
-/// does not throw type_error.316 on malformed model output.
-std::string sanitizeUtf8(const std::string& s) {
-    std::string out;
-    out.reserve(s.size());
-    size_t i = 0;
-    while (i < s.size()) {
-        unsigned char c = static_cast<unsigned char>(s[i]);
-        if (c <= 0x7F) {
-            out += c; ++i;
-            continue;
-        }
-        int n;
-        if (c >= 0xC2 && c <= 0xDF) n = 2;
-        else if (c >= 0xE0 && c <= 0xEF) n = 3;
-        else if (c >= 0xF0 && c <= 0xF4) n = 4;
-        else { out += '?'; ++i; continue; }
-        bool ok = true;
-        for (int j = 1; j < n; ++j) {
-            if (i + j >= s.size() || (static_cast<unsigned char>(s[i + j]) & 0xC0) != 0x80) {
-                ok = false; break;
-            }
-        }
-        if (ok) {
-            for (int j = 0; j < n; ++j) out += s[i + j];
-            i += n;
-        } else {
-            out += '?';
-            ++i;
-        }
-    }
-    return out;
-}
-
 } // anonymous namespace
 
 // ReadCallback that parses cllama SSE response and streams chunks through oatpp.
@@ -227,6 +195,18 @@ public:
         , m_aiService(std::move(aiService))
     {}
 
+    /// Returns nullptr if AI permission is granted, or a 403 error response.
+    std::shared_ptr<OutgoingResponse> _licGate() {
+        if (!lic::hasPermission("ai")) {
+            auto json = oatpp::String(
+                "{\"error\":\"AI features require a license with ai permission\"}");
+            auto body = oatpp::web::protocol::http::outgoing::BufferBody::createShared(
+                json, "application/json");
+            return OutgoingResponse::createShared(Status::CODE_403, body);
+        }
+        return nullptr;
+    }
+
     static std::shared_ptr<AiController> createShared(
         const std::shared_ptr<ObjectMapper>& objectMapper,
         std::shared_ptr<Config> config,
@@ -239,6 +219,7 @@ public:
     // ── GET /api/ai/status ────────────────────────────────────────
     ENDPOINT("GET", "/api/ai/status", getAiStatus) {
         LOG_INFO("GET /api/ai/status");
+        if (auto err = _licGate()) return err;
         auto body = oatpp::String(m_aiService->getStatus());
         auto respBody = oatpp::web::protocol::http::outgoing::BufferBody::createShared(body, "application/json");
         return OutgoingResponse::createShared(Status::CODE_200, respBody);
@@ -247,6 +228,7 @@ public:
     // ── POST /api/ai/enable ───────────────────────────────────────
     ENDPOINT("POST", "/api/ai/enable", enableAi) {
         LOG_INFO("POST /api/ai/enable");
+        if (auto err = _licGate()) return err;
         if (m_aiState->enabled.load()) {
             auto response = ApiResponseDto::createShared();
             response->success = true;
@@ -287,6 +269,7 @@ public:
     // ── GET /api/ai/features ─────────────────────────────────────
     ENDPOINT("GET", "/api/ai/features", getAiFeatures) {
         LOG_INFO("GET /api/ai/features");
+        if (auto err = _licGate()) return err;
         if (!m_aiState->enabled.load()) {
             auto json = oatpp::String("{\"features\":[]}");
             auto respBody = oatpp::web::protocol::http::outgoing::BufferBody::createShared(json, "application/json");
@@ -303,6 +286,7 @@ public:
              REQUEST(std::shared_ptr<IncomingRequest>, request)) {
         auto featureName = name ? *name : "";
         LOG_INFO("POST /api/ai/features/{}/model", featureName);
+        if (auto err = _licGate()) return err;
         auto bodyStr = request->readBodyToString();
         if (!m_aiState->enabled.load() || featureName.empty()) {
             auto json = oatpp::String("{\"success\":false,\"message\":\"AI features are disabled\"}");
@@ -310,7 +294,7 @@ public:
             return OutgoingResponse::createShared(Status::CODE_200, respBody);
         }
         try {
-            auto reqJson = nlohmann::json::parse(bodyStr->c_str());
+            auto reqJson = nlohmann::json::parse(sanitizeUtf8(bodyStr ? *bodyStr : ""));
             std::string modelName = reqJson.value("model_name", "");
             if (modelName.empty()) {
                 auto json = oatpp::String("{\"success\":false,\"message\":\"model_name is required\"}");
@@ -381,7 +365,7 @@ public:
             return OutgoingResponse::createShared(Status::CODE_200, respBody);
         }
         try {
-            auto reqJson = nlohmann::json::parse(bodyStr->c_str());
+            auto reqJson = nlohmann::json::parse(sanitizeUtf8(bodyStr ? *bodyStr : ""));
             std::string modelName  = reqJson.value("model", "");
             std::string runnerName = reqJson.value("name", "");
             std::string runnerType = reqJson.value("type", "");
@@ -422,7 +406,7 @@ public:
             return createDtoResponse(Status::CODE_200, response);
         }
         try {
-            auto reqJson = nlohmann::json::parse(bodyStr->c_str());
+            auto reqJson = nlohmann::json::parse(sanitizeUtf8(bodyStr ? *bodyStr : ""));
             std::string name = reqJson.value("name", "");
             bool ok;
             if (name.empty()) {
@@ -457,6 +441,7 @@ public:
     ENDPOINT("POST", "/api/ai/models/check", checkAiModel,
              REQUEST(std::shared_ptr<IncomingRequest>, request)) {
         LOG_INFO("POST /api/ai/models/check");
+        if (auto err = _licGate()) return err;
         auto bodyStr = request->readBodyToString();
         if (!m_aiState->enabled.load()) {
             auto json = oatpp::String("{\"available\":false}");
@@ -472,9 +457,9 @@ public:
             return OutgoingResponse::createShared(Status::CODE_200, respBody);
         }
         try {
-            auto reqJson = nlohmann::json::parse(bodyStr->c_str());
+            auto reqJson = nlohmann::json::parse(sanitizeUtf8(bodyStr ? *bodyStr : ""));
             std::string repoId = reqJson.value("repo_id", "");
-            auto modelsJson = nlohmann::json::parse(modelsRes->body);
+            auto modelsJson = nlohmann::json::parse(sanitizeUtf8(modelsRes->body));
             bool found = false;
             if (modelsJson.contains("data")) {
                 for (const auto& m : modelsJson["data"]) {
@@ -501,6 +486,7 @@ public:
     ENDPOINT("POST", "/api/ai/models/download", downloadAiModel,
              REQUEST(std::shared_ptr<IncomingRequest>, request)) {
         LOG_INFO("POST /api/ai/models/download");
+        if (auto err = _licGate()) return err;
         auto bodyStr = request->readBodyToString();
         if (!m_aiState->enabled.load()) {
             auto response = ApiResponseDto::createShared();
@@ -511,7 +497,7 @@ public:
         // Forward to cllama POST /v1/pull
         auto cli = makeCli(m_config->cllamaPort);
         try {
-            auto reqJson = nlohmann::json::parse(bodyStr->c_str());
+            auto reqJson = nlohmann::json::parse(sanitizeUtf8(bodyStr ? *bodyStr : ""));
             std::string modelName = reqJson.value("repo_id", reqJson.value("name", ""));
             nlohmann::json pullReq;
             pullReq["model"] = modelName;
@@ -548,7 +534,7 @@ public:
             return OutgoingResponse::createShared(Status::CODE_200, respBody);
         }
         try {
-            auto reqJson = nlohmann::json::parse(bodyStr->c_str());
+            auto reqJson = nlohmann::json::parse(sanitizeUtf8(bodyStr ? *bodyStr : ""));
             std::string name = reqJson.value("name", "");
             if (name.empty()) {
                 auto json = oatpp::String("{\"message\":\"name is required\"}");
@@ -591,6 +577,7 @@ public:
     ENDPOINT("POST", "/api/ai/chat", chat,
              REQUEST(std::shared_ptr<IncomingRequest>, request)) {
         LOG_INFO("POST /api/ai/chat");
+        if (auto err = _licGate()) return err;
         auto bodyStr = request->readBodyToString();
         if (!m_aiState->enabled.load()) {
             auto json = oatpp::String("{\"text\":\"AI assistant is disabled.\"}");
@@ -646,6 +633,7 @@ public:
     ENDPOINT("POST", "/api/ai/chat/stream", chatStream,
              REQUEST(std::shared_ptr<IncomingRequest>, request)) {
         LOG_INFO("POST /api/ai/chat/stream");
+        if (auto err = _licGate()) return err;
         if (!m_aiState->enabled.load()) {
             auto response = oatpp::web::protocol::http::outgoing::Response::createShared(
                 Status::CODE_200,
@@ -696,6 +684,7 @@ public:
     ENDPOINT("POST", "/api/ai/completions", completions,
              REQUEST(std::shared_ptr<IncomingRequest>, request)) {
         LOG_INFO("POST /api/ai/completions");
+        if (auto err = _licGate()) return err;
         auto bodyStr = request->readBodyToString();
         if (!m_aiState->enabled.load()) {
             auto json = oatpp::String("{\"error\":\"AI features are disabled\"}");
@@ -713,6 +702,7 @@ public:
              PATH(String, requestId, "requestId")) {
         auto rid = requestId ? *requestId : "";
         LOG_INFO("POST /api/ai/chat/cancel/{}", rid);
+        if (auto err = _licGate()) return err;
         if (!m_aiState->enabled.load()) {
             auto json = oatpp::String("{\"message\":\"AI Engine not enabled\"}");
             auto respBody = oatpp::web::protocol::http::outgoing::BufferBody::createShared(json, "application/json");
@@ -726,6 +716,7 @@ public:
     // ── GET /api/ai/rag ───────────────────────────────────────────
     ENDPOINT("GET", "/api/ai/rag", getRagStatus) {
         LOG_INFO("GET /api/ai/rag");
+        if (auto err = _licGate()) return err;
         auto response = RagStatusDto::createShared();
         response->status = "disconnected";
         response->address = "";
@@ -737,6 +728,7 @@ public:
     // ── GET /api/ai/rag/documents ─────────────────────────────────
     ENDPOINT("GET", "/api/ai/rag/documents", getRagDocuments) {
         LOG_INFO("GET /api/ai/rag/documents");
+        if (auto err = _licGate()) return err;
         auto json = oatpp::String("{\"files\":[],\"total\":0}");
         auto respBody = oatpp::web::protocol::http::outgoing::BufferBody::createShared(json, "application/json");
         return OutgoingResponse::createShared(Status::CODE_200, respBody);
@@ -745,6 +737,7 @@ public:
     // ── DELETE /api/ai/rag ────────────────────────────────────────
     ENDPOINT("DELETE", "/api/ai/rag", resetRag) {
         LOG_INFO("DELETE /api/ai/rag");
+        if (auto err = _licGate()) return err;
         auto json = oatpp::String("{\"deleted\":0,\"message\":\"RAG index cleared successfully.\"}");
         auto respBody = oatpp::web::protocol::http::outgoing::BufferBody::createShared(json, "application/json");
         return OutgoingResponse::createShared(Status::CODE_200, respBody);
@@ -754,6 +747,7 @@ public:
     ENDPOINT("DELETE", "/api/ai/rag/documents", deleteRagDocument,
              QUERY(String, path, "path")) {
         LOG_INFO("DELETE /api/ai/rag/documents");
+        if (auto err = _licGate()) return err;
         auto docPath = path ? *path : "";
         if (docPath.empty()) {
             auto json = oatpp::String("{\"message\":\"path parameter is required\"}");

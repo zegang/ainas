@@ -392,4 +392,27 @@ bool isLicensed() {
     return isLicenseValid();
 }
 
+bool hasPermission(const std::string& permission) {
+    auto info = licenseInfo();
+    if (info.empty()) return false;
+    std::string fp, issued, expires;
+    std::vector<std::string> perms;
+    if (!parseLicenseJson(info, fp, issued, expires, perms))
+        return false;
+    for (const auto& p : perms) {
+        if (p == "all" || p == permission)
+            return true;
+    }
+    return false;
+}
+
+std::vector<std::string> grantedPermissions() {
+    auto info = licenseInfo();
+    if (info.empty()) return {};
+    std::string fp, issued, expires;
+    std::vector<std::string> perms;
+    parseLicenseJson(info, fp, issued, expires, perms);
+    return perms;
+}
+
 } // namespace ainas::lic

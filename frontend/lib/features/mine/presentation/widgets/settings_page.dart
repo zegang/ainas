@@ -28,14 +28,8 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
 
-    final uri = Uri.tryParse(_api.baseUrl) ?? Uri.parse("http://127.0.0.1:9026");
-
-    // Use current settings from the singleton as the starting point
-    final defaultHost = uri.host.isEmpty ? "127.0.0.1" : uri.host;
-    final defaultPort = (uri.port == 0 || uri.port == 80) ? "9026" : uri.port.toString();
-    
-    _hostController = TextEditingController(text: defaultHost);
-    _portController = TextEditingController(text: defaultPort);
+    _hostController = TextEditingController(text: '');
+    _portController = TextEditingController(text: '');
     _selectedLocale = _api.locale;
     _selectedThemeMode = _api.themeMode;
     _selectedFontScale = _api.fontScale;
@@ -57,28 +51,26 @@ class _SettingsPageState extends State<SettingsPage> {
     final portText = _portController.text.trim();
     final port = int.tryParse(portText);
 
-    bool isValid = true;
-    setState(() {
-      if (host.isEmpty) {
-        _hostError = l10n.hostEmptyError;
-        isValid = false;
-      } else {
-        _hostError = null;
-      }
+    _debounceTimer?.cancel();
 
-      if (portText.isEmpty) {
-        _portError = l10n.portEmptyError;
-        isValid = false;
-      } else if (port == null || port < 1 || port > 65535) {
+    if (host.isEmpty || portText.isEmpty) {
+      setState(() {
+        _hostError = null;
+        _portError = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _hostError = null;
+      if (port == null || port < 1 || port > 65535) {
         _portError = l10n.portInvalidError;
-        isValid = false;
       } else {
         _portError = null;
       }
     });
 
-    _debounceTimer?.cancel();
-    if (isValid) {
+    if (port != null && port >= 1 && port <= 65535) {
       _debounceTimer = Timer(const Duration(milliseconds: 1000), _autoSave);
     }
   }
@@ -90,13 +82,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
     setState(() {
       _isAutoSaving = true;
-      _isChecking = true;
     });
 
     final host = _hostController.text.trim();
     final port = _portController.text.trim();
-    final newUrl = "http://$host:$port";
-    final bool urlChanged = newUrl != _api.baseUrl;
+    final hasAddress = host.isNotEmpty && port.isNotEmpty;
+    final newUrl = hasAddress ? "http://$host:$port" : "";
 
     try {
       // Always persist local preferences immediately
@@ -104,9 +95,11 @@ class _SettingsPageState extends State<SettingsPage> {
       await _api.persistLocale(_selectedLocale);
       await _api.persistFontScale(_selectedFontScale);
 
-      if (urlChanged) {
+      if (hasAddress && newUrl != _api.baseUrl) {
         await _api.persistBaseUrl(newUrl);
         if (!mounted) return;
+
+        setState(() => _isChecking = true);
 
         final isHealthy = await _api.checkStatus(newUrl);
         if (!mounted) return;
@@ -128,16 +121,12 @@ class _SettingsPageState extends State<SettingsPage> {
           );
           setState(() => _isConnected = false);
         }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.settingsSaved)),
-        );
+        if (mounted) setState(() => _isChecking = false);
       }
     } finally {
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
         setState(() => _isAutoSaving = false);
-        setState(() => _isChecking = false);
       }
     }
   }

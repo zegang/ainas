@@ -1678,4 +1678,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get licenseImportTooltip => 'Import license';
+
+  @override
+  String get licenseAiRequired =>
+      'AI features require a license with ai permission';
+
+  @override
+  String get licenseFeatureAll => 'All Features';
+
+  @override
+  String get licenseFeatureAi => 'AI Assistant';
+
+  @override
+  String get licenseFeatureMultiuser => 'Multi-User';
+
+  @override
+  String get licenseFeatureSync => 'Sync';
+
+  @override
+  String get licenseFeatureStorage => 'Storage';
+
+  @override
+  String get licensePermissionGranted => 'Licensed';
+
+  @override
+  String get licensePermissionDenied => 'Unlicensed';
+
+  @override
+  String licenseAdditionalPermissions(Object features) {
+    return 'Additional permissions: $features';
+  }
 }

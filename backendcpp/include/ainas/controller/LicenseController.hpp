@@ -36,6 +36,9 @@ public:
         response->licensed = lic::isLicensed();
         auto info = lic::licenseInfo();
         response->info = oatpp::String(info);
+        response->permissions = oatpp::Vector<oatpp::String>::createShared();
+        for (auto& p : lic::grantedPermissions())
+            response->permissions->push_back(oatpp::String(p));
         return createDtoResponse(Status::CODE_200, response);
     }
 

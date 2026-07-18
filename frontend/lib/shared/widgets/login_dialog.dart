@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:ainas_frontend/services/user_service.dart';
+import 'package:ainas_frontend/services/lic_service.dart';
 import 'package:ainas_frontend/l10n/app_localizations.dart';
 
 Future<bool> showLoginDialog(BuildContext context) async {
+  final lic = LicService();
+  if (!await lic.hasFeature(LicService.featureMultiuser)) {
+    if (!context.mounted) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Multi-user features require a license with multiuser permission')),
+    );
+    return false;
+  }
+
   return await showDialog<bool>(
         context: context,
         barrierDismissible: false,

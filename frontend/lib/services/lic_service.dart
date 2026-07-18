@@ -35,6 +35,30 @@ class LicService {
 
   final _log = Logger('LicService');
 
+  Map<String, dynamic>? _cachedInfo;
+  bool _cacheValid = false;
+  final List<void Function()> _listeners = [];
+
+  void addListener(void Function() listener) {
+    _listeners.add(listener);
+  }
+
+  void removeListener(void Function() listener) {
+    _listeners.remove(listener);
+  }
+
+  void _notifyListeners() {
+    for (final l in _listeners) {
+      l();
+    }
+  }
+
+  void invalidateCache() {
+    _cacheValid = false;
+    _cachedInfo = null;
+    _notifyListeners();
+  }
+
   // The RSA public key in PEM format used to verify license signatures.
   // Replace this with your actual public key for production.
   // You can generate one with: openssl genpkey -algorithm RSA -out private.pem
@@ -370,25 +394,33 @@ yQIDAQAB
 
   // ── Public API ──────────────────────────────────────────────────────
 
+  /// Load and cache license info from disk.
+  Future<Map<String, dynamic>?> _loadFromDisk() async {
+    if (!isDesktop()) return null;
+    try {
+      final file = await _storageFile();
+      if (!await file.exists()) return null;
+      final blob = await file.readAsBytes();
+      if (blob.length < 12 + 16) return null;
+      final key = _storageKey();
+      if (key.isEmpty) return null;
+      final plaintext = _aesDecrypt(Uint8List.fromList(blob), key);
+      if (plaintext == null) return null;
+      final payload = utf8.decode(plaintext);
+      return _parseLicenseJson(payload);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Check whether a valid, non-expired, device-bound license exists.
   Future<bool> isLicensed() async {
     if (!isDesktop()) return true;
     try {
-      final file = await _storageFile();
-      if (!await file.exists()) return false;
-
-      final blob = await file.readAsBytes();
-      if (blob.length < 12 + 16) return false;
-
-      final key = _storageKey();
-      if (key.isEmpty) return false;
-
-      final plaintext = _aesDecrypt(Uint8List.fromList(blob), key);
-      if (plaintext == null) return false;
-
-      final payload = utf8.decode(plaintext);
-      final data = _parseLicenseJson(payload);
+      final data = _cachedInfo ?? await _loadFromDisk();
       if (data == null) return false;
+      _cachedInfo = data;
+      _cacheValid = true;
 
       // Check device binding
       final deviceFp = generateDeviceFingerprint();
@@ -411,24 +443,46 @@ yQIDAQAB
 
   /// Returns the license JSON payload if a valid license exists, or null.
   Future<Map<String, dynamic>?> licenseInfo() async {
-    if (!isDesktop()) return null;
-    try {
-      final file = await _storageFile();
-      if (!await file.exists()) return null;
-
-      final blob = await file.readAsBytes();
-      final key = _storageKey();
-      if (key.isEmpty) return null;
-
-      final plaintext = _aesDecrypt(Uint8List.fromList(blob), key);
-      if (plaintext == null) return null;
-
-      final payload = utf8.decode(plaintext);
-      return _parseLicenseJson(payload);
-    } catch (_) {
-      return null;
+    if (_cacheValid && _cachedInfo != null) return _cachedInfo;
+    final data = await _loadFromDisk();
+    if (data != null) {
+      _cachedInfo = data;
+      _cacheValid = true;
     }
+    return data;
   }
+
+  /// Returns true if the current license grants permission for [feature].
+  /// A permission list containing "all" grants all features.
+  Future<bool> hasFeature(String feature) async {
+    if (!isDesktop()) return _mobileFeatures.contains('all') || _mobileFeatures.contains(feature);
+    final data = await licenseInfo();
+    if (data == null) return false;
+    final perms = data['permissions'];
+    if (perms is! List) return false;
+    if (perms.contains('all')) return true;
+    return perms.contains(feature);
+  }
+
+  /// Returns the list of granted feature permission strings.
+  Future<List<String>> licensedFeatures() async {
+    if (!isDesktop()) return List.unmodifiable(_mobileFeatures);
+    final data = await licenseInfo();
+    if (data == null) return [];
+    final perms = data['permissions'];
+    if (perms is! List) return [];
+    return perms.cast<String>();
+  }
+
+  /// Well-known feature permission names.
+  static const String featureAll = 'all';
+  static const String featureAi = 'ai';
+  static const String featureMultiuser = 'multiuser';
+  static const String featureSync = 'sync';
+  static const String featureStorage = 'storage';
+
+  /// Features enabled by default on non-desktop platforms (mobile, web).
+  static const List<String> _mobileFeatures = ['ai', 'sync', 'storage'];
 
   /// Import a license file's content. Returns true on success.
   Future<bool> importLicense(String licenseContent) async {
@@ -470,6 +524,9 @@ yQIDAQAB
 
       final file = await _storageFile();
       await file.writeAsBytes(encrypted.toList());
+      _cacheValid = false;
+      _cachedInfo = null;
+      _notifyListeners();
       return true;
     } catch (e) {
       _log.warning('importLicense failed: $e');
@@ -491,6 +548,9 @@ yQIDAQAB
       final file = await _storageFile();
       if (await file.exists()) {
         await file.delete();
+        _cacheValid = false;
+        _cachedInfo = null;
+        _notifyListeners();
         return true;
       }
       return false;

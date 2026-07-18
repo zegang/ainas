@@ -1,8 +1,19 @@
 cmake_minimum_required(VERSION 3.20)
 
-find_package(OpenSSL QUIET)
-if(NOT OpenSSL_FOUND)
-    message(STATUS "lic_gen: OpenSSL not found — using crypto stubs")
+# On iOS cross-builds the host macOS has OpenSSL but the iOS toolchain
+# cannot compile its headers — skip it.
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(LIC_CRYPTO_SRC ../../src/lic/crypto_stub.cpp)
+    message(STATUS "lic_gen: iOS cross-build — using crypto stubs")
+else()
+    find_package(OpenSSL QUIET)
+    if(OpenSSL_FOUND)
+        set(LIC_CRYPTO_SRC ../../src/lic/crypto.cpp)
+        add_definitions(-DAINAS_HAVE_OPENSSL)
+    else()
+        set(LIC_CRYPTO_SRC ../../src/lic/crypto_stub.cpp)
+        message(STATUS "lic_gen: OpenSSL not found — using crypto stubs")
+    endif()
 endif()
 
 # Generate the public-key header (same logic as src/CMakeLists.txt) so
@@ -27,7 +38,7 @@ file(WRITE "${LIC_PUBLIC_KEY_GEN_DIR}/lic_public_key.h"
 
 # Lic source files from the backend library
 set(LIC_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/lic/crypto.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/${LIC_CRYPTO_SRC}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/lic/fingerprint.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/lic/license.cpp
 )
